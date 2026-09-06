@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Expense Management — V1</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#6b7280;--line:#e7eaf0;--accent:#2563eb;--accent2:#0f766e;--danger:#dc2626;--warn:#d97706;--shadow:0 8px 30px rgba(15,23,42,.07)}*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}.side{width:250px;background:#111827;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh}.brand{font-size:21px;font-weight:800;padding:8px 10px 24px}.brand small{display:block;color:#9ca3af;font-size:11px;margin-top:5px}.nav button{width:100%;border:0;background:transparent;color:#d1d5db;text-align:right;padding:13px 12px;border-radius:10px;margin:3px 0}.nav button.active,.nav button:hover{background:#1f2937;color:#fff}.main{flex:1;padding:24px;max-width:1500px;margin:auto;width:100%}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}.title h1{margin:0;font-size:27px}.title p{margin:6px 0;color:var(--muted)}.filters{display:flex;gap:10px;flex-wrap:wrap}.field{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:145px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--shadow)}.metric .label{color:var(--muted);font-size:13px}.metric .value{font-size:24px;font-weight:800;margin-top:8px}.metric .sub{font-size:12px;color:var(--muted);margin-top:5px}.types{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.type{transition:.15s;border:1px solid var(--line);background:#fff;border-radius:15px;padding:18px;text-align:right}.type:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:#cbd5e1}.icon{font-size:27px}.type h3{margin:12px 0 5px;font-size:16px}.type .amt{font-weight:800;font-size:18px}.type small{color:var(--muted)}.panel{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin-bottom:16px}.panel h2{margin:0 0 14px;font-size:19px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.btn{border:0;border-radius:9px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:700}.btn.secondary{background:#eef2ff;color:#1d4ed8}.btn.green{background:#0f766e}.btn.danger{background:#fee2e2;color:#991b1b}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:750px}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th{background:#f8fafc;color:#475569;font-size:13px}.pill{display:inline-block;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}.hidden{display:none}.modal.hidden{display:none}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:20px}.modalbox{background:#fff;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:22px}.close{float:left;border:0;background:#f1f5f9;border-radius:8px;padding:7px 10px}.notice{padding:12px 14px;background:#eff6ff;border-right:4px solid var(--accent);border-radius:8px;color:#1e3a8a;margin-bottom:14px}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}@media(max-width:1100px){.types{grid-template-columns:repeat(3,1fr)}.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:750px){.app{display:block}.side{width:100%;height:auto;position:static}.types{grid-template-columns:repeat(2,1fr)}.top{display:block}.filters{margin-top:12px}.cards{grid-template-columns:1fr 1fr}.main{padding:14px}}
+
+/* ===== Item Review additions — same visual language, no overrides ===== */
+.pill.neutral{background:#f1f5f9;color:#475569}
+.prog{height:7px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:9px}
+.prog>i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:.2s}
+.type .prog{margin-top:11px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700}
+.chip:hover{border-color:#cbd5e1}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip .c{opacity:.75;margin-inline-start:5px;font-weight:400}
+.ir-search{min-width:230px}
+.sub-id{display:block;color:var(--muted);font-size:11px;margin-top:3px;direction:ltr;text-align:start}
+.srcbtn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:6px 11px;font-size:13px}
+.srcbtn:hover{border-color:#cbd5e1}
+.srcrow>td{background:#f8fafc;padding:0}
+.srcinner{padding:12px 14px}
+.srctable{min-width:0;margin:0}
+.srctable th,.srctable td{padding:7px 9px;font-size:13px;border-bottom:1px solid #eef2f7}
+.srctable tr:last-child td{border-bottom:0}
+.srctable .mo{white-space:normal;max-width:210px;line-height:1.7}
+.price-ro{display:inline-block;min-width:118px;background:#f8fafc;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-weight:700;text-align:start}
+.price-ro.empty{color:var(--muted);font-weight:400}
+.muted{color:var(--muted)}
+.ir-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.ir-prog-line{font-size:13px;color:var(--muted)}
+.ir-prog-line b{color:var(--ink);font-size:15px}
+.ro-note{padding:12px 14px;background:#fffbeb;border-inline-start:4px solid var(--warn);border-radius:8px;color:#92400e;margin-bottom:14px;font-size:13px}
+.langsw{display:flex;gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+.langsw button{border:0;background:transparent;padding:9px 13px;font-size:13px;font-weight:700;color:var(--muted)}
+.langsw button.active{background:var(--accent);color:#fff}
+html[dir=ltr] .nav button,html[dir=ltr] .type,html[dir=ltr] th,html[dir=ltr] td{text-align:left}
+html[dir=ltr] .close{float:right}
+html[dir=ltr] .notice{border-right:0;border-left:4px solid var(--accent)}
+/* ===== Prototype Item Management — sandbox editing ===== */
+.sbx{padding:12px 14px;background:#eff6ff;border-inline-start:4px solid var(--accent);border-radius:8px;color:#1e40af;margin-bottom:14px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.sbx b{color:#1d4ed8}
+.inp{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink);width:100%;box-sizing:border-box}
+.inp:focus{outline:0;border-color:var(--accent)}
+.inp.err{border-color:var(--danger);background:#fef2f2}
+.inp.num{max-width:96px;text-align:start}
+.inp.price{max-width:130px;font-weight:700}
+.frm{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.frm .full{grid-column:1/-1}
+.lbl{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:700}
+.hint{font-size:12px;color:var(--muted);margin-top:5px}
+.errmsg{font-size:12px;color:var(--danger);margin-top:5px;min-height:15px}
+.rowacts{display:flex;gap:6px;flex-wrap:wrap}
+.btn.sm{padding:7px 11px;font-size:12px}
+.inactive-row td{opacity:.55}
+.qty-cell{white-space:nowrap}
+.qty-cell .sep{color:var(--muted);margin:0 4px}
+.unconstrained{color:var(--muted);font-size:12px}
+/* ===== Monthly Budget Execution Report ===== */
+.rep-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.rep-f{display:flex;flex-direction:column;gap:6px}
+.rep-f .lbl{margin:0}
+.months-box{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;max-width:100%}
+.months-grid{display:grid;grid-template-columns:repeat(6,minmax(92px,1fr));gap:8px}
+.mchk{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
+.mchk input{width:15px;height:15px;accent-color:var(--accent)}
+.months-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+.num.neg{color:var(--danger)}
+.num.zero{color:var(--muted);font-weight:400}
+tr.total-row td{background:#f8fafc;font-weight:800;border-top:2px solid var(--line)}
+tr.over-row td{background:#fef2f2}
+
+/* ===== Distribution (STEP 2) ===== */
+.dist-f{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.dist-f .rep-f{min-width:170px}
+.res-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+.res-status{padding:13px 15px;border-radius:10px;font-weight:700;font-size:14px;margin-bottom:14px}
+.rs-exact{background:#dcfce7;color:#166534;border-inline-start:4px solid var(--accent2)}
+.rs-partial{background:#dcfce7;color:#166534;border-inline-start:4px solid var(--accent2)}
+.rs-closest{background:#fef3c7;color:#92400e;border-inline-start:4px solid var(--warn)}
+.rs-infeasible{background:#fee2e2;color:#991b1b;border-inline-start:4px solid var(--danger)}
+.rs-over{background:#fee2e2;color:#991b1b;border-inline-start:4px solid var(--danger)}
+.rs-sub{font-weight:400;font-size:13px;margin-top:6px;opacity:.9}
+.excl-tbl td{font-size:13px}
+.runmeta{font-size:12px;color:var(--muted);margin-top:10px;direction:ltr;text-align:start;font-family:monospace}
+@media(max-width:1100px){.res-grid{grid-template-columns:repeat(2,1fr)}}
+.repnote{padding:12px 14px;background:#fffbeb;border-inline-start:4px solid var(--warn);border-radius:8px;color:#92400e;margin-bottom:14px;font-size:13px}
+@media(max-width:1100px){.sum-grid{grid-template-columns:repeat(2,1fr)}.months-grid{grid-template-columns:repeat(4,minmax(88px,1fr))}}
+@media(max-width:750px){.months-grid{grid-template-columns:repeat(3,minmax(84px,1fr))}}
+
+@media(max-width:750px){.frm{grid-template-columns:1fr}}
+
+
+</style><script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="fixtures.js"></script>
+</head>
+<body>
+<div class="app">
+<aside class="side"><div class="brand">Expense Management<small>V1 — Prototype</small></div><div class="nav">
+<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="distribution">🎲 التوزيع</button><button data-page="invoices">🧾 الفواتير</button><button data-page="itemreview">📋 مراجعة الأصناف</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="distgen">🎲 توليد التوزيع</button><button data-page="items">📦 البنود</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
+<main class="main">
+<div class="top"><div class="title"><h1 id="pageTitle">لوحة التحكم</h1><p id="pageDesc">متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.</p></div><div class="filters"><select class="field" id="year"><option>2026/2027</option></select><select class="field" id="month"></select><div class="langsw" id="langsw"><button data-lang="ar" class="active">العربية</button><button data-lang="en">English</button></div></div></div>
+<section id="dashboard" class="page">
+<div class="cards" id="metrics"></div><div class="panel"><div class="section-title"><h2>أنواع المصروفات</h2><span class="pill ok">بيانات مرجعية من الشيت</span></div><div class="types" id="types"></div></div>
+</section>
+<section id="budget" class="page hidden"><div class="panel"><div class="section-title"><h2>إعداد الموازنة الشهرية</h2><button class="btn" onclick="saveBudget()">حفظ</button></div><div class="notice">كل شهر يحتوي على <b>Budget</b> + <b>عدد الفواتير</b>. إجمالي الشهور يجب أن يساوي الموازنة السنوية.</div><div class="table-wrap"><table><thead><tr><th>الشهر</th><th>Budget</th><th>عدد الفواتير</th><th>الحالة</th></tr></thead><tbody id="budgetRows"></tbody></table></div></div></section>
+<section id="distribution" class="page hidden"><div class="panel"><div class="section-title"><h2>Distribution Engine — V1</h2><button class="btn green" onclick="generateDemo()">Generate Distribution</button></div><div class="notice">النسخة الأولى تعرض تجربة التوزيع فقط. في التنفيذ النهائي سيتم تطبيق Max Annual + Max Monthly + Weight + Exact Match قبل الاعتماد.</div><div id="distResult"></div></div></section>
+<section id="invoices" class="page hidden"><div class="panel"><div class="section-title"><h2>الفواتير</h2><button class="btn secondary" onclick="showInvoiceDemo()">عرض فواتير الشهر</button></div><div id="invoiceResult"></div></div></section>
+<section id="itemreview" class="page hidden">
+<div id="irTypes">
+  <div class="panel">
+    <div class="section-title"><h2 data-t="item_review.types_title">أنواع المصروفات</h2>
+      <span class="pill neutral" id="irGlobal"></span></div>
+    <div class="sbx" id="irSbx"></div>
+    <div class="types" id="irTypeCards"></div>
+  </div>
+</div>
+<div id="irTable" class="hidden">
+  <div class="panel">
+    <div class="ir-head">
+      <div>
+        <h2 id="irTypeName" style="margin:0 0 6px"></h2>
+        <div class="ir-prog-line" id="irProgLine"></div>
+        <div class="prog" style="width:260px"><i id="irProgBar" style="width:0%"></i></div>
+      </div>
+      <div class="rowacts">
+        <button class="btn green" id="irAdd">+ إضافة صنف</button>
+        <button class="btn secondary" id="irBack" data-t="item_review.change_type">تغيير نوع المصروف</button>
+      </div>
+    </div>
+    <div class="ir-head">
+      <div class="chips" id="irFilters"></div>
+      <input class="field ir-search" id="irSearch" type="search" placeholder="">
+    </div>
+    <div class="table-wrap"><table id="irTbl">
+      <thead><tr>
+        <th>رقم الصنف</th>
+        <th data-t="col.item">الصنف</th>
+        <th>الوحدة</th>
+        <th data-t="col.operating_price">سعر التشغيل</th>
+        <th data-t="col.before_vat">قبل الضريبة</th>
+        <th>الحد الأدنى / الأقصى</th>
+        <th data-t="col.status">الحالة</th>
+        <th>أسعار المصدر</th>
+        <th data-t="col.action">الإجراء</th>
+      </tr></thead>
+      <tbody id="irRows"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="irModal"><div class="modalbox" style="max-width:620px">
+  <button class="close" id="irMClose">إغلاق</button>
+  <h2 id="irMTitle" style="margin:0 0 4px"></h2>
+  <div class="hint" id="irMSub" style="margin-bottom:16px"></div>
+  <div class="frm">
+    <div class="full"><label class="lbl">اسم الصنف</label>
+      <input class="inp" id="fName"><div class="errmsg" id="eName"></div></div>
+    <div><label class="lbl">الوحدة</label>
+      <select class="inp" id="fUnit"></select><div class="hint">اختياري</div></div>
+    <div><label class="lbl">سعر التشغيل (شامل الضريبة)</label>
+      <input class="inp price" id="fPrice" inputmode="decimal" placeholder="0.00">
+      <div class="hint" id="hBefore">قبل الضريبة: —</div>
+      <div class="errmsg" id="ePrice"></div></div>
+    <div><label class="lbl">الحد الأدنى السنوي (كمية)</label>
+      <input class="inp num" id="fMin" inputmode="numeric" placeholder="—">
+      <div class="hint">اختياري · عدد صحيح</div></div>
+    <div><label class="lbl">الحد الأقصى السنوي (كمية)</label>
+      <input class="inp num" id="fMax" inputmode="numeric" placeholder="—">
+      <div class="hint">اختياري · عدد صحيح</div></div>
+    <div class="full"><div class="errmsg" id="eQty"></div>
+      <div class="hint" id="hQty"></div></div>
+  </div>
+  <div class="rowacts" style="margin-top:18px;justify-content:flex-end">
+    <button class="btn secondary" id="fCancel">إلغاء</button>
+    <button class="btn" id="fSave">حفظ</button>
+  </div>
+</div></div>
+
+<div class="modal hidden" id="irSrcModal"><div class="modalbox" style="max-width:820px">
+  <button class="close" id="irSClose">إغلاق</button>
+  <h2 id="irSTitle" style="margin:0 0 14px"></h2>
+  <div id="irSBody"></div>
+</div></div>
+</section>
+<section id="budgetreport" class="page hidden">
+  <div class="panel">
+    <div class="section-title"><h2 id="brTitle">تقرير تنفيذ الموازنة الشهرية</h2>
+      <span class="pill neutral" id="brStatus"></span></div>
+    <div class="repnote" id="brNote"></div>
+    <div class="rep-filters">
+      <div class="rep-f"><label class="lbl" id="brLType">نوع المصروف</label>
+        <select class="field" id="brType"></select></div>
+      <div class="rep-f"><label class="lbl" id="brLFy">السنة المالية</label>
+        <select class="field" id="brFy"></select></div>
+    </div>
+    <div class="months-box">
+      <label class="lbl" id="brLMonths">الشهور</label>
+      <div class="months-grid" id="brMonths"></div>
+      <div class="months-actions">
+        <button class="btn secondary sm" id="brAll">تحديد الكل</button>
+        <button class="btn secondary sm" id="brNone">إلغاء التحديد</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title"><h2 id="brSelTitle">إجمالي الفترة المحددة</h2></div>
+    <div class="sum-grid" id="brSelCards"></div>
+    <div class="section-title"><h2 id="brAnnTitle">إجمالي السنة المالية</h2></div>
+    <div class="sum-grid" id="brAnnCards"></div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title"><h2 id="brTblTitle">التفصيل الشهري</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th id="brC1">الشهر</th>
+        <th id="brC2">الموازنة</th>
+        <th id="brC3">المنفَّذ</th>
+        <th id="brC4">المتبقي</th>
+        <th id="brC5">التنفيذ %</th>
+        <th id="brC6">ملاحظة</th>
+      </tr></thead>
+      <tbody id="brRows"></tbody>
+    </table></div>
+  </div>
+</section>
+<section id="distgen" class="page hidden">
+  <div class="panel">
+    <div class="section-title"><h2>توليد التوزيع</h2><span class="pill neutral" id="dgEng"></span></div>
+    <div class="sbx" id="dgSbx"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl">نوع المصروف</label><select class="field" id="dgType"></select></div>
+      <div class="rep-f"><label class="lbl">السنة المالية</label><select class="field" id="dgFy"></select></div>
+      <div class="rep-f"><label class="lbl">الشهر</label><select class="field" id="dgMonth"></select></div>
+      <div class="rep-f"><label class="lbl">الموازنة الشهرية (شاملة الضريبة)</label>
+        <input class="field" id="dgBudget" readonly></div>
+      <div class="rep-f"><label class="lbl">عدد الفواتير</label>
+        <input class="field inp num" id="dgInv" inputmode="numeric" placeholder="—" style="max-width:120px"></div>
+      <div class="rep-f"><label class="lbl">مصدر البيانات</label>
+        <select class="field" id="dgSrc">
+          <option value="LIVE">بيانات التشغيل (v6)</option>
+          <option value="FIXTURE">بيانات اختبار وهمية</option>
+        </select></div>
+      <div class="rep-f rowacts">
+        <button class="btn" id="dgGen">توليد</button>
+        <button class="btn secondary" id="dgRegen">إعادة التوليد</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel hidden" id="dgResult">
+    <div class="section-title"><h2>نتيجة التوزيع</h2><span class="pill neutral" id="dgRunPill"></span></div>
+    <div class="res-status" id="dgStatus"></div>
+    <div class="res-grid" id="dgCards"></div>
+    <div class="runmeta" id="dgMeta"></div>
+  </div>
+  <div class="panel hidden" id="dgLinesPanel">
+    <div class="section-title"><h2>بنود التوزيع</h2><span class="pill neutral" id="dgLinesCount"></span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>المتبقي السنوي بعد</th></tr></thead>
+      <tbody id="dgLines"></tbody>
+    </table></div>
+  </div>
+  <div class="panel hidden" id="dgExclPanel">
+    <div class="section-title"><h2>الأصناف المستبعدة</h2><span class="pill neutral" id="dgExclCount"></span></div>
+    <div class="table-wrap"><table class="excl-tbl">
+      <thead><tr><th>سبب الاستبعاد</th><th>العدد</th><th>أمثلة</th></tr></thead>
+      <tbody id="dgExcl"></tbody>
+    </table></div>
+  </div>
+  <div class="panel hidden" id="dgRunsPanel">
+    <div class="section-title"><h2>سجل عمليات التوليد</h2><span class="pill neutral" id="dgRunsCount"></span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Run ID</th><th>الشهر</th><th>المستهدف</th><th>المنفَّذ</th><th>الحالة</th><th>الحالة التشغيلية</th><th>Seed</th><th>الوقت</th></tr></thead>
+      <tbody id="dgRuns"></tbody>
+    </table></div>
+  </div>
+</section>
+<section id="items" class="page hidden"><div class="panel"><div class="section-title"><h2>البنود</h2><select class="field" id="typeSelect"></select></div><div class="table-wrap"><table><thead><tr><th>البند</th><th>سعر الوحدة</th><th>Max سنوي</th><th>Weight</th><th>الحالة</th></tr></thead><tbody id="itemRows"></tbody></table></div></div></section>
+<section id="settings" class="page hidden"><div class="panel"><h2>إعدادات النظام</h2><div class="cards"><div class="card"><b>VAT</b><div class="metric value">14%</div></div><div class="card"><b>Annual Max</b><div class="metric value">مفعل</div></div><div class="card"><b>Monthly Max</b><div class="metric value">قابل للتفعيل</div></div><div class="card"><b>Invoice Count</b><div class="metric value">لكل شهر</div></div></div><div class="notice">هذه صفحة إعدادات أولية. أي تغيير حقيقي سيُربط لاحقًا بقاعدة بيانات Google Sheets وApps Script.</div></div></section>
+</main></div>
+<div id="modal" class="modal hidden"><div class="modalbox"><button class="close" onclick="closeModal()">إغلاق</button><div id="modalContent"></div></div></div>
+<script>
+const months=['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس'];
+const types=[
+['مطبوعات','🖨️',24765375,[2032118.4,1632696.6,3714997.8,3447434.1,2306567.7,3469098.66,2828464.26,2539701.12,2794276.8,0,0,0]],
+['مستلزمات تعليم','📚',13875279,[1171692,1194036,1171464,1264602,2672490.6,1287060,1273266,1247274,1198140,0,130758,0]],
+['أدوات كتابية','✏️',5955063,[481435.68,587168.4,964953,1275631.956,435138,334476,333165,451063.8,393864.3,386488.5,242928.3,68434.2]],
+['منظفات','🧹',4637004,[565029.6,442234.5,698797.2,580402.5,341076.6,411853.5,305206.5,336898.5,363745.5,189325.5,185563.5,216885]],
+['صيانة وتطوير المبنى','🔧',2407153,[305195.1,760750.5,859172.4,315814.2,0,0,0,38703,41610,0,85917.24,0]],
+['أنشطة فنية','🎨',3145983,[580545,703989.9,581354.4,293675.4,158813.4,20235,15390,321594,24823.5,272146.5,172550.4,855]],
+['بيئة سكانية','🌱',368648,[105678,80484,51476.7,41307.9,14951.1,0,0,14951.1,13537.5,14951.1,0,31310.67]],
+['أنشطة اجتماعية وثقافية','🎭',1648677,[0,397290,455806.2,271035,87420.9,0,107142.9,78756.9,0,125724.9,0,0]],
+['أنشطة رياضية','⚽',1050579,[271120.5,380190,281414.7,117853.2,0,0,0,0,0,0,0,0]],
+['نشاط مكتبي','📋',2210285,[0,0,585059.4,435662.4,198263.328,132462.756,335986.5,15321.6,239400,0,268242,0]]];
+const sampleItems={
+'منظفات':[['أكياس تواليت مستوردة — علبة 50 قطعة',149,400,6],['Cotton Egypt 250g',75,200,4],['كلور',120,20,5],['صابون',80,40,8],['منظف أرضيات',100,50,7]],
+'أدوات كتابية':[['Faber-Castell 9000 — قلم رصاص',125,550,8],['Staedtler Mars Lumograph',150,400,7],['ورق رسم Strathmore 400',20,1000,10],['Caran d’Ache Grafwood',185,250,4],['Hahnemühle Nostalgie Sketchbook',30,500,5]],
+'مطبوعات':[['مطبوعات دراسية — KG',466490,20,3],['مطبوعات دراسية — الابتدائية',519625,25,5],['مطبوعات دراسية — الإعدادية',436310,25,4],['مطبوعات دراسية — الثانوية',360135,20,4]],
+'مستلزمات تعليم':[['اشتراك برامج تعليم ذكي أساسي أمريكي',200,8000,10],['اشتراك برامج تعليم ذكي أساسي بريطاني',200,8000,10],['برامج تعليم ذكي إضافية أمريكي',400,1000,5],['برامج تعليم ذكي إضافية بريطاني',400,1000,5],['اشتراك برامج متخصصة أمريكي',700,1000,3]]};
+const fmt=n=>new Intl.NumberFormat('ar-EG-u-nu-latn',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' ج.م';
+let currentMonth=0;
+const monthEl=document.getElementById('month');months.forEach((m,i)=>monthEl.add(new Option(m,m)));monthEl.value=months[0];monthEl.onchange=()=>{currentMonth=months.indexOf(monthEl.value);renderAll()};
+function renderAll(){renderMetrics();renderTypes();renderBudget();renderItems()}
+function renderMetrics(){const total=types.reduce((s,t)=>s+t[2],0), monthTotal=types.reduce((s,t)=>s+t[3][currentMonth],0);document.getElementById('metrics').innerHTML=`<div class="card metric"><div class="label">إجمالي الموازنة السنوية</div><div class="value">${fmt(total)}</div><div class="sub">10 أنواع مصروفات</div></div><div class="card metric"><div class="label">موازنة الشهر المختار</div><div class="value">${fmt(monthTotal)}</div><div class="sub">${months[currentMonth]}</div></div><div class="card metric"><div class="label">عدد أنواع المصروفات</div><div class="value">10</div><div class="sub">قابلة للإضافة من الإعدادات</div></div><div class="card metric"><div class="label">VAT</div><div class="value">14%</div><div class="sub">إعداد مركزي</div></div>`}
+function renderTypes(){document.getElementById('types').innerHTML=types.map(t=>`<button class="type" onclick="openType('${t[0].replaceAll("'","\\'")}')"><div class="icon">${t[1]}</div><h3>${t[0]}</h3><div class="amt">${fmt(t[3][currentMonth])}</div><small>موازنة ${months[currentMonth]}</small></button>`).join('')}
+function renderBudget(){document.getElementById('budgetRows').innerHTML=months.map((m,i)=>{let sum=types.reduce((s,t)=>s+t[3][i],0);let invoices=[4,5,4,6,5,4,5,5,4,3,2,2][i];return `<tr><td><b>${m}</b></td><td><input class="field" type="number" step="0.01" value="${sum.toFixed(2)}" data-month="${i}"></td><td><input class="field" type="number" min="0" value="${invoices}" data-inv="${i}"></td><td><span class="pill ok">جاهز للتعديل</span></td></tr>`}).join('')}
+function renderItems(){const sel=document.getElementById('typeSelect');if(!sel.options.length) types.forEach(t=>sel.add(new Option(t[0],t[0])));sel.onchange=renderItems;const name=sel.value||'منظفات';const rows=sampleItems[name]||[['بيانات البنود ستُستورد من الـMaster Data',0,0,1]];document.getElementById('itemRows').innerHTML=rows.map(x=>`<tr><td>${x[0]}</td><td>${x[1]?fmt(x[1]):'—'}</td><td>${x[2]||'—'}</td><td>${x[3]}</td><td><span class="pill ok">Active</span></td></tr>`).join('')}
+function openType(name){const t=types.find(x=>x[0]===name);const items=sampleItems[name]||[];document.getElementById('modalContent').innerHTML=`<h2>${t[1]} ${name}</h2><div class="cards"><div class="card metric"><div class="label">Budget ${months[currentMonth]}</div><div class="value">${fmt(t[3][currentMonth])}</div></div><div class="card metric"><div class="label">Annual Budget</div><div class="value">${fmt(t[2])}</div></div><div class="card metric"><div class="label">عدد البنود</div><div class="value">${items.length||'—'}</div></div></div><div class="table-wrap"><table><thead><tr><th>البند</th><th>السعر</th><th>Max سنوي</th><th>Weight</th></tr></thead><tbody>${items.map(x=>`<tr><td>${x[0]}</td><td>${fmt(x[1])}</td><td>${x[2]}</td><td>${x[3]}</td></tr>`).join('')||'<tr><td colspan="4">سيتم تحميل البنود من Master Data في النسخة المتصلة.</td></tr>'}</tbody></table></div>`;document.getElementById('modal').classList.remove('hidden')}
+function closeModal(){document.getElementById('modal').classList.add('hidden')}
+function saveBudget(){alert('V1: تم حفظ التعديل محليًا للواجهة فقط. في النسخة المتصلة سيتم الحفظ في Google Sheets.')}
+function generateDemo(){const total=types.reduce((s,t)=>s+t[3][currentMonth],0);const inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];let left=total;let vals=[];for(let i=0;i<inv-1;i++){let min=total*0.12,max=Math.min(total*0.32,left-(inv-i-1)*min);let v=Math.round((min+Math.random()*(max-min))/50)*50;vals.push(v);left-=v}vals.push(left);document.getElementById('distResult').innerHTML=`<h3>${months[currentMonth]} — توزيع تجريبي</h3><p>Target: <b>${fmt(total)}</b> — عدد الفواتير: <b>${inv}</b></p><div class="table-wrap"><table><thead><tr><th>الفاتورة</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${vals.map((v,i)=>`<tr><td>INV-${String(i+1).padStart(3,'0')}</td><td>${fmt(v)}</td><td><span class="pill ok">Valid</span></td></tr>`).join('')}</tbody><tfoot><tr><th>الإجمالي</th><th>${fmt(vals.reduce((a,b)=>a+b,0))}</th><th><span class="pill ok">مطابق</span></th></tr></tfoot></table></div>`}
+function showInvoiceDemo(){const t=types[3],budget=t[3][currentMonth],inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];document.getElementById('invoiceResult').innerHTML=`<div class="notice">هذه قائمة فواتير تجريبية لنوع <b>منظفات</b>. بعد اعتماد الـDistribution ستُنشأ الفواتير تلقائيًا.</div><table><thead><tr><th>رقم الفاتورة</th><th>نوع المصروف</th><th>الشهر</th><th>الإجمالي</th><th>التفاصيل</th></tr></thead><tbody>${Array.from({length:inv},(_,i)=>{let v=Math.round((budget/inv*(.75+Math.random()*.5))/50)*50;return `<tr><td>CLN-${currentMonth+1}-${String(i+1).padStart(3,'0')}</td><td>منظفات</td><td>${months[currentMonth]}</td><td>${fmt(v)}</td><td><button class="btn secondary" onclick="openType('منظفات')">فتح</button></td></tr>`}).join('')}</tbody></table>`}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],distgen:['توليد التوزيع','توليد توزيع الموازنة الشهرية على الأصناف المؤهلة.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
+renderAll();
+
+/* ============ Prototype Item Management — SANDBOX (in-memory only) ============
+   No backend · no Google Sheets · no V5 write · no real audit · no ID_SEQUENCES.
+   All edits live in browser memory and are discarded on reload / Restore Default.
+============================================================================== */
+(function(){
+'use strict';
+var D = window.GHS_DATA;
+if(!D){ console.error('GHS_DATA missing — data.js not loaded'); return; }
+
+/* ---- sandbox working copy (deep clone of the V5 export) ---- */
+var BASE = JSON.stringify({items:D.items});
+var S = { items: JSON.parse(BASE).items, seq: 1 };
+function restoreDefault(){
+  S.items = JSON.parse(BASE).items; S.seq = 1;
+  curFilter='ALL'; curSearch='';
+  var el=document.getElementById('irSearch'); if(el) el.value='';
+  if(curType) renderTable(); else renderTypeCards();
+  renderSbx();
+}
+
+var LANG='ar';
+function t(k,fb){ var r=D.labels[k]; if(!r) return (fb!==undefined?fb:k);
+  var v=(LANG==='en')?r.en:r.ar; return (v===''||v==null)?(r.ar||fb||k):v; }
+var VAT = parseFloat(D.settings.VAT_RATE||'0.14');
+function money(n){ if(n===null||n===undefined||n==='') return '';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+t('currency.egp','ج.م'); }
+function beforeVat(p){ return (p==null)?null:Math.round((p/(1+VAT))*100)/100; }
+function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function bdi(x){ return '<bdi>'+esc(x)+'</bdi>'; }
+function unitName(id){ if(!id) return null; var u=D.units.filter(function(x){return x.id===id;})[0]; return u?u.n:id; }
+
+function stateOf(it){ return it.a===false ? 'INACTIVE' : (it.s||'NONE'); }
+function isReviewed(it){ var s=stateOf(it); return s==='APPROVED'||s==='INACTIVE'; }
+var ORDER={NONE:0,SUGGESTED:1,APPROVED:2,INACTIVE:3};
+var SLABEL={NONE:'status.none',SUGGESTED:'status.suggested',APPROVED:'status.approved',INACTIVE:'status.inactive'};
+var SPILL={NONE:'neutral',SUGGESTED:'warn',APPROVED:'ok',INACTIVE:'bad'};
+function itemsOfType(id){ return S.items.filter(function(x){return x.t===id;}); }
+function progressOf(id){ var a=itemsOfType(id), r=a.filter(isReviewed).length;
+  return {reviewed:r,total:a.length,pct:a.length?Math.round(r*100/a.length):0}; }
+
+/* ---- sandbox banner ---- */
+function renderSbx(){
+  var el=document.getElementById('irSbx'); if(!el) return;
+  var added=S.items.filter(function(x){return /^TMP/.test(x.i);}).length;
+  el.innerHTML='<span>وضع التجربة — كل تعديل يعيش في المتصفح فقط. لا كتابة في V5 ولا Google Sheets ولا سجل مراجعة حقيقي.'+
+    (added?' <b>('+added+' صنف تجريبي مضاف)</b>':'')+'</span>'+
+    '<button class="btn danger sm" id="irRestore">Restore Default</button>';
+  document.getElementById('irRestore').onclick=function(){
+    if(confirm('إرجاع كل بيانات التجربة إلى الحالة الأصلية؟')) restoreDefault();
+  };
+}
+
+/* ---- type cards ---- */
+function renderTypeCards(){
+  var host=document.getElementById('irTypeCards'); if(!host) return;
+  host.innerHTML=D.types.map(function(ty){ var p=progressOf(ty.id);
+    return '<button class="type" data-type="'+ty.id+'"><div class="icon">📋</div><h3>'+bdi(ty.n)+'</h3>'+
+      '<div class="amt">'+p.reviewed+' '+t('progress.of','من')+' '+p.total+'</div>'+
+      '<small>'+t('progress.reviewed','تمت مراجعته')+' — '+p.pct+'% '+t('progress.complete','مكتمل')+'</small>'+
+      '<div class="prog"><i style="width:'+p.pct+'%"></i></div></button>'; }).join('');
+  Array.prototype.forEach.call(host.querySelectorAll('.type'),function(b){
+    b.onclick=function(){ openType(b.getAttribute('data-type')); }; });
+  document.getElementById('irGlobal').textContent =
+    t('progress.reviewed','تمت مراجعته')+' '+S.items.filter(isReviewed).length+' '+t('progress.of','من')+' '+S.items.length;
+  renderSbx();
+}
+
+/* ---- table ---- */
+var curType=null, curFilter='ALL', curSearch='';
+var FILTERS=[['ALL','filter.all'],['NONE','filter.needs_price'],['SUGGESTED','filter.suggested'],
+             ['APPROVED','filter.approved'],['INACTIVE','filter.inactive']];
+function openType(id){ curType=id; curFilter='ALL'; curSearch='';
+  var e=document.getElementById('irSearch'); if(e) e.value='';
+  document.getElementById('irTypes').classList.add('hidden');
+  document.getElementById('irTable').classList.remove('hidden'); renderTable(); }
+function backToTypes(){ curType=null;
+  document.getElementById('irTable').classList.add('hidden');
+  document.getElementById('irTypes').classList.remove('hidden'); renderTypeCards(); }
+function visibleRows(){
+  var a=itemsOfType(curType);
+  if(curFilter!=='ALL') a=a.filter(function(x){return stateOf(x)===curFilter;});
+  var q=curSearch.trim().toLowerCase();
+  if(q) a=a.filter(function(x){return x.n.toLowerCase().indexOf(q)>-1||x.i.toLowerCase().indexOf(q)>-1;});
+  return a.slice().sort(function(x,y){ var d=ORDER[stateOf(x)]-ORDER[stateOf(y)];
+    return d!==0?d:x.i.localeCompare(y.i); });
+}
+function distinct(id){ var r=D.prices[id]||[], seen={}, n=0;
+  r.forEach(function(p){ var k=String(p.inc); if(!seen[k]){seen[k]=1;n++;} }); return {rows:r,n:n}; }
+function srcCell(it){ var d=distinct(it.i);
+  if(!d.rows.length) return '<span class="unconstrained">'+t('source.none','لا يوجد')+'</span>';
+  if(d.n===1) return '<span class="unconstrained">'+money(d.rows[0].inc)+'</span>';
+  return '<button class="srcbtn" data-src="'+it.i+'">'+esc(t('source.count','{n} أسعار').replace('{n}',d.n))+'</button>'; }
+function fmtMonths(mo){ if(!mo||!mo.length) return '\u2014';
+  var p=(LANG==='en')?'M':'\u0634'; return mo.map(function(m){return p+m;}).join(', '); }
+function fmtQty(q){ return (q==null||q==='')?'\u2014':new Intl.NumberFormat('en-US',{maximumFractionDigits:3}).format(q); }
+function qtyCell(it){
+  if(it.mn==null && it.mx==null) return '<span class="unconstrained">بلا حد</span>';
+  return '<span class="qty-cell">'+(it.mn==null?'\u2014':it.mn)+'<span class="sep">/</span>'+(it.mx==null?'\u2014':it.mx)+'</span>'; }
+function actCell(it){
+  var s=stateOf(it), b='<button class="btn secondary sm" data-edit="'+it.i+'">تعديل</button>';
+  if(s==='INACTIVE') return '<div class="rowacts">'+b+'<button class="btn green sm" data-act="'+it.i+'">تفعيل</button></div>';
+  var ap = (s==='APPROVED') ? '' :
+    '<button class="btn sm" data-approve="'+it.i+'">'+(s==='SUGGESTED'?t('action.confirm','تأكيد'):t('action.approve','اعتماد'))+'</button>';
+  return '<div class="rowacts">'+b+ap+'<button class="btn danger sm" data-deact="'+it.i+'">إيقاف</button></div>'; }
+function renderFilters(){
+  var host=document.getElementById('irFilters'), all=itemsOfType(curType);
+  host.innerHTML=FILTERS.map(function(f){
+    var n=f[0]==='ALL'?all.length:all.filter(function(x){return stateOf(x)===f[0];}).length;
+    return '<button class="chip'+(curFilter===f[0]?' active':'')+'" data-f="'+f[0]+'">'+t(f[1])+'<span class="c">'+n+'</span></button>';
+  }).join('');
+  Array.prototype.forEach.call(host.querySelectorAll('.chip'),function(b){
+    b.onclick=function(){ curFilter=b.getAttribute('data-f'); renderTable(); }; });
+}
+function renderTable(){
+  if(!curType) return;
+  var ty=D.types.filter(function(x){return x.id===curType;})[0]||{n:curType};
+  document.getElementById('irTypeName').innerHTML=bdi(ty.n);
+  var p=progressOf(curType);
+  document.getElementById('irProgLine').innerHTML=t('progress.reviewed','تمت مراجعته')+' <b>'+p.reviewed+'</b> '+t('progress.of','من')+' <b>'+p.total+'</b> — '+p.pct+'%';
+  document.getElementById('irProgBar').style.width=p.pct+'%';
+  document.getElementById('irSearch').placeholder=t('search.placeholder','بحث بالاسم أو رقم الصنف');
+  renderFilters();
+  var rows=visibleRows(), tb=document.getElementById('irRows');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="unconstrained" style="text-align:center;padding:26px">'+t('empty.no_items','لا توجد أصناف بهذا الفلتر')+'</td></tr>'; return; }
+  tb.innerHTML=rows.map(function(it){
+    var s=stateOf(it), bv=beforeVat(it.p);
+    return '<tr'+(s==='INACTIVE'?' class="inactive-row"':'')+'>'+
+      '<td><span class="sub-id" style="margin:0">'+esc(it.i)+'</span></td>'+
+      '<td style="white-space:normal;max-width:300px">'+bdi(it.n)+'</td>'+
+      '<td>'+(it.u?esc(unitName(it.u)):'<span class="unconstrained">—</span>')+'</td>'+
+      '<td>'+(it.p==null?'<span class="unconstrained">—</span>':'<b>'+money(it.p)+'</b>')+'</td>'+
+      '<td class="unconstrained">'+(bv==null?'—':money(bv))+'</td>'+
+      '<td>'+qtyCell(it)+'</td>'+
+      '<td><span class="pill '+SPILL[s]+'">'+t(SLABEL[s])+'</span></td>'+
+      '<td>'+srcCell(it)+'</td>'+
+      '<td>'+actCell(it)+'</td></tr>';
+  }).join('');
+  wire(tb);
+}
+function wire(tb){
+  var q=function(sel,fn){ Array.prototype.forEach.call(tb.querySelectorAll(sel),fn); };
+  q('[data-edit]',function(b){ b.onclick=function(){ openForm(b.getAttribute('data-edit')); }; });
+  q('[data-approve]',function(b){ b.onclick=function(){ approve(b.getAttribute('data-approve')); }; });
+  q('[data-deact]',function(b){ b.onclick=function(){ setActive(b.getAttribute('data-deact'),false); }; });
+  q('[data-act]',function(b){ b.onclick=function(){ setActive(b.getAttribute('data-act'),true); }; });
+  q('[data-src]',function(b){ b.onclick=function(){ showSrc(b.getAttribute('data-src')); }; });
+}
+
+/* ---- source prices modal ---- */
+function showSrc(id){
+  var it=S.items.filter(function(x){return x.i===id;})[0];
+  var rows=(D.prices[id]||[]).slice().sort(function(a,b){return (a.rw||0)-(b.rw||0);});
+  document.getElementById('irSTitle').innerHTML='أسعار المصدر — '+bdi(it.n);
+  document.getElementById('irSBody').innerHTML=
+    '<div class="table-wrap"><table class="srctable"><thead><tr><th>السعر</th><th>قبل الضريبة</th>'+
+    '<th class="mo">'+t('source.month','الشهر')+'</th><th>'+t('source.qty','الكمية')+'</th>'+
+    '<th>السنة المالية</th><th>المصدر</th></tr></thead><tbody>'+
+    rows.map(function(r){ return '<tr><td><b>'+money(r.inc)+'</b></td><td class="unconstrained">'+money(r.exc)+'</td>'+
+      '<td class="mo">'+esc(fmtMonths(r.mo))+'</td><td>'+esc(fmtQty(r.q))+'</td><td>'+esc(r.fy)+'</td>'+
+      '<td class="unconstrained">'+bdi(r.sh)+' · صف '+esc(r.rw)+'</td></tr>'; }).join('')+
+    '</tbody></table></div><div class="hint" style="margin-top:12px">مرجع للاطلاع فقط — لا يُستخدم لاختيار سعر التشغيل تلقائيًا.</div>';
+  document.getElementById('irSrcModal').classList.remove('hidden');
+}
+
+/* ---- add / edit form ---- */
+var editing=null;
+function openForm(id){
+  editing = id ? S.items.filter(function(x){return x.i===id;})[0] : null;
+  var isNew=!editing;
+  document.getElementById('irMTitle').textContent = isNew?'إضافة صنف جديد':'تعديل الصنف';
+  document.getElementById('irMSub').textContent = isNew
+    ? 'نوع المصروف: '+(D.types.filter(function(x){return x.id===curType;})[0]||{n:''}).n
+    : editing.i+' · '+(D.types.filter(function(x){return x.id===editing.t;})[0]||{n:''}).n;
+  var us=document.getElementById('fUnit');
+  us.innerHTML='<option value="">— بلا وحدة —</option>'+D.units.map(function(u){
+    return '<option value="'+u.id+'">'+esc(u.n)+'</option>'; }).join('');
+  document.getElementById('fName').value = isNew?'':editing.n;
+  us.value = isNew?'':(editing.u||'');
+  document.getElementById('fPrice').value = (isNew||editing.p==null)?'':editing.p;
+  document.getElementById('fMin').value = (isNew||editing.mn==null)?'':editing.mn;
+  document.getElementById('fMax').value = (isNew||editing.mx==null)?'':editing.mx;
+  ['eName','ePrice','eQty'].forEach(function(k){document.getElementById(k).textContent='';});
+  ['fName','fPrice','fMin','fMax'].forEach(function(k){document.getElementById(k).classList.remove('err');});
+  syncBefore(); syncQtyHint();
+  document.getElementById('irModal').classList.remove('hidden');
+  document.getElementById('fName').focus();
+}
+function closeForm(){ document.getElementById('irModal').classList.add('hidden'); editing=null; }
+function syncBefore(){
+  var v=parseFloat(document.getElementById('fPrice').value);
+  document.getElementById('hBefore').textContent='قبل الضريبة: '+
+    (isNaN(v)||v<=0 ? '—' : money(Math.round((v/(1+VAT))*100)/100));
+}
+function syncQtyHint(){
+  var a=document.getElementById('fMin').value.trim(), b=document.getElementById('fMax').value.trim();
+  document.getElementById('hQty').textContent = (a===''&&b==='')
+    ? 'الحقلان فارغان ⟹ بلا حد (UNCONSTRAINED)' : '';
+}
+function intOrNull(v,errs,label){
+  v=String(v).trim(); if(v==='') return null;
+  if(!/^\d+$/.test(v)){ errs.push(label+': أعداد صحيحة موجبة فقط · بلا كسور ولا قيم سالبة'); return undefined; }
+  return parseInt(v,10);
+}
+function saveForm(){
+  var errs=[], ok=true;
+  var name=document.getElementById('fName').value.trim();
+  var unit=document.getElementById('fUnit').value||null;
+  var praw=document.getElementById('fPrice').value.trim();
+  var eN=document.getElementById('eName'), eP=document.getElementById('ePrice'), eQ=document.getElementById('eQty');
+  eN.textContent=''; eP.textContent=''; eQ.textContent='';
+  document.getElementById('fName').classList.remove('err');
+  document.getElementById('fPrice').classList.remove('err');
+  document.getElementById('fMin').classList.remove('err');
+  document.getElementById('fMax').classList.remove('err');
+
+  if(!name){ eN.textContent='اسم الصنف مطلوب'; document.getElementById('fName').classList.add('err'); ok=false; }
+
+  var price=null;
+  if(praw!==''){
+    if(!/^\d+(\.\d{1,2})?$/.test(praw)){ eP.textContent='السعر: رقم موجب بمنزلتين عشريتين كحد أقصى'; document.getElementById('fPrice').classList.add('err'); ok=false; }
+    else { price=parseFloat(praw); if(price<=0){ eP.textContent=t('msg.price_positive','يجب أن يكون السعر أكبر من صفر'); document.getElementById('fPrice').classList.add('err'); ok=false; } }
+  }
+  var qerr=[];
+  var mn=intOrNull(document.getElementById('fMin').value,qerr,'الحد الأدنى');
+  var mx=intOrNull(document.getElementById('fMax').value,qerr,'الحد الأقصى');
+  if(mn===undefined){ document.getElementById('fMin').classList.add('err'); ok=false; }
+  if(mx===undefined){ document.getElementById('fMax').classList.add('err'); ok=false; }
+  if(ok && mn!=null && mx!=null && mn>mx){
+    qerr.push('الحد الأدنى لا يمكن أن يتجاوز الحد الأقصى');
+    document.getElementById('fMin').classList.add('err'); document.getElementById('fMax').classList.add('err'); ok=false; }
+  if(qerr.length) eQ.textContent=qerr.join(' · ');
+  if(!ok) return;
+
+  if(editing){
+    var wasP=editing.p;
+    editing.n=name; editing.u=unit;
+    editing.mn=(mn===undefined?null:mn); editing.mx=(mx===undefined?null:mx);
+    if(price===null){ editing.p=null; if(editing.s!=='INACTIVE') editing.s='NONE'; }
+    else if(price!==wasP){ editing.p=price; if(editing.s==='NONE') editing.s='SUGGESTED'; }
+  } else {
+    var id='TMP'+String(S.seq++).padStart(3,'0');
+    S.items.push({i:id,t:curType,n:name,u:unit,
+      p:(price===null?null:price), s:(price===null?'NONE':'SUGGESTED'),
+      a:true, mn:(mn===undefined?null:mn), mx:(mx===undefined?null:mx)});
+  }
+  closeForm(); renderTable(); renderSbx();
+}
+function approve(id){
+  var it=S.items.filter(function(x){return x.i===id;})[0];
+  if(!it) return;
+  if(it.s==='APPROVED'){ alert('الصنف معتمد بالفعل'); return; }
+  if(it.p==null||it.p<=0){ alert(t('msg.price_required','أدخل سعر التشغيل قبل الاعتماد')); openForm(id); return; }
+  it.s='APPROVED'; renderTable(); renderSbx();
+}
+function setActive(id,v){
+  var it=S.items.filter(function(x){return x.i===id;})[0]; if(!it) return;
+  it.a=v; renderTable(); renderSbx();   /* operating_price_status unchanged by design */
+}
+
+/* ---- language ---- */
+function applyLang(l){
+  LANG=l;
+  document.documentElement.setAttribute('lang',l);
+  document.documentElement.setAttribute('dir', l==='en'?'ltr':'rtl');
+  Array.prototype.forEach.call(document.querySelectorAll('[data-t]'),function(el){
+    el.textContent=t(el.getAttribute('data-t'),el.textContent); });
+  Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+    b.classList.toggle('active', b.getAttribute('data-lang')===l); });
+  if(curType) renderTable(); else renderTypeCards();
+}
+
+/* ---- wiring ---- */
+document.getElementById('irBack').onclick=backToTypes;
+document.getElementById('irAdd').onclick=function(){ openForm(null); };
+document.getElementById('irSearch').oninput=function(e){ curSearch=e.target.value; renderTable(); };
+document.getElementById('fCancel').onclick=closeForm;
+document.getElementById('irMClose').onclick=closeForm;
+document.getElementById('fSave').onclick=saveForm;
+document.getElementById('fPrice').oninput=syncBefore;
+document.getElementById('fMin').oninput=syncQtyHint;
+document.getElementById('fMax').oninput=syncQtyHint;
+document.getElementById('irSClose').onclick=function(){ document.getElementById('irSrcModal').classList.add('hidden'); };
+Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+  b.onclick=function(){ applyLang(b.getAttribute('data-lang')); }; });
+Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
+  if(b.dataset.page==='itemreview') b.addEventListener('click',function(){ backToTypes(); }); });
+renderTypeCards();
+})();
+
+
+/* ================= Monthly Budget Execution Report (READ-ONLY) =================
+   Reads only: MONTHLY_BUDGETS · ANNUAL_BUDGETS · DISTRIBUTION_RUNS ·
+               DISTRIBUTION_LINES · EXPENSE_TYPES · FINANCIAL_YEARS · SETTINGS
+   Writes: nothing. Modifies: nothing.
+============================================================================= */
+(function(){
+'use strict';
+var D=window.GHS_DATA; if(!D) return;
+var APPROVED_RUN_STATUS='APPROVED';           /* existing status name — not invented */
+var MON_AR=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+var MON_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function lang(){ return document.documentElement.getAttribute('dir')==='ltr'?'en':'ar'; }
+function T(ar,en){ return lang()==='en'?en:ar; }
+function cur(){ var r=D.labels['currency.egp']; return lang()==='en'?(r&&r.en||'EGP'):(r&&r.ar||'ج.م'); }
+function money(n){
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+cur();
+}
+function pct(n){ return new Intl.NumberFormat('en-US',{minimumFractionDigits:1,maximumFractionDigits:1}).format(n)+'%'; }
+function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function bdi(x){ return '<bdi>'+esc(x)+'</bdi>'; }
+
+/* ---- FY calendar ordering: period_index 1..N mapped to its stored period_month ---- */
+function fyOf(id){ return D.fyears.filter(function(f){return f.id===id;})[0]; }
+function calYear(fyId,pm){
+  var f=fyOf(fyId); if(!f) return '';
+  var sy=parseInt(f.start.slice(0,4),10), sm=parseInt(f.start.slice(5,7),10);
+  return pm>=sm ? sy : sy+1;
+}
+function monthName(pm){ return (lang()==='en'?MON_EN:MON_AR)[pm-1]; }
+
+/* ---- Distributed = Σ line_total_incl_vat of lines belonging to APPROVED runs ---- */
+function distributedFor(fyId,typeId,periodIndex){
+  var runs=D.runs.filter(function(r){
+    return r.fy===fyId && r.t===typeId && Number(r.pi)===Number(periodIndex) && r.status===APPROVED_RUN_STATUS; });
+  if(!runs.length) return 0;
+  var ids={}; runs.forEach(function(r){ ids[r.id]=1; });
+  var sum=0;
+  D.lines.forEach(function(l){ if(ids[l.run]) sum+=Number(l.total)||0; });
+  return Math.round(sum*100)/100;
+}
+
+/* ---- state ---- */
+var brType=null, brFy=null, brSel={};
+
+function periodsOf(fyId,typeId){
+  return D.monthlyBudgets.filter(function(b){return b.fy===fyId&&b.t===typeId;})
+          .slice().sort(function(a,b){return a.pi-b.pi;});
+}
+function initSelections(){
+  brSel={}; periodsOf(brFy,brType).forEach(function(b){ brSel[b.pi]=true; });
+}
+function renderFilters(){
+  var ts=document.getElementById('brType');
+  ts.innerHTML=D.types.map(function(t){return '<option value="'+t.id+'">'+esc(t.n)+'</option>';}).join('');
+  ts.value=brType;
+  var fs=document.getElementById('brFy');
+  fs.innerHTML=D.fyears.map(function(f){return '<option value="'+f.id+'">'+esc(f.label)+'</option>';}).join('');
+  fs.value=brFy;
+  document.getElementById('brLType').textContent=T('نوع المصروف','Expense Type');
+  document.getElementById('brLFy').textContent=T('السنة المالية','Financial Year');
+  document.getElementById('brLMonths').textContent=T('الشهور','Months');
+  document.getElementById('brAll').textContent=T('تحديد الكل','Select all');
+  document.getElementById('brNone').textContent=T('إلغاء التحديد','Clear');
+  document.getElementById('brTitle').textContent=T('تقرير تنفيذ الموازنة الشهرية','Monthly Budget Execution Report');
+  document.getElementById('brSelTitle').textContent=T('إجمالي الفترة المحددة','Selected Period Total');
+  document.getElementById('brAnnTitle').textContent=T('إجمالي السنة المالية','Full Financial Year Total');
+  document.getElementById('brTblTitle').textContent=T('التفصيل الشهري','Monthly Detail');
+  var h=[['brC1','الشهر','Month'],['brC2','الموازنة','Budget Amount'],['brC3','المنفَّذ','Distributed Amount'],
+         ['brC4','المتبقي','Remaining'],['brC5','التنفيذ %','Execution %'],['brC6','ملاحظة','Note']];
+  h.forEach(function(x){ document.getElementById(x[0]).textContent=T(x[1],x[2]); });
+}
+function renderMonths(){
+  var host=document.getElementById('brMonths'), rows=periodsOf(brFy,brType);
+  if(!rows.length){ host.innerHTML='<span class="unconstrained">'+T('لا توجد شهور لهذا النوع','No months for this type')+'</span>'; return; }
+  host.innerHTML=rows.map(function(b){
+    return '<label class="mchk"><input type="checkbox" data-pi="'+b.pi+'"'+(brSel[b.pi]?' checked':'')+'>'+
+           '<span>'+esc(monthName(b.pm))+'</span></label>';
+  }).join('');
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-pi]'),function(c){
+    c.onchange=function(){ brSel[+c.getAttribute('data-pi')]=c.checked; renderReport(); };
+  });
+}
+function card(label,value,cls){
+  return '<div class="card metric"><div class="label">'+esc(label)+'</div>'+
+         '<div class="value '+(cls||'')+'">'+value+'</div></div>';
+}
+function renderReport(){
+  var rows=periodsOf(brFy,brType);
+  var selRows=rows.filter(function(b){ return brSel[b.pi]; });
+
+  /* monthly table */
+  var tb=document.getElementById('brRows');
+  if(!selRows.length){
+    tb.innerHTML='<tr><td colspan="6" class="unconstrained" style="text-align:center;padding:26px">'+
+                 T('اختر شهرًا واحدًا على الأقل','Select at least one month')+'</td></tr>';
+  } else {
+    var sB=0,sD=0;
+    var html=selRows.map(function(b){
+      var bud=Number(b.inc)||0;
+      var dis=distributedFor(brFy,brType,b.pi);
+      var rem=Math.round((bud-dis)*100)/100;
+      var ex = bud>0 ? (dis/bud*100) : 0;
+      sB+=bud; sD+=dis;
+      var over = dis>bud;
+      var note = over ? '<span class="pill bad">'+T('تجاوز الموازنة','OVER BUDGET')+'</span>'
+                : (bud===0&&dis===0 ? '<span class="unconstrained">'+T('لا نشاط','No activity')+'</span>' : '');
+      return '<tr'+(over?' class="over-row"':'')+'>'+
+        '<td>'+esc(monthName(b.pm))+' '+calYear(brFy,b.pm)+'</td>'+
+        '<td class="num">'+money(bud)+'</td>'+
+        '<td class="num'+(dis===0?' zero':'')+'">'+money(dis)+'</td>'+
+        '<td class="num'+(rem<0?' neg':'')+'">'+money(rem)+'</td>'+
+        '<td class="num'+(bud===0?' zero':'')+'">'+(bud>0?pct(ex):'—')+'</td>'+
+        '<td>'+note+'</td></tr>';
+    }).join('');
+    var sR=Math.round((sB-sD)*100)/100;
+    html+='<tr class="total-row"><td>'+T('الإجمالي','TOTAL')+'</td>'+
+      '<td class="num">'+money(sB)+'</td><td class="num'+(sD===0?' zero':'')+'">'+money(sD)+'</td>'+
+      '<td class="num'+(sR<0?' neg':'')+'">'+money(sR)+'</td>'+
+      '<td class="num'+(sB===0?' zero':'')+'">'+(sB>0?pct(sD/sB*100):'—')+'</td><td></td></tr>';
+    tb.innerHTML=html;
+  }
+
+  /* selected-period cards */
+  var pB=0,pD=0; selRows.forEach(function(b){ pB+=Number(b.inc)||0; pD+=distributedFor(brFy,brType,b.pi); });
+  pB=Math.round(pB*100)/100; pD=Math.round(pD*100)/100;
+  var pR=Math.round((pB-pD)*100)/100;
+  document.getElementById('brSelCards').innerHTML=
+    card(T('موازنة الفترة','Selected Period Budget'),money(pB))+
+    card(T('المنفَّذ في الفترة','Selected Period Distributed'),money(pD),pD===0?'zero':'')+
+    card(T('المتبقي في الفترة','Selected Period Remaining'),money(pR),pR<0?'neg':'')+
+    card(T('عدد الشهور المحددة','Selected Months'),String(selRows.length));
+
+  /* annual cards — always the FULL financial year, independent of selection */
+  var ann=D.annualBudgets.filter(function(a){return a.fy===brFy&&a.t===brType;})[0];
+  var annB = ann ? (Number(ann.inc)||0) : rows.reduce(function(s,b){return s+(Number(b.inc)||0);},0);
+  var annD = rows.reduce(function(s,b){return s+distributedFor(brFy,brType,b.pi);},0);
+  annB=Math.round(annB*100)/100; annD=Math.round(annD*100)/100;
+  var annR=Math.round((annB-annD)*100)/100;
+  document.getElementById('brAnnCards').innerHTML=
+    card(T('الموازنة السنوية','Annual Budget'),money(annB))+
+    card(T('إجمالي المنفَّذ','Total Distributed'),money(annD),annD===0?'zero':'')+
+    card(T('المتبقي السنوي','Annual Remaining'),money(annR),annR<0?'neg':'')+
+    card(T('نسبة التنفيذ','Execution %'), annB>0?pct(annD/annB*100):'—', annB>0?'':'zero');
+
+  /* status + note */
+  var st=document.getElementById('brStatus');
+  var apr=D.runs.filter(function(r){return r.status===APPROVED_RUN_STATUS;}).length;
+  st.textContent=T('توزيعات معتمدة: ','Approved runs: ')+apr;
+  document.getElementById('brNote').textContent = apr===0
+    ? T('لا يوجد أي توزيع معتمد في البيانات الحالية، لذلك «المنفَّذ» = 0.00 في كل الشهور و«المتبقي» = كامل الموازنة. الموازنات المعروضة حالتها REFERENCE وليست معتمدة بعد.',
+        'No approved distribution exists in the current data, so Distributed = 0.00 for every month and Remaining equals the full budget. The budgets shown have status REFERENCE and are not yet approved.')
+    : T('التقرير للقراءة فقط. «المنفَّذ» يُحسب من التوزيعات المعتمدة فقط.',
+        'Read-only report. Distributed is computed from approved distribution runs only.');
+}
+function refreshAll(){ renderFilters(); renderMonths(); renderReport(); }
+
+/* ---- wiring ---- */
+brType=(D.types[0]||{}).id; brFy=(D.fyears[0]||{}).id; initSelections();
+document.getElementById('brType').onchange=function(e){ brType=e.target.value; initSelections(); renderMonths(); renderReport(); };
+document.getElementById('brFy').onchange=function(e){ brFy=e.target.value; initSelections(); renderMonths(); renderReport(); };
+document.getElementById('brAll').onclick=function(){ periodsOf(brFy,brType).forEach(function(b){brSel[b.pi]=true;}); renderMonths(); renderReport(); };
+document.getElementById('brNone').onclick=function(){ brSel={}; renderMonths(); renderReport(); };
+Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+  b.addEventListener('click',function(){ setTimeout(refreshAll,0); }); });
+refreshAll();
+})();
+
+
+/* ============ Distribution UI (STEP 2) — sandbox, in-memory runs only ============
+   No Excel write · no Google Sheets · no backend · no Invoice Grouping · no Approve UI.
+============================================================================== */
+(function(){
+'use strict';
+var D=window.GHS_DATA, ENG=window.GHSDistribution;
+if(!D||!ENG){ console.error('data.js or engine.js missing'); return; }
+
+/* in-memory sandbox stores — never written to any file */
+var RUNS=[], LINES=[], AUDIT=[], SEQ=1;
+
+function lang(){ return document.documentElement.getAttribute('dir')==='ltr'?'en':'ar'; }
+function T(ar,en){ return lang()==='en'?en:ar; }
+function cur(){ var r=D.labels['currency.egp']; return lang()==='en'?(r&&r.en||'EGP'):(r&&r.ar||'ج.م'); }
+function money(n){ if(n==null||isNaN(n)) return '—';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+cur(); }
+function qty(n){ return new Intl.NumberFormat('en-US').format(n); }
+function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function bdi(x){ return '<bdi>'+esc(x)+'</bdi>'; }
+var MON_AR=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+var MON_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function monthName(pm){ return (lang()==='en'?MON_EN:MON_AR)[pm-1]; }
+
+var dType=null,dFy=null,dPi=null,dSrc='LIVE';
+/* Read-only view over either live data or the separate fixture. Never merged, never written. */
+function SRC(){
+  if(dSrc==='FIXTURE'&&window.GHS_FIXTURE){
+    var f=window.GHS_FIXTURE;
+    return {types:f.types,fyears:f.fyears,monthlyBudgets:f.monthlyBudgets,items:f.items,limits:f.limits,fixture:true};
+  }
+  return {types:D.types,fyears:D.fyears,monthlyBudgets:D.monthlyBudgets,items:D.items,limits:D.limits,fixture:false};
+}
+function budgets(){ return SRC().monthlyBudgets.filter(function(b){return b.fy===dFy&&b.t===dType;})
+                     .slice().sort(function(a,b){return a.pi-b.pi;}); }
+function currentBudget(){ return budgets().filter(function(b){return b.pi===dPi;})[0]||null; }
+
+function fillFilters(){
+  var ts=document.getElementById('dgType');
+  ts.innerHTML=SRC().types.map(function(t){return '<option value="'+t.id+'">'+esc(t.n)+'</option>';}).join('');
+  ts.value=dType;
+  var fs=document.getElementById('dgFy');
+  fs.innerHTML=SRC().fyears.map(function(f){return '<option value="'+f.id+'">'+esc(f.label)+'</option>';}).join('');
+  fs.value=dFy;
+  fillMonths();
+}
+function fillMonths(){
+  var ms=document.getElementById('dgMonth'), rows=budgets();
+  ms.innerHTML=rows.map(function(b){return '<option value="'+b.pi+'">'+esc(monthName(b.pm))+'</option>';}).join('');
+  if(!rows.length){ dPi=null; ms.innerHTML='<option>—</option>'; }
+  else { if(!rows.some(function(b){return b.pi===dPi;})) dPi=rows[0].pi; ms.value=dPi; }
+  syncBudget();
+}
+function syncBudget(){
+  var b=currentBudget();
+  document.getElementById('dgBudget').value = b ? money(b.inc) : '—';
+  document.getElementById('dgEng').textContent='Engine '+ENG.ALGORITHM_VERSION;
+  var added=RUNS.length;
+  var srcMsg = SRC().fixture
+    ? T('مصدر البيانات: <b>بيانات اختبار وهمية منفصلة</b> — لا علاقة لها بـ v6 ولا بأي سعر حقيقي.',
+        'Data source: <b>separate fictional test fixture</b> — unrelated to v6 or any real price.')
+    : T('مصدر البيانات: <b>بيانات التشغيل (v6)</b> — قراءة فقط.',
+        'Data source: <b>live data (v6)</b> — read-only.');
+  document.getElementById('dgSbx').innerHTML='<span>'+srcMsg+' '+
+    T('عمليات التوليد تُحفظ في ذاكرة المتصفح فقط. لا كتابة في أي ملف. تجميع الفواتير غير منفَّذ في هذه المرحلة.',
+      'Generated runs live in browser memory only. Nothing is written to any file. Invoice Grouping is not implemented at this step.')+
+    (added?' <b>('+added+' '+T('عملية','runs')+')</b>':'')+'</span>';
+}
+
+/* ---- map GHS_DATA -> engine input ---- */
+function engineInput(seed,runId){
+  var b=currentBudget();
+  return {
+    fyId:dFy, typeId:dType, periodIndex:dPi,
+    targetInclVat: b?Number(b.inc)||0:0,
+    invoiceCount: (function(){ var v=document.getElementById('dgInv').value.trim();
+                               return /^\d+$/.test(v)?parseInt(v,10):null; })(),
+    items: SRC().items.map(function(x){ return {
+        id:x.i, typeId:x.t, name:x.n, level:'ITEM', active:x.a===true,
+        price:x.p, priceStatus:x.s, weight:1 }; }),
+    limits: SRC().limits.map(function(l){ return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax}; }),
+    approvedRuns: RUNS.filter(function(r){return r.status==='APPROVED';})
+                      .map(function(r){return {id:r.runId,fy:r.fyId,typeId:r.typeId,periodIndex:r.periodIndex,status:r.status};}),
+    approvedLines: LINES.map(function(l){return {runId:l.runId,itemId:l.itemId,quantity:l.quantity};}),
+    settings:{ RESIDUAL_SMALL_PCT: Number(D.settings.RESIDUAL_SMALL_PCT||0.005),
+               RESIDUAL_SMALL_USE_MIN_PRICE: D.settings.RESIDUAL_SMALL_USE_MIN_PRICE||'TRUE' },
+    seed:seed, runId:runId, generatedBy:'U001', now:new Date().toISOString()
+  };
+}
+
+var STATUS_UI={
+  EXACT:['rs-exact','✅ '+'مطابقة تامة للمبلغ المطلوب','✅ Exact match'],
+  PARTIAL:['rs-partial','✅ توزيع جزئي — متبقٍ عادي','✅ Partial distribution — normal residual'],
+  CLOSEST_POSSIBLE:['rs-closest','⚠️ أقرب توزيع ممكن — يوجد عجز يحتاج مراجعة','⚠️ Closest possible — material shortfall'],
+  INFEASIBLE:['rs-infeasible','⛔ التوزيع غير ممكن','⛔ Distribution infeasible'],
+  OVER_BUDGET:['rs-over','⛔ تجاوز الموازنة — لا يمكن الاعتماد','⛔ Over budget — cannot be approved']
+};
+var FAIL_AR={ZERO_BUDGET:'لا توجد موازنة لهذا الشهر.',NO_ELIGIBLE_ITEMS:'لا يوجد صنف مؤهل واحد لهذا النوع.',
+  MIN_EXCEEDS_BUDGET:'أصغر حد أدنى شهري يتجاوز الموازنة.',NO_FEASIBLE_SUBSET:'تعذّر تكوين مجموعة تحترم الحدود الدنيا.'};
+var EXCL_AR={NOT_ITEM_LEVEL:'صف تجميعي (ROLLUP)',INACTIVE:'موقوف',NO_OPERATING_PRICE:'بلا سعر تشغيلي',
+  PRICE_NOT_APPROVED:'السعر مقترح وغير معتمد',ANNUAL_MAX_EXHAUSTED:'الحد السنوي مستنفد',
+  MONTHLY_MAX_ZERO:'الحد الشهري صفر',MIN_EXCEEDS_ALLOWED_MAX:'الحد الأدنى يتجاوز المسموح'};
+
+function card(l,v,cls){ return '<div class="card metric"><div class="label">'+esc(l)+'</div><div class="value '+(cls||'')+'">'+v+'</div></div>'; }
+
+function render(out){
+  document.getElementById('dgResult').classList.remove('hidden');
+  var r=out.run, ui=STATUS_UI[r.distributionStatus]||STATUS_UI.INFEASIBLE;
+  var sub='';
+  if(r.failReason) sub='<div class="rs-sub">'+esc(T(FAIL_AR[r.failReason]||r.failReason, out.diagnostics.detail))+'</div>';
+  else if(r.distributionStatus==='CLOSEST_POSSIBLE')
+    sub='<div class="rs-sub">'+T('السبب: الحدود الشهرية/السنوية أو عدد الأصناف المؤهلة لا تسمح ببلوغ المبلغ.',
+                                 'Cause: monthly/annual limits or the eligible item pool cannot reach the target.')+'</div>';
+  document.getElementById('dgStatus').className='res-status '+ui[0];
+  document.getElementById('dgStatus').innerHTML=(lang()==='en'?ui[2]:ui[1])+sub;
+
+  document.getElementById('dgCards').innerHTML=
+    card(T('المبلغ المطلوب','Requested Budget'),money(r.targetInclVat))+
+    card(T('تم التوزيع','Distributed'),money(r.distributedInclVat),r.distributedInclVat===0?'zero':'')+
+    card(T('المتبقي','Remaining'),money(r.remainingInclVat))+
+    card(T('نسبة التنفيذ','Execution %'),r.executionPct.toFixed(2)+'%');
+
+  document.getElementById('dgRunPill').textContent=r.runId?(r.runId+' · '+r.status):r.status;
+  document.getElementById('dgMeta').textContent=
+    'seed='+r.randomSeed+' · algorithm='+r.algorithmVersion+' · invoice_count='+(r.invoiceCount==null?'null':r.invoiceCount)+
+    ' · eligible='+out.diagnostics.eligibleCount+' · selected='+out.lines.length+' · generated_at='+r.generatedAt;
+
+  /* lines */
+  var lp=document.getElementById('dgLinesPanel');
+  if(out.lines.length){
+    lp.classList.remove('hidden');
+    document.getElementById('dgLinesCount').textContent=out.lines.length+' '+T('بند','lines');
+    document.getElementById('dgLines').innerHTML=out.lines.map(function(l){
+      return '<tr><td>'+l.lineSeq+'</td><td style="white-space:normal;max-width:320px">'+bdi(l.itemName)+
+        '<span class="sub-id">'+esc(l.itemId)+'</span></td>'+
+        '<td class="num">'+qty(l.quantity)+'</td><td class="num">'+money(l.unitPriceSnapshotInclVat)+'</td>'+
+        '<td class="num"><b>'+money(l.lineTotalInclVat)+'</b></td>'+
+        '<td class="unconstrained">'+(l.remainingAfter==null?T('بلا حد','unconstrained'):qty(l.remainingAfter))+'</td></tr>';
+    }).join('');
+  } else lp.classList.add('hidden');
+
+  /* excluded — grouped */
+  var ep=document.getElementById('dgExclPanel'), ex=out.diagnostics.excluded||[];
+  if(ex.length){
+    ep.classList.remove('hidden');
+    var g={}; ex.forEach(function(x){ (g[x.reason]=g[x.reason]||[]).push(x.itemId); });
+    document.getElementById('dgExclCount').textContent=ex.length+' '+T('صنف','items');
+    document.getElementById('dgExcl').innerHTML=Object.keys(g).map(function(k){
+      return '<tr><td>'+esc(lang()==='en'?k:(EXCL_AR[k]||k))+'</td><td class="num">'+g[k].length+'</td>'+
+             '<td class="unconstrained">'+esc(g[k].slice(0,6).join(', '))+(g[k].length>6?' …':'')+'</td></tr>';
+    }).join('');
+  } else ep.classList.add('hidden');
+
+  renderRuns();
+}
+function renderRuns(){
+  var p=document.getElementById('dgRunsPanel');
+  if(!RUNS.length){ p.classList.add('hidden'); return; }
+  p.classList.remove('hidden');
+  document.getElementById('dgRunsCount').textContent=RUNS.length+' '+T('عملية','runs');
+  document.getElementById('dgRuns').innerHTML=RUNS.slice().reverse().map(function(r){
+    var b=SRC().monthlyBudgets.filter(function(x){return x.fy===r.fyId&&x.t===r.typeId&&x.pi===r.periodIndex;})[0];
+    return '<tr><td class="sub-id" style="margin:0">'+esc(r.runId)+'</td>'+
+      '<td>'+esc(b?monthName(b.pm):r.periodIndex)+'</td>'+
+      '<td class="num">'+money(r.targetInclVat)+'</td>'+
+      '<td class="num">'+money(r.distributedInclVat)+'</td>'+
+      '<td><span class="pill '+(r.distributionStatus==='EXACT'||r.distributionStatus==='PARTIAL'?'ok':
+         (r.distributionStatus==='CLOSEST_POSSIBLE'?'warn':'bad'))+'">'+esc(r.distributionStatus)+'</span></td>'+
+      '<td><span class="pill '+(r.status==='GENERATED'?'warn':(r.status==='APPROVED'?'ok':'neutral'))+'">'+esc(r.status)+'</span></td>'+
+      '<td class="sub-id" style="margin:0">'+r.randomSeed+'</td>'+
+      '<td class="unconstrained">'+esc(String(r.generatedAt).replace('T',' ').slice(0,19))+'</td></tr>';
+  }).join('');
+}
+
+function audit(action,run){
+  AUDIT.push({ logId:'AU'+String(AUDIT.length+1).padStart(8,'0'), timestamp:new Date().toISOString(),
+    userEmail:'mnasr411988@gmail.com', entityType:'DISTRIBUTION_RUNS', entityId:run.runId, action:action,
+    fyId:run.fyId, typeId:run.typeId, periodIndex:run.periodIndex, budget:run.targetInclVat,
+    generatedAmount:run.distributedInclVat, remaining:run.remainingInclVat, invoiceCount:run.invoiceCount,
+    distributionStatus:run.distributionStatus, randomSeed:run.randomSeed, algorithmVersion:run.algorithmVersion });
+  console.log('[AUDIT]',action,JSON.stringify(AUDIT[AUDIT.length-1]));
+}
+
+function doGenerate(isRegen){
+  if(isRegen){
+    RUNS.forEach(function(r){
+      if(r.status==='GENERATED'&&r.fyId===dFy&&r.typeId===dType&&r.periodIndex===dPi){
+        r.status='CANCELLED'; audit('DISTRIBUTION_CANCELLED',r);
+      }
+    });
+  }
+  var runId='RUN'+String(SEQ++).padStart(6,'0');
+  var out=ENG.generate(engineInput(ENG.makeSeed(),runId));
+  out.lines.forEach(function(l,i){ l.runId=runId; l.lineId=runId+'-L'+String(i+1).padStart(3,'0'); });
+  RUNS.push(out.run); LINES=LINES.concat(out.lines);
+  audit(isRegen?'DISTRIBUTION_REGENERATED':'DISTRIBUTION_GENERATED',out.run);
+  render(out); syncBudget();
+}
+
+document.getElementById('dgSrc').onchange=function(e){
+  dSrc=e.target.value;
+  dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id; dPi=null;
+  RUNS=[]; LINES=[]; SEQ=1;                       /* runs are per data source — never mixed */
+  document.getElementById('dgResult').classList.add('hidden');
+  document.getElementById('dgLinesPanel').classList.add('hidden');
+  document.getElementById('dgExclPanel').classList.add('hidden');
+  document.getElementById('dgRunsPanel').classList.add('hidden');
+  fillFilters();
+};
+document.getElementById('dgType').onchange=function(e){ dType=e.target.value; fillMonths(); };
+document.getElementById('dgFy').onchange=function(e){ dFy=e.target.value; fillMonths(); };
+document.getElementById('dgMonth').onchange=function(e){ dPi=parseInt(e.target.value,10); syncBudget(); };
+document.getElementById('dgGen').onclick=function(){ doGenerate(false); };
+document.getElementById('dgRegen').onclick=function(){ doGenerate(true); };
+Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+  b.addEventListener('click',function(){ setTimeout(function(){ fillFilters(); renderRuns(); },0); }); });
+
+dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id;
+fillFilters();
+})();
+
+</script></body></html>
