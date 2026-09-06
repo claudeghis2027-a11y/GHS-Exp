@@ -97,6 +97,18 @@ tr.over-row td{background:#fef2f2}
 .mi-warn{padding:11px 13px;background:#fffbeb;border-inline-start:4px solid var(--warn);border-radius:8px;color:#92400e;font-size:13px;margin-bottom:14px}
 .mi-ok{padding:11px 13px;background:#dcfce7;border-inline-start:4px solid var(--accent2);border-radius:8px;color:#166534;font-size:13px;margin-bottom:14px}
 .mi-when{font-size:12px;color:var(--muted);white-space:nowrap}
+.bh-sub>td{background:#f8fafc;padding:0}
+.bh-inner{padding:12px 14px}
+.bh-t{min-width:0;margin:0}
+.bh-t th,.bh-t td{padding:7px 9px;font-size:13px;border-bottom:1px solid #eef2f7}
+.bh-t tr:last-child td{border-bottom:0}
+.bh-src{font-size:11px;padding:2px 7px;border-radius:999px;font-weight:700;white-space:nowrap}
+.bh-src.m{background:#dcfce7;color:#166534}
+.bh-src.b{background:#f1f5f9;color:#475569}
+.bh-in{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;max-width:110px;box-sizing:border-box}
+.bh-in:focus{outline:0;border-color:var(--accent)}
+.bh-in.err{border-color:var(--danger);background:#fef2f2}
+.bh-in.dirty{border-color:var(--warn);background:#fffbeb}
 .chk{list-style:none;padding:0;margin:0 0 14px}
 .chk li{padding:7px 0;font-size:13px;border-bottom:1px solid #eef2f7;display:flex;gap:9px;align-items:flex-start}
 .chk li:last-child{border-bottom:0}
@@ -129,7 +141,35 @@ tr.over-row td{background:#fef2f2}
 <section id="dashboard" class="page">
 <div class="cards" id="metrics"></div><div class="panel"><div class="section-title"><h2>أنواع المصروفات</h2><span class="pill ok">بيانات مرجعية من الشيت</span></div><div class="types" id="types"></div></div>
 </section>
-<section id="budget" class="page hidden"><div class="panel"><div class="section-title"><h2>إعداد الموازنة الشهرية</h2><button class="btn" onclick="saveBudget()">حفظ</button></div><div class="notice">كل شهر يحتوي على <b>Budget</b> + <b>عدد الفواتير</b>. إجمالي الشهور يجب أن يساوي الموازنة السنوية.</div><div class="table-wrap"><table><thead><tr><th>الشهر</th><th>Budget</th><th>عدد الفواتير</th><th>الحالة</th></tr></thead><tbody id="budgetRows"></tbody></table></div></div></section>
+<section id="budget" class="page hidden">
+  <div class="panel">
+    <div class="section-title"><h2 id="bhTitle">الموازنة الشهرية</h2>
+      <span class="pill neutral" id="bhSrcPill"></span></div>
+    <div class="mi-note" id="bhNote"></div>
+    <div id="bhMsg"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="bhLFy">السنة المالية</label>
+        <select class="field" id="bhFy"></select></div>
+    </div>
+    <div class="mi-warn hidden" id="bhRecon"></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th id="bhC1">الشهر</th><th id="bhC2">إجمالي الموازنة</th>
+        <th id="bhC3">أنواع المصروفات</th><th id="bhC4">التفاصيل</th></tr></thead>
+      <tbody id="bhRows"></tbody>
+    </table></div>
+  </div>
+  <div class="panel" id="bhTestPanel">
+    <div class="section-title"><h2 id="bhTTitle">اختبارات الموازنة الهرمية</h2>
+      <span class="pill neutral" id="bhTPill">—</span></div>
+    <div class="repnote" id="bhTNote"></div>
+    <div class="rowacts" style="margin-bottom:14px">
+      <button class="btn" id="bhRunTests">تشغيل الاختبارات</button></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th id="bhT2">الاختبار</th><th id="bhT3">النتيجة</th><th id="bhT4">التفصيل</th></tr></thead>
+      <tbody id="bhTRows"></tbody>
+    </table></div>
+  </div>
+</section>
 <section id="distribution" class="page hidden"><div class="panel"><div class="section-title"><h2>Distribution Engine — V1</h2><button class="btn green" onclick="generateDemo()">Generate Distribution</button></div><div class="notice">النسخة الأولى تعرض تجربة التوزيع فقط. في التنفيذ النهائي سيتم تطبيق Max Annual + Max Monthly + Weight + Exact Match قبل الاعتماد.</div><div id="distResult"></div></div></section>
 <section id="invoices" class="page hidden"><div class="panel"><div class="section-title"><h2>الفواتير</h2><button class="btn secondary" onclick="showInvoiceDemo()">عرض فواتير الشهر</button></div><div id="invoiceResult"></div></div></section>
 <section id="itemreview" class="page hidden">
@@ -435,11 +475,11 @@ const monthEl=document.getElementById('month');months.forEach((m,i)=>monthEl.add
 function renderAll(){renderMetrics();renderTypes();renderBudget();renderItems()}
 function renderMetrics(){const total=types.reduce((s,t)=>s+t[2],0), monthTotal=types.reduce((s,t)=>s+t[3][currentMonth],0);document.getElementById('metrics').innerHTML=`<div class="card metric"><div class="label">إجمالي الموازنة السنوية</div><div class="value">${fmt(total)}</div><div class="sub">10 أنواع مصروفات</div></div><div class="card metric"><div class="label">موازنة الشهر المختار</div><div class="value">${fmt(monthTotal)}</div><div class="sub">${months[currentMonth]}</div></div><div class="card metric"><div class="label">عدد أنواع المصروفات</div><div class="value">10</div><div class="sub">قابلة للإضافة من الإعدادات</div></div><div class="card metric"><div class="label">VAT</div><div class="value">14%</div><div class="sub">إعداد مركزي</div></div>`}
 function renderTypes(){document.getElementById('types').innerHTML=types.map(t=>`<button class="type" onclick="openType('${t[0].replaceAll("'","\\'")}')"><div class="icon">${t[1]}</div><h3>${t[0]}</h3><div class="amt">${fmt(t[3][currentMonth])}</div><small>موازنة ${months[currentMonth]}</small></button>`).join('')}
-function renderBudget(){document.getElementById('budgetRows').innerHTML=months.map((m,i)=>{let sum=types.reduce((s,t)=>s+t[3][i],0);let invoices=[4,5,4,6,5,4,5,5,4,3,2,2][i];return `<tr><td><b>${m}</b></td><td><input class="field" type="number" step="0.01" value="${sum.toFixed(2)}" data-month="${i}"></td><td><input class="field" type="number" min="0" value="${invoices}" data-inv="${i}"></td><td><span class="pill ok">جاهز للتعديل</span></td></tr>`}).join('')}
+function renderBudget(){/* replaced by the hierarchical Budget view (bhRender) */}
 function renderItems(){const sel=document.getElementById('typeSelect');if(!sel.options.length) types.forEach(t=>sel.add(new Option(t[0],t[0])));sel.onchange=renderItems;const name=sel.value||'منظفات';const rows=sampleItems[name]||[['بيانات البنود ستُستورد من الـMaster Data',0,0,1]];document.getElementById('itemRows').innerHTML=rows.map(x=>`<tr><td>${x[0]}</td><td>${x[1]?fmt(x[1]):'—'}</td><td>${x[2]||'—'}</td><td>${x[3]}</td><td><span class="pill ok">Active</span></td></tr>`).join('')}
 function openType(name){const t=types.find(x=>x[0]===name);const items=sampleItems[name]||[];document.getElementById('modalContent').innerHTML=`<h2>${t[1]} ${name}</h2><div class="cards"><div class="card metric"><div class="label">Budget ${months[currentMonth]}</div><div class="value">${fmt(t[3][currentMonth])}</div></div><div class="card metric"><div class="label">Annual Budget</div><div class="value">${fmt(t[2])}</div></div><div class="card metric"><div class="label">عدد البنود</div><div class="value">${items.length||'—'}</div></div></div><div class="table-wrap"><table><thead><tr><th>البند</th><th>السعر</th><th>Max سنوي</th><th>Weight</th></tr></thead><tbody>${items.map(x=>`<tr><td>${x[0]}</td><td>${fmt(x[1])}</td><td>${x[2]}</td><td>${x[3]}</td></tr>`).join('')||'<tr><td colspan="4">سيتم تحميل البنود من Master Data في النسخة المتصلة.</td></tr>'}</tbody></table></div>`;document.getElementById('modal').classList.remove('hidden')}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
-function saveBudget(){alert('V1: تم حفظ التعديل محليًا للواجهة فقط. في النسخة المتصلة سيتم الحفظ في Google Sheets.')}
+function saveBudget(){/* replaced by the hierarchical Budget view */}
 function generateDemo(){const total=types.reduce((s,t)=>s+t[3][currentMonth],0);const inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];let left=total;let vals=[];for(let i=0;i<inv-1;i++){let min=total*0.12,max=Math.min(total*0.32,left-(inv-i-1)*min);let v=Math.round((min+Math.random()*(max-min))/50)*50;vals.push(v);left-=v}vals.push(left);document.getElementById('distResult').innerHTML=`<h3>${months[currentMonth]} — توزيع تجريبي</h3><p>Target: <b>${fmt(total)}</b> — عدد الفواتير: <b>${inv}</b></p><div class="table-wrap"><table><thead><tr><th>الفاتورة</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${vals.map((v,i)=>`<tr><td>INV-${String(i+1).padStart(3,'0')}</td><td>${fmt(v)}</td><td><span class="pill ok">Valid</span></td></tr>`).join('')}</tbody><tfoot><tr><th>الإجمالي</th><th>${fmt(vals.reduce((a,b)=>a+b,0))}</th><th><span class="pill ok">مطابق</span></th></tr></tfoot></table></div>`}
 function showInvoiceDemo(){const t=types[3],budget=t[3][currentMonth],inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];document.getElementById('invoiceResult').innerHTML=`<div class="notice">هذه قائمة فواتير تجريبية لنوع <b>منظفات</b>. بعد اعتماد الـDistribution ستُنشأ الفواتير تلقائيًا.</div><table><thead><tr><th>رقم الفاتورة</th><th>نوع المصروف</th><th>الشهر</th><th>الإجمالي</th><th>التفاصيل</th></tr></thead><tbody>${Array.from({length:inv},(_,i)=>{let v=Math.round((budget/inv*(.75+Math.random()*.5))/50)*50;return `<tr><td>CLN-${currentMonth+1}-${String(i+1).padStart(3,'0')}</td><td>منظفات</td><td>${months[currentMonth]}</td><td>${fmt(v)}</td><td><button class="btn secondary" onclick="openType('منظفات')">فتح</button></td></tr>`}).join('')}</tbody></table>`}
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],distgen:['توليد التوزيع','توليد توزيع الموازنة الشهرية على الأصناف المؤهلة.'],master:['إدارة البنود والأسعار','تعديل أسعار البنود وحدودها الكمية — يسري على عمليات التوزيع المستقبلية فقط.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
@@ -1322,9 +1362,12 @@ function engineInput(seed,runId){
     invoiceCount: (function(){ var v=document.getElementById('dgInv').value.trim();
                                return /^\d+$/.test(v)?parseInt(v,10):null; })(),
     /* MASTER dataset resolved by the DISTRIBUTION source (dSrc), never by miSrc */
-    items: masterFor(dSrc).items.map(function(x){ return {
-        id:x.i, typeId:x.t, name:x.n, level:'ITEM', active:x.a===true,
-        price:x.p, priceStatus:x.s, weight:1 }; }),
+    /* price = Monthly Operating Price (Source+FY+Month+Item) ?? Master price.
+       engine.js receives the same item structure it always received. */
+    items: masterFor(dSrc).items.map(function(x){
+        var rp=resolvePrice(dSrc,dFy,dPi,x);
+        return { id:x.i, typeId:x.t, name:x.n, level:'ITEM', active:x.a===true,
+                 price:rp.price, priceStatus:x.s, weight:1 }; }),
     limits: masterFor(dSrc).limits.map(function(l){ return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax}; }),
     approvedRuns: RUNS.filter(function(r){return r.status==='APPROVED';})
                       .map(function(r){return {id:r.runId,fy:r.fyId,typeId:r.typeId,periodIndex:r.periodIndex,status:r.status};}),
@@ -1955,6 +1998,494 @@ document.getElementById('miTNote').textContent=miT(
 ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=miT(x[1],x[2]); });
 
 /* ============================================================================
+   MONTHLY OPERATING PRICE  +  HIERARCHICAL BUDGET VIEW
+   Store key:  Source + FY + Month(periodIndex) + Item      (runtime memory only)
+   Master price (ITEMS.p) stays the baseline; a monthly value overrides it for
+   that FY+month only. Quantity limits keep their FY+Item model — no month
+   dimension is added. Past runs are never touched: they keep their own
+   unitPriceSnapshotInclVat and run.masterSnapshot.
+   ========================================================================== */
+var MOP={};                       /* MOP[src][fy][pi][itemId] = price */
+var MOP_LOG=[];
+function mopStore(src,fy,pi,make){
+  src=(src==='FIXTURE')?'FIXTURE':'LIVE';
+  if(!MOP[src]){ if(!make) return null; MOP[src]={}; }
+  if(!MOP[src][fy]){ if(!make) return null; MOP[src][fy]={}; }
+  if(!MOP[src][fy][pi]){ if(!make) return null; MOP[src][fy][pi]={}; }
+  return MOP[src][fy][pi];
+}
+function mopGet(src,fy,pi,itemId){
+  var b=mopStore(src,fy,pi,false);
+  return (b&&b[itemId]!==undefined)?b[itemId]:null;
+}
+function mopSet(src,fy,pi,itemId,price){ mopStore(src,fy,pi,true)[itemId]=price; }
+/* the single price resolver used by BOTH the Budget view and the engine input */
+function resolvePrice(src,fy,pi,item){
+  var m=mopGet(src,fy,pi,item.i);
+  if(m!==null&&m!==undefined) return {price:m,origin:'MONTHLY'};
+  return {price:item.p,origin:'MASTER'};
+}
+
+var bhFy=null, bhOpenMonth=null, bhOpenType=null, bhDirty={};
+function bhSrc(){ return (typeof dSrc!=='undefined'&&dSrc==='FIXTURE')?'FIXTURE':'LIVE'; }
+function bhData(){
+  if(bhSrc()==='FIXTURE'&&window.GHS_FIXTURE){
+    var f=window.GHS_FIXTURE;
+    return {src:'FIXTURE',types:f.types,fyears:f.fyears,monthlyBudgets:f.monthlyBudgets,
+            annualBudgets:(f.annualBudgets||[])};
+  }
+  return {src:'LIVE',types:D.types,fyears:D.fyears,monthlyBudgets:D.monthlyBudgets,
+          annualBudgets:D.annualBudgets};
+}
+function bhT(ar,en){ return (document.documentElement.getAttribute('dir')==='ltr')?en:ar; }
+function bhMoney(n){ if(n==null||isNaN(n)) return '\u2014';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+
+    ((D.labels['currency.egp']||{}).ar||'\u062c.\u0645'); }
+function bhEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+var BH_MON_AR=['\u064a\u0646\u0627\u064a\u0631','\u0641\u0628\u0631\u0627\u064a\u0631','\u0645\u0627\u0631\u0633','\u0623\u0628\u0631\u064a\u0644','\u0645\u0627\u064a\u0648','\u064a\u0648\u0646\u064a\u0648','\u064a\u0648\u0644\u064a\u0648','\u0623\u063a\u0633\u0637\u0633','\u0633\u0628\u062a\u0645\u0628\u0631','\u0623\u0643\u062a\u0648\u0628\u0631','\u0646\u0648\u0641\u0645\u0628\u0631','\u062f\u064a\u0633\u0645\u0628\u0631'];
+var BH_MON_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function bhMonth(pm){ return ((document.documentElement.getAttribute('dir')==='ltr')?BH_MON_EN:BH_MON_AR)[pm-1]; }
+function bhR2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
+
+/* month total = SUM of the expense-type budgets for that FY + month */
+function bhMonths(fy){
+  var rows=bhData().monthlyBudgets.filter(function(b){return b.fy===fy;});
+  var byPi={};
+  rows.forEach(function(b){
+    if(!byPi[b.pi]) byPi[b.pi]={pi:b.pi,pm:b.pm,total:0,types:[]};
+    byPi[b.pi].total=bhR2(byPi[b.pi].total+(Number(b.inc)||0));
+    byPi[b.pi].types.push(b);
+  });
+  return Object.keys(byPi).map(function(k){return byPi[k];})
+         .sort(function(a,b){return a.pi-b.pi;});
+}
+/* items of a type, isolated by Source + FY + Expense Type */
+function bhItems(typeId){
+  return masterFor(bhSrc()).items.filter(function(x){return x.t===typeId;});
+}
+function bhLimit(itemId){
+  return masterFor(bhSrc()).limits.filter(function(l){return l.item===itemId&&l.fy===bhFy;})[0]||{};
+}
+function bhMsg(kind,text){
+  document.getElementById('bhMsg').innerHTML='<div class="mi-'+kind+'">'+bhEsc(text)+'</div>';
+  setTimeout(function(){ var e=document.getElementById('bhMsg'); if(e) e.innerHTML=''; },6000);
+}
+/* FY-level reconciliation: SUM(monthly per type) vs ANNUAL_BUDGETS - warning only */
+function bhReconcile(){
+  var d=bhData(), out=[];
+  d.annualBudgets.filter(function(a){return a.fy===bhFy;}).forEach(function(a){
+    var s=0; d.monthlyBudgets.forEach(function(b){ if(b.fy===a.fy&&b.t===a.t) s=bhR2(s+(Number(b.inc)||0)); });
+    var diff=bhR2(Number(a.inc)-s);
+    if(diff!==0) out.push({t:a.t,annual:Number(a.inc),monthly:s,diff:diff});
+  });
+  return out;
+}
+function bhRender(){
+  var d=bhData();
+  document.getElementById('bhTitle').textContent=bhT('\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0634\u0647\u0631\u064a\u0629','Monthly Budget');
+  document.getElementById('bhSrcPill').textContent=d.src==='FIXTURE'
+    ? bhT('\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u062e\u062a\u0628\u0627\u0631 \u0648\u0647\u0645\u064a\u0629','Test fixture') : bhT('\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062a\u0634\u063a\u064a\u0644','Live data');
+  document.getElementById('bhNote').textContent=bhT(
+    '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0634\u0647\u0631 \u0645\u062d\u0633\u0648\u0628 \u0645\u0646 \u0645\u0648\u0627\u0632\u0646\u0627\u062a \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a. \u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u0633\u0639\u0631 \u0647\u0646\u0627 \u064a\u0646\u0634\u0626 \u00ab\u0633\u0639\u0631\u064b\u0627 \u0634\u0647\u0631\u064a\u064b\u0627\u00bb \u064a\u0633\u0631\u064a \u0639\u0644\u0649 \u0639\u0645\u0644\u064a\u0627\u062a \u0627\u0644\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0642\u0627\u062f\u0645\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631 \u0641\u0642\u0637\u060c \u0648\u0644\u0627 \u064a\u0645\u0633 \u0623\u064a \u0639\u0645\u0644\u064a\u0629 \u0633\u0627\u0628\u0642\u0629. \u0627\u0644\u062d\u062f\u0648\u062f \u0627\u0644\u0643\u0645\u064a\u0629 \u062a\u0628\u0642\u0649 \u0639\u0644\u0649 \u0645\u0633\u062a\u0648\u0649 \u0627\u0644\u0633\u0646\u0629 \u0648\u0627\u0644\u0635\u0646\u0641. \u0627\u0644\u062d\u0627\u0644\u0629 \u0641\u064a \u0630\u0627\u0643\u0631\u0629 \u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0641\u0642\u0637.',
+    'The month total is computed from the expense-type budgets. Editing a price here creates a Monthly Operating Price that applies to future runs for that month only and never touches a past run. Quantity limits stay at FY+Item level. State lives in browser memory only.');
+  document.getElementById('bhLFy').textContent=bhT('\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629','Financial Year');
+  [['bhC1','\u0627\u0644\u0634\u0647\u0631','Month'],['bhC2','\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629','Total Budget'],
+   ['bhC3','\u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a','Expense Types'],['bhC4','\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644','Details']]
+   .forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=bhT(x[1],x[2]); });
+
+  var fs=document.getElementById('bhFy');
+  fs.innerHTML=d.fyears.map(function(f){return '<option value="'+f.id+'">'+bhEsc(f.label)+'</option>';}).join('');
+  if(!d.fyears.some(function(f){return f.id===bhFy;})){ bhFy=(d.fyears[0]||{}).id; bhOpenMonth=null; bhOpenType=null; }
+  fs.value=bhFy;
+
+  var rec=bhReconcile(), rb=document.getElementById('bhRecon');
+  if(rec.length){ rb.classList.remove('hidden');
+    var tn={}; d.types.forEach(function(t){tn[t.id]=t.n;});
+    rb.innerHTML='\u26a0\ufe0f '+bhT('\u062a\u062d\u0630\u064a\u0631 \u062a\u0633\u0648\u064a\u0629 \u2014 \u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0634\u0647\u0648\u0631 \u0644\u0627 \u064a\u0633\u0627\u0648\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629 \u0641\u064a ',
+                            'Reconciliation warning - monthly sum differs from the annual budget in ')+
+      rec.length+' '+bhT('\u0646\u0648\u0639\u064b\u0627','types')+': '+
+      rec.slice(0,4).map(function(r){return bhEsc(tn[r.t]||r.t)+' ('+bhMoney(r.diff)+')';}).join(' \u00b7 ')+
+      (rec.length>4?' \u2026':'')+'<br>'+bhT('\u0644\u0645 \u062a\u064f\u0639\u062f\u064e\u0651\u0644 \u0623\u064a \u0642\u064a\u0645\u0629 \u0645\u0648\u0627\u0632\u0646\u0629.','No budget value was modified.');
+  } else rb.classList.add('hidden');
+
+  var months=bhMonths(bhFy), tb=document.getElementById('bhRows');
+  if(!months.length){ tb.innerHTML='<tr><td colspan="4" class="unconstrained" style="text-align:center;padding:24px">'+
+    bhT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0648\u0627\u0632\u0646\u0627\u062a \u0644\u0647\u0630\u0647 \u0627\u0644\u0633\u0646\u0629','No budgets for this financial year')+'</td></tr>'; return; }
+  tb.innerHTML=months.map(function(m){
+    var open=bhOpenMonth===m.pi;
+    return '<tr><td><b>'+bhEsc(bhMonth(m.pm))+'</b></td>'+
+      '<td class="num"><b>'+bhMoney(m.total)+'</b></td>'+
+      '<td class="num">'+m.types.length+'</td>'+
+      '<td><button class="srcbtn" data-mon="'+m.pi+'">'+(open?bhT('\u0625\u062e\u0641\u0627\u0621','Hide'):bhT('\u0639\u0631\u0636','Show'))+(open?' \u25b4':' \u25be')+'</button></td></tr>'+
+      '<tr class="bh-sub'+(open?'':' hidden')+'" data-monrow="'+m.pi+'"><td colspan="4">'+(open?bhTypes(m):'')+'</td></tr>';
+  }).join('');
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-mon]'),function(b){
+    b.onclick=function(){ var pi=+b.getAttribute('data-mon');
+      bhOpenMonth=(bhOpenMonth===pi)?null:pi; bhOpenType=null; bhRender(); }; });
+  bhWireInner();
+}
+function bhTypes(m){
+  var d=bhData(), tn={}; d.types.forEach(function(t){tn[t.id]=t.n;});
+  var rows=m.types.slice().sort(function(a,b){return (Number(b.inc)||0)-(Number(a.inc)||0);});
+  return '<div class="bh-inner"><table class="bh-t"><thead><tr>'+
+    '<th>'+bhT('\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641','Expense Type')+'</th>'+
+    '<th>'+bhT('\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0645\u062e\u0635\u0635\u0629','Allocated Budget')+'</th>'+
+    '<th>'+bhT('\u0639\u062f\u062f \u0627\u0644\u0623\u0635\u0646\u0627\u0641','Items')+'</th><th></th></tr></thead><tbody>'+
+    rows.map(function(b){
+      var open=bhOpenType===(m.pi+'|'+b.t);
+      return '<tr><td>'+bhEsc(tn[b.t]||b.t)+'</td>'+
+        '<td class="num">'+bhMoney(Number(b.inc)||0)+'</td>'+
+        '<td class="num">'+bhItems(b.t).length+'</td>'+
+        '<td><button class="srcbtn" data-typ="'+m.pi+'|'+b.t+'">'+(open?bhT('\u0625\u062e\u0641\u0627\u0621','Hide'):bhT('\u0627\u0644\u0623\u0635\u0646\u0627\u0641','Items'))+(open?' \u25b4':' \u25be')+'</button></td></tr>'+
+        (open?'<tr><td colspan="4" style="padding:0">'+bhItemsTable(m.pi,b.t)+'</td></tr>':'');
+    }).join('')+
+    '<tr class="total-row"><td>'+bhT('\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a','TOTAL')+'</td>'+
+    '<td class="num">'+bhMoney(m.total)+'</td><td></td><td></td></tr>'+
+    '</tbody></table></div>';
+}
+function bhItemsTable(pi,typeId){
+  var items=bhItems(typeId);
+  if(!items.length) return '<div class="bh-inner unconstrained">'+bhT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u0635\u0646\u0627\u0641 \u0644\u0647\u0630\u0627 \u0627\u0644\u0646\u0648\u0639','No items for this type')+'</div>';
+  return '<div class="bh-inner"><table class="bh-t"><thead><tr>'+
+    '<th>'+bhT('\u0627\u0644\u0643\u0648\u062f','Code')+'</th><th>'+bhT('\u0627\u0644\u0635\u0646\u0641','Item')+'</th>'+
+    '<th>'+bhT('\u0633\u0639\u0631 \u0627\u0644\u062a\u0634\u063a\u064a\u0644 \u2014 \u0634\u0627\u0645\u0644 VAT','Operating Price - Incl. VAT')+'</th>'+
+    '<th>'+bhT('\u0645\u0635\u062f\u0631 \u0627\u0644\u0633\u0639\u0631','Price source')+'</th>'+
+    '<th>'+bhT('\u0627\u0644\u0623\u062f\u0646\u0649 \u0627\u0644\u0634\u0647\u0631\u064a','Monthly Min')+'</th><th>'+bhT('\u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0634\u0647\u0631\u064a','Monthly Max')+'</th>'+
+    '<th>'+bhT('\u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a','Annual Max')+'</th><th>'+bhT('\u0627\u0644\u062d\u0627\u0644\u0629','Status')+'</th></tr></thead><tbody>'+
+    items.map(function(x){
+      var r=resolvePrice(bhSrc(),bhFy,pi,x), l=bhLimit(x.i);
+      var k=bhSrc()+'|'+bhFy+'|'+pi+'|'+x.i;
+      return '<tr><td><span class="sub-id" style="margin:0">'+bhEsc(x.i)+'</span></td>'+
+        '<td style="white-space:normal;max-width:250px">'+bhEsc(x.n)+'</td>'+
+        '<td><input class="bh-in'+(bhDirty[k]!==undefined?' dirty':'')+'" data-px="'+bhEsc(k)+'" inputmode="decimal" value="'+
+          (bhDirty[k]!==undefined?bhDirty[k]:(r.price==null?'':r.price))+'"></td>'+
+        '<td><span class="bh-src '+(r.origin==='MONTHLY'?'m':'b')+'">'+
+          (r.origin==='MONTHLY'?bhT('\u0633\u0639\u0631 \u0634\u0647\u0631\u064a','Monthly price'):bhT('\u0645\u0648\u0631\u0648\u062b \u0645\u0646 \u0627\u0644\u0633\u0639\u0631 \u0627\u0644\u0623\u0633\u0627\u0633\u064a','Inherited from master'))+'</span></td>'+
+        '<td class="num">'+(l.mmin==null?'\u2014':l.mmin)+'</td><td class="num">'+(l.mmax==null?'\u2014':l.mmax)+'</td>'+
+        '<td class="num">'+(l.amax==null?'\u2014':l.amax)+'</td>'+
+        '<td><span class="pill '+(x.a===true?'ok':'neutral')+'">'+(x.a===true?'ACTIVE':'INACTIVE')+'</span></td></tr>';
+    }).join('')+'</tbody></table>'+
+    '<div class="rowacts" style="margin-top:12px"><button class="btn green sm" data-save="'+pi+'|'+typeId+'">'+
+      bhT('\u062d\u0641\u0638 \u0627\u0644\u0623\u0633\u0639\u0627\u0631 \u0627\u0644\u0634\u0647\u0631\u064a\u0629','Save monthly prices')+'</button></div></div>';
+}
+function bhWireInner(){
+  var root=document.getElementById('bhRows');
+  Array.prototype.forEach.call(root.querySelectorAll('[data-typ]'),function(b){
+    b.onclick=function(){ var k=b.getAttribute('data-typ');
+      bhOpenType=(bhOpenType===k)?null:k; bhRender(); }; });
+  Array.prototype.forEach.call(root.querySelectorAll('[data-px]'),function(inp){
+    inp.oninput=function(){ bhDirty[inp.getAttribute('data-px')]=inp.value;
+      inp.classList.add('dirty'); inp.classList.remove('err'); }; });
+  Array.prototype.forEach.call(root.querySelectorAll('[data-save]'),function(b){
+    b.onclick=function(){ var p=b.getAttribute('data-save').split('|');
+      bhSave(parseInt(p[0],10),p[1]); }; });
+}
+/* Save only the CHANGED monthly prices for this Source + FY + Month */
+function bhSave(pi,typeId){
+  var root=document.getElementById('bhRows'), errs=[], changes=[];
+  var items=bhItems(typeId);
+  items.forEach(function(x){
+    var k=bhSrc()+'|'+bhFy+'|'+pi+'|'+x.i;
+    var inp=root.querySelector('[data-px="'+k+'"]'); if(!inp) return;
+    var raw=String(inp.value).trim();
+    var cur=resolvePrice(bhSrc(),bhFy,pi,x).price;
+    if(raw===''||!/^\d+(\.\d{1,2})?$/.test(raw)||Number(raw)<=0){
+      inp.classList.add('err'); errs.push(x.i); return; }
+    var v=Number(raw);
+    if(v!==cur) changes.push({item:x,val:v,old:cur,el:inp});
+  });
+  if(errs.length){ bhMsg('warn',bhT('\u0633\u0639\u0631 \u063a\u064a\u0631 \u0635\u0627\u0644\u062d \u0641\u064a: ','Invalid price in: ')+errs.join(', ')); return; }
+  if(!changes.length){ bhMsg('note',bhT('\u0644\u0627 \u064a\u0648\u062c\u062f \u062a\u063a\u064a\u064a\u0631 \u0644\u0644\u062d\u0641\u0638.','Nothing to save.')); return; }
+  changes.forEach(function(c){
+    mopSet(bhSrc(),bhFy,pi,c.item.i,c.val);
+    MOP_LOG.push({src:bhSrc(),fy:bhFy,pi:pi,item:c.item.i,old:c.old,val:c.val,at:new Date().toISOString()});
+    console.log('[AUDIT] MONTHLY_PRICE_SET',JSON.stringify(MOP_LOG[MOP_LOG.length-1]));
+  });
+  Object.keys(bhDirty).forEach(function(k){ if(k.indexOf(bhSrc()+'|'+bhFy+'|'+pi+'|')===0) delete bhDirty[k]; });
+  bhRender();
+  bhMsg('ok',bhT('\u062a\u0645 \u062d\u0641\u0638 ','Saved ')+changes.length+bhT(' \u0633\u0639\u0631\u064b\u0627 \u0634\u0647\u0631\u064a\u064b\u0627 \u2014 \u062a\u064f\u0633\u062a\u062e\u062f\u0645 \u0641\u064a \u0639\u0645\u0644\u064a\u0627\u062a \u0627\u0644\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0642\u0627\u062f\u0645\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631 \u0641\u0642\u0637.',
+    ' monthly price(s) - used by future runs for this month only.'));
+}
+document.getElementById('bhFy').onchange=function(e){ bhFy=e.target.value; bhOpenMonth=null; bhOpenType=null; bhRender(); };
+Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
+  if(b.dataset.page==='budget') b.addEventListener('click',function(){ bhRender(); }); });
+Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+  b.addEventListener('click',function(){ setTimeout(function(){
+    if(!document.getElementById('budget').classList.contains('hidden')) bhRender(); },0); }); });
+
+/* ============================================================================
+   HIERARCHICAL BUDGET TEST HARNESS — runs on throwaway clones only.
+   Never writes GHS_DATA, GHS_FIXTURE, the master stores or the live MOP store.
+   ========================================================================== */
+function bhRunSuite(){
+  var R=[], n=0;
+  function TT(name,fn){ n++; var ok=false,d='';
+    try{ var r=fn(); ok=!!(r&&r.ok); d=(r&&r.detail)||''; }catch(e){ ok=false; d='ERROR: '+e.message; }
+    R.push({n:n,name:name,ok:ok,detail:d}); }
+  var clone=function(o){ return JSON.parse(JSON.stringify(o)); };
+  var r2=bhR2;
+  var FX=window.GHS_FIXTURE, FY='DEMO_FY', TY='DEMO_T';
+
+  /* isolated stores, exactly mirroring the real ones */
+  function store(base){ var st={items:clone(base.items),limits:clone(base.limits)};
+    st.items.forEach(function(x){x.mtime=null;}); return st; }
+  function newMop(){ return {}; }
+  function mGet(M,src,fy,pi,id){ return (M[src]&&M[src][fy]&&M[src][fy][pi]&&M[src][fy][pi][id]!==undefined)?M[src][fy][pi][id]:null; }
+  function mSet(M,src,fy,pi,id,v){ M[src]=M[src]||{}; M[src][fy]=M[src][fy]||{}; M[src][fy][pi]=M[src][fy][pi]||{}; M[src][fy][pi][id]=v; }
+  function rp(M,src,fy,pi,item){ var v=mGet(M,src,fy,pi,item.i);
+    return (v!==null)?{price:v,origin:'MONTHLY'}:{price:item.p,origin:'MASTER'}; }
+  /* the exact save rule from bhSave */
+  function save(M,st,src,fy,pi,typeId,vals,log){
+    var items=st.items.filter(function(x){return x.t===typeId;}), errs=[], ch=[];
+    items.forEach(function(x){
+      if(vals[x.i]===undefined) return;
+      var raw=String(vals[x.i]).trim(), cur=rp(M,src,fy,pi,x).price;
+      if(raw===''||!/^\d+(\.\d{1,2})?$/.test(raw)||Number(raw)<=0){ errs.push(x.i); return; }
+      if(Number(raw)!==cur) ch.push({i:x.i,v:Number(raw)});
+    });
+    if(errs.length) return {ok:false,errs:errs};
+    if(!ch.length) return {ok:true,changed:0};
+    ch.forEach(function(c){ mSet(M,src,fy,pi,c.i,c.v); if(log) log.push(c); });
+    return {ok:true,changed:ch.length};
+  }
+  function gen(M,st,src,fy,ty,pi,target,ic,seed,runId){
+    var items=st.items.map(function(x){ var r=rp(M,src,fy,pi,x);
+      return {id:x.i,typeId:x.t,name:x.n,level:'ITEM',active:x.a===true,
+              price:r.price,priceStatus:x.s,weight:1}; });
+    var o=ENG.generate({fyId:fy,typeId:ty,periodIndex:pi,targetInclVat:target,invoiceCount:ic,
+      items:items,limits:st.limits.map(function(l){return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax};}),
+      approvedRuns:[],approvedLines:[],settings:{},seed:seed,runId:runId});
+    o.run.approvalStatus='GENERATED';
+    o.run.masterSnapshot=o.lines.map(function(l){
+      var m=st.items.filter(function(x){return x.i===l.itemId;})[0]||{};
+      var L=st.limits.filter(function(x){return x.item===l.itemId&&x.fy===fy;})[0]||{};
+      return {itemCode:l.itemId,unitPriceInclVat:l.unitPriceSnapshotInclVat,
+              priceOrigin:(mGet(M,src,fy,pi,l.itemId)!==null?'MONTHLY':'MASTER'),
+              monthlyMinQty:L.mmin===undefined?null:L.mmin,monthlyMaxQty:L.mmax===undefined?null:L.mmax,
+              annualMaxQty:L.amax===undefined?null:L.amax,quantity:l.quantity,lineTotalInclVat:l.lineTotalInclVat};});
+    o.grp=o.lines.length?buildInvoiceGroups(o.lines,ic,runId,o.run.distributedInclVat):null;
+    return o;
+  }
+  function fxBudget(pi){ var b=FX.monthlyBudgets.filter(function(x){return x.pi===pi;})[0]; return b?Number(b.inc):0; }
+
+  TT('A · '+bhT('صفحة الموازنة تقرأ البيانات الحقيقية','Budget page uses real data'),function(){
+    var h=document.body.innerHTML;
+    return {ok:typeof bhMonths==='function'&&typeof bhData==='function'&&
+               bhData().monthlyBudgets===D.monthlyBudgets||bhData().src==='FIXTURE',
+            detail:'source '+bhData().src+' · monthly budget rows '+bhData().monthlyBudgets.length+
+                   ' · legacy demo arrays not used by bhRender'};
+  });
+  TT('B · '+bhT('الشهر يتوسّع','Month expands'),function(){
+    var ms=bhMonths(bhFy);
+    return {ok:ms.length>0&&ms[0].types.length>0,
+            detail:ms.length+' months · first month has '+ (ms[0]?ms[0].types.length:0)+' expense types'};
+  });
+  TT('C · '+bhT('أنواع المصروفات تظهر تحت الشهر','Expense types appear under the month'),function(){
+    var m=bhMonths(bhFy)[0];
+    return {ok:!!m&&m.types.every(function(b){return b.fy===bhFy&&b.pi===m.pi&&!!b.t;}),
+            detail:'month '+bhMonth(m.pm)+' · types '+m.types.map(function(b){return b.t;}).join(',')};
+  });
+  TT('D · '+bhT('مجموع الأنواع = إجمالي الشهر','Type budgets sum to the month total'),function(){
+    var m=bhMonths(bhFy)[0], s=0;
+    m.types.forEach(function(b){ s=r2(s+(Number(b.inc)||0)); });
+    return {ok:s===m.total,detail:'Σ '+s.toFixed(2)+' = total '+m.total.toFixed(2)};
+  });
+  TT('E · '+bhT('توسيع النوع يعرض أصنافه فقط','Type expansion shows only its own items'),function(){
+    var m=bhMonths(bhFy)[0], t=m.types[0].t, items=bhItems(t);
+    return {ok:items.every(function(x){return x.t===t;}),
+            detail:t+' -> '+items.length+' items, all of that type'};
+  });
+  TT('F · '+bhT('عزل السنة المالية','FY isolation'),function(){
+    var d=bhData(); if(d.fyears.length<2) return {ok:true,detail:'single FY in this source — vacuously isolated'};
+    var a=bhMonths(d.fyears[0].id), b=bhMonths(d.fyears[1].id);
+    var ok=a.every(function(m){return m.types.every(function(x){return x.fy===d.fyears[0].id;});})&&
+           b.every(function(m){return m.types.every(function(x){return x.fy===d.fyears[1].id;});});
+    return {ok:ok,detail:d.fyears[0].id+' '+a.length+' months · '+d.fyears[1].id+' '+b.length+' months · no cross-FY row'};
+  });
+  TT('G · '+bhT('عزل الشهر','Month isolation'),function(){
+    var ms=bhMonths(bhFy);
+    return {ok:ms.every(function(m){return m.types.every(function(b){return b.pi===m.pi;});}),
+            detail:ms.length+' months · every type row belongs to its own period'};
+  });
+  TT('H · '+bhT('عزل بيانات التشغيل عن الاختبار','LIVE / FIXTURE isolation'),function(){
+    var L=store(D), F=store(FX);
+    var M=newMop();
+    mSet(M,'LIVE','FY001',1,L.items[0].i,999.99);
+    var leak=mGet(M,'FIXTURE',FY,1,L.items[0].i);
+    return {ok:leak===null&&L.items.length!==F.items.length,
+            detail:'LIVE override invisible to FIXTURE · LIVE '+L.items.length+' items · FIXTURE '+F.items.length};
+  });
+  TT('I · '+bhT('السعر الأساسي يُستخدم بلا تعديل شهري','Master price used when no override'),function(){
+    var F=store(FX), M=newMop(), it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var r=rp(M,'FIXTURE',FY,1,it);
+    return {ok:r.origin==='MASTER'&&r.price===it.p,detail:'DM001 -> '+r.price+' ('+r.origin+')'};
+  });
+  TT('J · '+bhT('السعر الشهري يُستخدم بعد الحفظ','Monthly override used after save'),function(){
+    var F=store(FX), M=newMop();
+    var res=save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var r=rp(M,'FIXTURE',FY,1,it);
+    return {ok:res.ok&&res.changed===1&&r.origin==='MONTHLY'&&r.price===205,
+            detail:'master '+it.p+' -> monthly '+r.price+' ('+r.origin+')'};
+  });
+  TT('K · '+bhT('تعديل سبتمبر لا يمس أكتوبر','September override does not affect October'),function(){
+    var F=store(FX), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var sep=rp(M,'FIXTURE',FY,1,it), oct=rp(M,'FIXTURE',FY,2,it);
+    return {ok:sep.price===205&&oct.price===it.p&&oct.origin==='MASTER',
+            detail:'Sep '+sep.price+' ('+sep.origin+') · Oct '+oct.price+' ('+oct.origin+')'};
+  });
+  TT('L · '+bhT('التعديل لا يمس سنة مالية أخرى','Override does not affect another FY'),function(){
+    var F=store(FX), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var other=rp(M,'FIXTURE','FY_OTHER',1,it);
+    return {ok:other.origin==='MASTER'&&other.price===it.p,
+            detail:'DEMO_FY 205 · FY_OTHER '+other.price+' ('+other.origin+')'};
+  });
+  TT('M · '+bhT('التعديل لا يمس نوعًا آخر','Override does not affect another type'),function(){
+    var F=store(FX), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var other=F.items.filter(function(x){return x.i==='DM002';})[0];
+    var r=rp(M,'FIXTURE',FY,1,other);
+    return {ok:r.origin==='MASTER'&&r.price===other.p,
+            detail:'DM001 overridden · DM002 still '+r.price+' ('+r.origin+')'};
+  });
+  TT('N · '+bhT('العملية المولَّدة لا تتغير بعد تعديل السعر','Generated run unchanged after a price edit'),function(){
+    var F=store(FX), M=newMop();
+    var run=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,101,'RUN000001');
+    var snap=JSON.stringify({r:run.run,l:run.lines,g:run.grp});
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'999.99'});
+    return {ok:JSON.stringify({r:run.run,l:run.lines,g:run.grp})===snap,
+            detail:'run payload byte-identical after master/monthly change'};
+  });
+  TT('O · '+bhT('العملية المعتمدة لا تتغير','Approved run unchanged'),function(){
+    var F=store(FX), M=newMop();
+    var run=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,102,'RUN000002');
+    run.run.approvalStatus='REVIEW';
+    var c=approvalChecks({run:run.run,lines:run.lines,grp:run.grp});
+    if(c.ok){ run.run.approvalStatus='APPROVED'; run.run.status='APPROVED'; }
+    var snap=JSON.stringify(run);
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'12.34',DM002:'56.78'});
+    return {ok:run.run.approvalStatus==='APPROVED'&&JSON.stringify(run)===snap,
+            detail:'approval '+run.run.approvalStatus+' · payload byte-identical'};
+  });
+  TT('P · '+bhT('العملية الجديدة تستخدم السعر الشهري','New run uses the monthly price'),function(){
+    var F=store(FX), M=newMop();
+    var before=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,103,'RUN000003');
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var after=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,103,'RUN000004');
+    var lb=before.lines.filter(function(l){return l.itemId==='DM001';})[0];
+    var la=after.lines.filter(function(l){return l.itemId==='DM001';})[0];
+    return {ok:!!lb&&!!la&&lb.unitPriceSnapshotInclVat===193.8&&la.unitPriceSnapshotInclVat===205&&
+               la.priceOrigin===undefined,
+            detail:'before '+(lb?lb.unitPriceSnapshotInclVat:'—')+' · after '+(la?la.unitPriceSnapshotInclVat:'—')+
+                   ' · snapshot origin '+(after.run.masterSnapshot.filter(function(s){return s.itemCode==='DM001';})[0]||{}).priceOrigin};
+  });
+  TT('Q · '+bhT('حفظ بلا تغيير لا ينشئ سجلًا','No-op save creates no audit entry'),function(){
+    var F=store(FX), M=newMop(), log=[];
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var r=save(M,F,'FIXTURE',FY,1,TY,{DM001:String(it.p)},log);
+    return {ok:r.ok&&r.changed===0&&log.length===0,detail:'changed '+r.changed+' · audit entries '+log.length};
+  });
+  TT('R · '+bhT('السعر غير الصالح مرفوض','Invalid price is blocked'),function(){
+    var F=store(FX), M=newMop();
+    var a=save(M,F,'FIXTURE',FY,1,TY,{DM001:'0'});
+    var b=save(M,F,'FIXTURE',FY,1,TY,{DM001:'-5'});
+    var c=save(M,F,'FIXTURE',FY,1,TY,{DM001:'12.345'});
+    var d=save(M,F,'FIXTURE',FY,1,TY,{DM001:'abc'});
+    var untouched=mGet(M,'FIXTURE',FY,1,'DM001')===null;
+    return {ok:!a.ok&&!b.ok&&!c.ok&&!d.ok&&untouched,
+            detail:'0 · -5 · 12.345 · abc all rejected · no value stored'};
+  });
+  TT('S · '+bhT('الضريبة تبقى 14%','VAT stays 14%'),function(){
+    var vr=VATRATE(), ti=2500, bv=r2(ti/(1+vr));
+    return {ok:vr===0.14&&bv===2192.98&&r2(ti-bv)===307.02,
+            detail:'rate '+vr+' · 2500 -> '+bv+' + '+r2(ti-bv)};
+  });
+  TT('T · '+bhT('إجماليات الفواتير تتطابق','Invoice totals reconcile'),function(){
+    var F=store(FX), M=newMop();
+    var run=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,104,'RUN000005');
+    var s=0; run.grp.invoices.forEach(function(v){ s=r2(s+v.totalInclVat); });
+    return {ok:s===r2(run.run.distributedInclVat),
+            detail:'Σ invoices '+s.toFixed(2)+' = distributed '+run.run.distributedInclVat.toFixed(2)};
+  });
+  TT('U · '+bhT('تجميع الفواتير بلا تقسيم كميات','Invoice grouping still has no splitting'),function(){
+    var F=store(FX), M=newMop();
+    var run=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,105,'RUN000006');
+    var c={}; run.grp.invoices.forEach(function(v){ v.lines.forEach(function(l){ c[l.itemId]=(c[l.itemId]||0)+1; }); });
+    return {ok:Object.keys(c).every(function(k){return c[k]===1;})&&run.grp.invoiceGroupingStatus==='OK',
+            detail:run.lines.length+' lines -> '+run.grp.invoices.length+' invoices · split: no'};
+  });
+  TT('V · '+bhT('فحوص الاعتماد سليمة','Approval checks remain valid'),function(){
+    var F=store(FX), M=newMop();
+    var run=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,106,'RUN000007');
+    var c=approvalChecks({run:run.run,lines:run.lines,grp:run.grp});
+    return {ok:c.ok&&c.checks.length===7,detail:c.checks.filter(function(x){return x.ok;}).length+'/'+c.checks.length+' checks pass'};
+  });
+  TT('W · '+bhT('التقارير تستخدم الإجماليات التاريخية','Reports use historical approved totals'),function(){
+    var F=store(FX), M=newMop();
+    var run=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,107,'RUN000008');
+    var runs=[{runId:'RUN000008',fyId:FY,typeId:TY,periodIndex:1,status:'APPROVED',
+               approvalStatus:'APPROVED',dataSource:'FIXTURE'}];
+    var lines=run.lines.map(function(l){return {runId:'RUN000008',lineTotalInclVat:l.lineTotalInclVat};});
+    var before=distributedFor(FY,TY,1,{src:'FIXTURE',runs:runs,lines:lines});
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'9999.99'});
+    var after=distributedFor(FY,TY,1,{src:'FIXTURE',runs:runs,lines:lines});
+    return {ok:before===after&&before===r2(run.run.distributedInclVat),
+            detail:'executed '+before.toFixed(2)+' before and after the price change'};
+  });
+  TT('X · '+bhT('الـfixture يعمل: 2099-2100 / سبتمبر / 500,000','Fixture works: 2099-2100 / September / 500,000'),function(){
+    var b=FX.monthlyBudgets.filter(function(x){return x.pm===9;})[0];
+    var F=store(FX), M=newMop();
+    var run=gen(M,F,'FIXTURE',FY,TY,1,Number(b.inc),5,108,'RUN000009');
+    return {ok:FX.fyears[0].label==='2099-2100'&&Number(b.inc)===500000&&
+               run.diagnostics.eligibleCount===8&&run.run.distributedInclVat===295288.5,
+            detail:'FY '+FX.fyears[0].label+' · September budget '+Number(b.inc).toFixed(2)+
+                   ' · eligible '+run.diagnostics.eligibleCount+' · distributed '+run.run.distributedInclVat.toFixed(2)};
+  });
+  TT('Y · '+bhT('تعديلات الـfixture معزولة عن التشغيل','Fixture overrides isolated from LIVE'),function(){
+    var F=store(FX), L=store(D), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var liveItem=L.items[0];
+    var liveR=rp(M,'LIVE','FY001',1,liveItem);
+    return {ok:mGet(M,'FIXTURE',FY,1,'DM001')===205&&liveR.origin==='MASTER',
+            detail:'FIXTURE DM001 = 205 · LIVE '+liveItem.i+' still '+liveR.origin};
+  });
+  TT('Z · '+bhT('شاشة البنود تحرر السعر الأساسي مستقلًا','Master screen edits the baseline independently'),function(){
+    var F=store(FX), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});          /* monthly override */
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    it.p=300;                                              /* master screen edit */
+    var sep=rp(M,'FIXTURE',FY,1,it), oct=rp(M,'FIXTURE',FY,2,it);
+    return {ok:sep.price===205&&sep.origin==='MONTHLY'&&oct.price===300&&oct.origin==='MASTER',
+            detail:'master now 300 · Sep keeps monthly 205 · Oct inherits 300'};
+  });
+  return R;
+}
+function bhRenderTests(R){
+  var pass=R.filter(function(x){return x.ok;}).length;
+  document.getElementById('bhTPill').textContent=pass+' / '+R.length;
+  document.getElementById('bhTPill').className='pill '+(pass===R.length?'ok':'bad');
+  document.getElementById('bhTRows').innerHTML=R.map(function(x){
+    return '<tr><td>'+x.n+'</td><td style="white-space:normal">'+bhEsc(x.name)+'</td>'+
+      '<td><span class="pill '+(x.ok?'ok':'bad')+'">'+(x.ok?'PASS':'FAIL')+'</span></td>'+
+      '<td class="unconstrained" style="white-space:normal">'+bhEsc(x.detail)+'</td></tr>';
+  }).join('');
+}
+document.getElementById('bhRunTests').onclick=function(){ bhRenderTests(bhRunSuite()); };
+document.getElementById('bhTNote').textContent=bhT(
+  'الاختبارات تعمل على نسخ مؤقتة ولا تمس بياناتك ولا data.js ولا fixtures.js.',
+  'Tests run on throwaway clones and never touch your data, data.js or fixtures.js.');
+[['bhTTitle','اختبارات الموازنة الهرمية','Hierarchical Budget tests'],['bhRunTests','تشغيل الاختبارات','Run tests'],
+ ['bhT2','الاختبار','Test'],['bhT3','النتيجة','Result'],['bhT4','التفصيل','Detail']
+].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=bhT(x[1],x[2]); });
+
+bhFy=(bhData().fyears[0]||{}).id;
+bhRender();
+
+/* ============================================================================
    APPROVAL WORKFLOW — GENERATED -> REVIEW -> APPROVED
    Runtime state only. No storage, no backend, no persistence layer.
    Approval NEVER recomputes distribution or grouping and NEVER changes a
@@ -2297,6 +2828,7 @@ function doGenerate(isRegen){
     var lim=masterFor(dSrc).limits.filter(function(x){return x.item===l.itemId&&x.fy===dFy;})[0]||{};
     return {itemCode:l.itemId,itemName:l.itemName,itemType:m.t||null,
             unitPriceInclVat:l.unitPriceSnapshotInclVat,
+            priceOrigin:(mopGet(dSrc,dFy,dPi,l.itemId)!==null?'MONTHLY':'MASTER'),
             monthlyMinQty:(lim.mmin===undefined?null:lim.mmin),
             monthlyMaxQty:(lim.mmax===undefined?null:lim.mmax),
             annualMaxQty:(lim.amax===undefined?null:lim.amax),
