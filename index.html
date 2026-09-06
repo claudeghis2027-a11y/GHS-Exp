@@ -148,6 +148,11 @@ tr.over-row td{background:#fef2f2}
     <div class="mi-note" id="bhNote"></div>
     <div id="bhMsg"></div>
     <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="bhLSrc">مصدر البيانات</label>
+        <select class="field" id="bhSrcSel">
+          <option value="LIVE">بيانات التشغيل / Live Data</option>
+          <option value="FIXTURE">بيانات وهمية / Test Fixture</option>
+        </select></div>
       <div class="rep-f"><label class="lbl" id="bhLFy">السنة المالية</label>
         <select class="field" id="bhFy"></select></div>
     </div>
@@ -2027,7 +2032,10 @@ function resolvePrice(src,fy,pi,item){
 }
 
 var bhFy=null, bhOpenMonth=null, bhOpenType=null, bhDirty={};
-function bhSrc(){ return (typeof dSrc!=='undefined'&&dSrc==='FIXTURE')?'FIXTURE':'LIVE'; }
+/* The Budget page owns its OWN data source. It is deliberately INDEPENDENT of
+   the Distribution page selector (dSrc). LIVE and FIXTURE are never mixed. */
+var bhSource='LIVE';
+function bhSrc(){ return (bhSource==='FIXTURE')?'FIXTURE':'LIVE'; }
 function bhData(){
   if(bhSrc()==='FIXTURE'&&window.GHS_FIXTURE){
     var f=window.GHS_FIXTURE;
@@ -2093,6 +2101,8 @@ function bhRender(){
    ['bhC3','\u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a','Expense Types'],['bhC4','\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644','Details']]
    .forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=bhT(x[1],x[2]); });
 
+  var ss=document.getElementById('bhSrcSel'); if(ss) ss.value=bhSource;
+  var e1=document.getElementById('bhLSrc'); if(e1) e1.textContent=bhT('\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a','Data source');
   var fs=document.getElementById('bhFy');
   fs.innerHTML=d.fyears.map(function(f){return '<option value="'+f.id+'">'+bhEsc(f.label)+'</option>';}).join('');
   if(!d.fyears.some(function(f){return f.id===bhFy;})){ bhFy=(d.fyears[0]||{}).id; bhOpenMonth=null; bhOpenType=null; }
@@ -2206,6 +2216,12 @@ function bhSave(pi,typeId){
   bhMsg('ok',bhT('\u062a\u0645 \u062d\u0641\u0638 ','Saved ')+changes.length+bhT(' \u0633\u0639\u0631\u064b\u0627 \u0634\u0647\u0631\u064a\u064b\u0627 \u2014 \u062a\u064f\u0633\u062a\u062e\u062f\u0645 \u0641\u064a \u0639\u0645\u0644\u064a\u0627\u062a \u0627\u0644\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0642\u0627\u062f\u0645\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631 \u0641\u0642\u0637.',
     ' monthly price(s) - used by future runs for this month only.'));
 }
+document.getElementById('bhSrcSel').onchange=function(e){
+  bhSource=(e.target.value==='FIXTURE')?'FIXTURE':'LIVE';
+  bhFy=(bhData().fyears[0]||{}).id;            /* never keep a value from the other source */
+  bhOpenMonth=null; bhOpenType=null; bhDirty={};
+  bhRender();
+};
 document.getElementById('bhFy').onchange=function(e){ bhFy=e.target.value; bhOpenMonth=null; bhOpenType=null; bhRender(); };
 Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
   if(b.dataset.page==='budget') b.addEventListener('click',function(){ bhRender(); }); });
@@ -2462,6 +2478,99 @@ function bhRunSuite(){
     return {ok:sep.price===205&&sep.origin==='MONTHLY'&&oct.price===300&&oct.origin==='MASTER',
             detail:'master now 300 · Sep keeps monthly 205 · Oct inherits 300'};
   });
+
+  /* ---------- Budget page independent Source Selector (A - L) ---------- */
+  function withBhSrc(src,fn){ var keep=bhSource, kf=bhFy;
+    bhSource=src; bhFy=(bhData().fyears[0]||{}).id;
+    try{ return fn(); } finally { bhSource=keep; bhFy=kf; } }
+
+  TT('A · '+bhT('LIVE يقرأ بيانات التشغيل','LIVE reads GHS_DATA'),function(){
+    return withBhSrc('LIVE',function(){
+      var d=bhData();
+      return {ok:d.src==='LIVE'&&d.monthlyBudgets===D.monthlyBudgets&&d.types===D.types,
+              detail:'source LIVE · '+d.monthlyBudgets.length+' budget rows · '+d.types.length+' types (GHS_DATA)'};
+    });
+  });
+  TT('B · '+bhT('FIXTURE يعرض 2099-2100 وسبتمبر والنوع التجريبي','FIXTURE shows 2099-2100, September, test type'),function(){
+    return withBhSrc('FIXTURE',function(){
+      var d=bhData(), ms=bhMonths(FY);
+      var sep=ms.filter(function(m){return m.pm===9;})[0];
+      return {ok:d.src==='FIXTURE'&&d.fyears[0].label==='2099-2100'&&d.fyears[0].id===FY&&
+                 !!sep&&sep.types.some(function(b){return b.t===TY;}),
+              detail:'FY '+d.fyears[0].label+' · months '+ms.length+' · September present: '+(!!sep)+
+                     ' · type '+d.types[0].id};
+    });
+  });
+  TT('C · '+bhT('موازنة سبتمبر من الـfixture لا من التشغيل','September budget comes from the fixture'),function(){
+    var fx=withBhSrc('FIXTURE',function(){ var m=bhMonths(FY).filter(function(x){return x.pm===9;})[0];
+      return m?m.total:0; });
+    var lv=withBhSrc('LIVE',function(){ var f=bhData().fyears[0].id;
+      var m=bhMonths(f).filter(function(x){return x.pm===9;})[0]; return m?m.total:0; });
+    return {ok:fx===500000&&fx!==lv,
+            detail:'FIXTURE September '+fx.toFixed(2)+' · LIVE September '+lv.toFixed(2)};
+  });
+  TT('D · '+bhT('أصناف الـfixture لا أصناف التشغيل','Fixture items, not the 653 LIVE items'),function(){
+    var f=withBhSrc('FIXTURE',function(){ return bhItems(TY); });
+    var l=withBhSrc('LIVE',function(){ return bhItems(bhData().types[0].id); });
+    return {ok:f.length===12&&f.every(function(x){return x.t===TY;})&&l.length!==f.length,
+            detail:'FIXTURE '+f.length+' items · LIVE first type '+l.length+' items'};
+  });
+  TT('E · '+bhT('التبديل بين المصدرين لا يخلط البيانات','Switching sources never mixes data'),function(){
+    var a=withBhSrc('LIVE',function(){ return {n:bhData().monthlyBudgets.length,f:bhData().fyears.map(function(x){return x.id;})}; });
+    var b=withBhSrc('FIXTURE',function(){ return {n:bhData().monthlyBudgets.length,f:bhData().fyears.map(function(x){return x.id;})}; });
+    var c=withBhSrc('LIVE',function(){ return {n:bhData().monthlyBudgets.length,f:bhData().fyears.map(function(x){return x.id;})}; });
+    var overlap=a.f.filter(function(x){return b.f.indexOf(x)>-1;});
+    return {ok:a.n===c.n&&JSON.stringify(a.f)===JSON.stringify(c.f)&&overlap.length===0,
+            detail:'LIVE '+a.n+' -> FIXTURE '+b.n+' -> LIVE '+c.n+' · FY overlap '+overlap.length};
+  });
+  TT('F · '+bhT('حفظ سعر شهري في الـfixture','Monthly price saved in the fixture'),function(){
+    var F=store(FX), M=newMop();
+    var r=save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var res=rp(M,'FIXTURE',FY,1,it);
+    return {ok:r.ok&&r.changed===1&&res.price===205&&res.origin==='MONTHLY',
+            detail:'DM001 -> '+res.price+' · source label "'+(res.origin==='MONTHLY'?'Monthly price':'Master')+'"'};
+  });
+  TT('G · '+bhT('سعر سبتمبر لا يظهر في أكتوبر','September price does not appear in October'),function(){
+    var F=store(FX), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var o=rp(M,'FIXTURE',FY,2,it);
+    return {ok:o.price===it.p&&o.origin==='MASTER',detail:'October '+o.price+' ('+o.origin+')'};
+  });
+  TT('H · '+bhT('سعر DEMO_FY لا يظهر في سنة أخرى','DEMO_FY price does not leak to another FY'),function(){
+    var F=store(FX), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var it=F.items.filter(function(x){return x.i==='DM001';})[0];
+    var o=rp(M,'FIXTURE','FY_OTHER',1,it);
+    return {ok:o.price===it.p&&o.origin==='MASTER',detail:'FY_OTHER '+o.price+' ('+o.origin+')'};
+  });
+  TT('I · '+bhT('التوزيع يستخدم السعر الشهري 205','Distribution uses the 205 monthly price'),function(){
+    var F=store(FX), M=newMop();
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var run=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,201,'RUN000101');
+    var l=run.lines.filter(function(x){return x.itemId==='DM001';})[0];
+    var snap=(run.run.masterSnapshot.filter(function(s){return s.itemCode==='DM001';})[0]||{});
+    return {ok:!!l&&l.unitPriceSnapshotInclVat===205&&snap.priceOrigin==='MONTHLY',
+            detail:'DM001 unit price in run '+(l?l.unitPriceSnapshotInclVat:'—')+' · origin '+snap.priceOrigin};
+  });
+  TT('J · '+bhT('العملية القديمة لا تتغير','Older run stays unchanged'),function(){
+    var F=store(FX), M=newMop();
+    var old=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,202,'RUN000102');
+    var snap=JSON.stringify({r:old.run,l:old.lines,g:old.grp});
+    save(M,F,'FIXTURE',FY,1,TY,{DM001:'205.00'});
+    var fresh=gen(M,F,'FIXTURE',FY,TY,1,fxBudget(1),5,202,'RUN000103');
+    var lo=old.lines.filter(function(x){return x.itemId==='DM001';})[0];
+    var ln=fresh.lines.filter(function(x){return x.itemId==='DM001';})[0];
+    return {ok:JSON.stringify({r:old.run,l:old.lines,g:old.grp})===snap&&
+               (!lo||lo.unitPriceSnapshotInclVat===193.8)&&(!ln||ln.unitPriceSnapshotInclVat===205),
+            detail:'old run '+(lo?lo.unitPriceSnapshotInclVat:'—')+' (byte-identical) · new run '+(ln?ln.unitPriceSnapshotInclVat:'—')};
+  });
+  TT('L · '+bhT('المحرك سليم بلا تجميع فواتير','Engine intact, no grouping inside it'),function(){
+    return {ok:ENG.ALGORITHM_VERSION==='DE-1.2.1'&&typeof ENG.groupInvoices==='undefined',
+            detail:'engine '+ENG.ALGORITHM_VERSION+' · groupInvoices undefined · no quantity splitting'};
+  });
+
   return R;
 }
 function bhRenderTests(R){
