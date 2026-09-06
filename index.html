@@ -1185,10 +1185,11 @@ function engineInput(seed,runId){
     targetInclVat: b?Number(b.inc)||0:0,
     invoiceCount: (function(){ var v=document.getElementById('dgInv').value.trim();
                                return /^\d+$/.test(v)?parseInt(v,10):null; })(),
-    items: MASTER().items.map(function(x){ return {
+    /* MASTER dataset resolved by the DISTRIBUTION source (dSrc), never by miSrc */
+    items: masterFor(dSrc).items.map(function(x){ return {
         id:x.i, typeId:x.t, name:x.n, level:'ITEM', active:x.a===true,
         price:x.p, priceStatus:x.s, weight:1 }; }),
-    limits: MASTER().limits.map(function(l){ return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax}; }),
+    limits: masterFor(dSrc).limits.map(function(l){ return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax}; }),
     approvedRuns: RUNS.filter(function(r){return r.status==='APPROVED';})
                       .map(function(r){return {id:r.runId,fy:r.fyId,typeId:r.typeId,periodIndex:r.periodIndex,status:r.status};}),
     approvedLines: LINES.map(function(l){return {runId:l.runId,itemId:l.itemId,quantity:l.quantity};}),
@@ -1291,8 +1292,13 @@ function renderRuns(){
    Runtime memory only — see the persistence note in the UI.
    ========================================================================== */
 var MASTER_STORE={}, MI_HIST=[], miSrc='LIVE', miType=null, miFy=null;
-function MASTER(){
-  var key=miSrcActive();
+/* Resolve a master store by an EXPLICIT source key.
+   Each caller states which source it means:
+     · the Master screen  -> MASTER()      follows miSrc
+     · the Distribution   -> masterFor(dSrc) follows the distribution selector
+   The two selectors stay independent and the two stores stay isolated. */
+function masterFor(key){
+  key=(key==='FIXTURE')?'FIXTURE':'LIVE';
   if(!MASTER_STORE[key]){
     var base=(key==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
     MASTER_STORE[key]={
@@ -1304,6 +1310,7 @@ function MASTER(){
   }
   return MASTER_STORE[key];
 }
+function MASTER(){ return masterFor(miSrcActive()); }
 /* Master's data source is INDEPENDENT of the distribution page source (dSrc).
    MASTER_STORE.LIVE and MASTER_STORE.FIXTURE are separate deep clones and are
    never merged; editing one can never touch the other. */
@@ -1742,6 +1749,55 @@ function miRunSuite(){
             detail:'DM001 5/50 · DM002 '+b.mmin+'/'+b.mmax};
   });
 
+
+  /* ------------- Distribution source routing (regression) ------------- */
+  T(miT('توجيه المصدر — dSrc=LIVE و miSrc=FIXTURE','Routing — dSrc=LIVE, miSrc=FIXTURE'),function(){
+    var keep=miSrc; miSrc='FIXTURE';
+    var m=masterFor('LIVE');
+    miSrc=keep;
+    return {ok:m.items.length===D.items.length&&m.items.length>0,
+            detail:'masterFor(LIVE) -> '+m.items.length+' items (LIVE catalogue) while miSrc was FIXTURE'};
+  });
+  T(miT('توجيه المصدر — dSrc=FIXTURE و miSrc=LIVE','Routing — dSrc=FIXTURE, miSrc=LIVE'),function(){
+    var keep=miSrc; miSrc='LIVE';
+    var m=masterFor('FIXTURE');
+    miSrc=keep;
+    return {ok:hasFx&&m.items.length===FX.items.length&&m.items.length>0,
+            detail:'masterFor(FIXTURE) -> '+m.items.length+' items (fixture catalogue) while miSrc was LIVE'};
+  });
+  T(miT('نتيجة التوجيه لا تعتمد على miSrc','Routing result is independent of miSrc'),function(){
+    var keep=miSrc;
+    miSrc='LIVE';    var a=masterFor('FIXTURE').items.length, c=masterFor('LIVE').items.length;
+    miSrc='FIXTURE'; var b=masterFor('FIXTURE').items.length, d2=masterFor('LIVE').items.length;
+    miSrc=keep;
+    return {ok:a===b&&c===d2,
+            detail:'FIXTURE '+a+'='+b+' · LIVE '+c+'='+d2+' regardless of miSrc'};
+  });
+  T(miT('اختبار دخان FIXTURE — 8 مؤهلين و295,288.50','FIXTURE smoke — 8 eligible, 295,288.50'),function(){
+    if(!hasFx) return {ok:false,detail:'fixture missing'};
+    var keep=miSrc; miSrc='LIVE';               /* the exact regression condition */
+    var M=masterFor('FIXTURE');
+    var items=M.items.map(function(x){ return {id:x.i,typeId:x.t,name:x.n,level:'ITEM',
+      active:x.a===true,price:x.p,priceStatus:x.s,weight:1}; });
+    var o=ENG.generate({fyId:FY,typeId:TY,periodIndex:1,targetInclVat:500000,invoiceCount:5,
+      items:items,limits:M.limits.map(function(l){return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax};}),
+      approvedRuns:[],approvedLines:[],settings:{},seed:1,runId:'ROUTE'});
+    miSrc=keep;
+    return {ok:M.items.length===12&&o.diagnostics.eligibleCount===8&&o.lines.length===8&&
+               o.run.distributedInclVat===295288.5&&o.run.status==='GENERATED',
+            detail:'items '+M.items.length+' · eligible '+o.diagnostics.eligibleCount+
+                   ' · selected '+o.lines.length+' · distributed '+o.run.distributedInclVat.toFixed(2)+
+                   ' · '+o.run.distributionStatus+'/'+o.run.status};
+  });
+  T(miT('تغيير miSrc لا يغيّر مصدر التوزيع','Changing miSrc does not change the distribution source'),function(){
+    var keep=miSrc;
+    var before=masterFor('FIXTURE').items.length;
+    miSrc='LIVE';    var a=masterFor('FIXTURE').items.length;
+    miSrc='FIXTURE'; var b=masterFor('FIXTURE').items.length;
+    miSrc=keep;
+    return {ok:before===a&&a===b,detail:'fixture master stays '+before+' items under every miSrc value'};
+  });
+
   return R;
 }
 function miRenderTests(R){
@@ -2101,8 +2157,8 @@ function doGenerate(isRegen){
   /* SNAPSHOT — the master values actually used, frozen with the run.
      A later master edit can never alter what this run recorded. */
   out.run.masterSnapshot=out.lines.map(function(l){
-    var m=MASTER().items.filter(function(x){return x.i===l.itemId;})[0]||{};
-    var lim=MASTER().limits.filter(function(x){return x.item===l.itemId&&x.fy===dFy;})[0]||{};
+    var m=masterFor(dSrc).items.filter(function(x){return x.i===l.itemId;})[0]||{};
+    var lim=masterFor(dSrc).limits.filter(function(x){return x.item===l.itemId&&x.fy===dFy;})[0]||{};
     return {itemCode:l.itemId,itemName:l.itemName,itemType:m.t||null,
             unitPriceInclVat:l.unitPriceSnapshotInclVat,
             monthlyMinQty:(lim.mmin===undefined?null:lim.mmin),
