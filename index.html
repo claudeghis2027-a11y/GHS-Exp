@@ -758,7 +758,7 @@ function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){retur
 function bdi(x){ return '<bdi>'+esc(x)+'</bdi>'; }
 
 /* ---- FY calendar ordering: period_index 1..N mapped to its stored period_month ---- */
-function fyOf(id){ return D.fyears.filter(function(f){return f.id===id;})[0]; }
+function fyOf(id){ return RSRC().fyears.filter(function(f){return f.id===id;})[0]; }
 function calYear(fyId,pm){
   var f=fyOf(fyId); if(!f) return '';
   var sy=parseInt(f.start.slice(0,4),10), sm=parseInt(f.start.slice(5,7),10);
@@ -782,6 +782,32 @@ function reportCtx(){
 /* STRICT SOURCE ISOLATION — a report never aggregates across sources.
      LIVE    report = persisted D.runs/D.lines  +  runtime runs tagged LIVE
      FIXTURE report = runtime runs tagged FIXTURE ONLY (persisted data excluded) */
+/* Single source-aware resolver for every Reports lookup.
+   Follows the SAME active source as the executed calculation (dSrc via
+   GHS_RUNTIME). LIVE and FIXTURE catalogues are never merged. */
+function RSRC(){
+  var src=reportCtx().src;
+  if(src==='FIXTURE'&&window.GHS_FIXTURE){
+    var f=window.GHS_FIXTURE;
+    return {src:'FIXTURE',types:f.types,fyears:f.fyears,
+            monthlyBudgets:f.monthlyBudgets,annualBudgets:(f.annualBudgets||[])};
+  }
+  return {src:'LIVE',types:D.types,fyears:D.fyears,
+          monthlyBudgets:D.monthlyBudgets,annualBudgets:D.annualBudgets};
+}
+var brLastSrc=null;
+/* Reset the selection whenever the active source changes so a value belonging
+   to the previous source can never remain selected. */
+function brSyncSource(){
+  var cur=RSRC();
+  if(brLastSrc===cur.src) return false;
+  brLastSrc=cur.src;
+  brType=(cur.types[0]||{}).id;
+  brFy=(cur.fyears[0]||{}).id;
+  brSel={};
+  periodsOf(brFy,brType).forEach(function(b){ brSel[b.pi]=true; });
+  return true;
+}
 function approvedRunsFor(fyId,typeId,periodIndex,ctx){
   ctx=ctx||reportCtx();
   var out=[];
@@ -824,7 +850,7 @@ var brType=null, brFy=null, brSel={};
 var brSourceText='Month|Budget Amount|Distributed Amount|Remaining|Execution %|Note|Selected Period Total|Full Financial Year Total|Annual Budget|Total Distributed|Annual Remaining|Execution %|Expense Type|Financial Year|Months|Select all|Clear';
 
 function periodsOf(fyId,typeId){
-  return D.monthlyBudgets.filter(function(b){return b.fy===fyId&&b.t===typeId;})
+  return RSRC().monthlyBudgets.filter(function(b){return b.fy===fyId&&b.t===typeId;})
           .slice().sort(function(a,b){return a.pi-b.pi;});
 }
 function initSelections(){
@@ -832,10 +858,13 @@ function initSelections(){
 }
 function renderFilters(){
   var ts=document.getElementById('brType');
-  ts.innerHTML=D.types.map(function(t){return '<option value="'+t.id+'">'+esc(t.n)+'</option>';}).join('');
+  var RS=RSRC();
+  ts.innerHTML=RS.types.map(function(t){return '<option value="'+t.id+'">'+esc(t.n)+'</option>';}).join('');
+  if(!RS.types.some(function(t){return t.id===brType;})) brType=(RS.types[0]||{}).id;
   ts.value=brType;
   var fs=document.getElementById('brFy');
-  fs.innerHTML=D.fyears.map(function(f){return '<option value="'+f.id+'">'+esc(f.label)+'</option>';}).join('');
+  fs.innerHTML=RS.fyears.map(function(f){return '<option value="'+f.id+'">'+esc(f.label)+'</option>';}).join('');
+  if(!RS.fyears.some(function(f){return f.id===brFy;})) brFy=(RS.fyears[0]||{}).id;
   fs.value=brFy;
   document.getElementById('brLType').textContent=T('نوع المصروف','Expense Type');
   document.getElementById('brLFy').textContent=T('السنة المالية','Financial Year');
@@ -912,7 +941,7 @@ function renderReport(){
     card(T('عدد الشهور المحددة','Selected Months'),String(selRows.length));
 
   /* annual cards — always the FULL financial year, independent of selection */
-  var ann=D.annualBudgets.filter(function(a){return a.fy===brFy&&a.t===brType;})[0];
+  var ann=RSRC().annualBudgets.filter(function(a){return a.fy===brFy&&a.t===brType;})[0];
   var annB = ann ? (Number(ann.inc)||0) : rows.reduce(function(s,b){return s+(Number(b.inc)||0);},0);
   var annD = rows.reduce(function(s,b){return s+distributedFor(brFy,brType,b.pi);},0);
   annB=Math.round(annB*100)/100; annD=Math.round(annD*100)/100;
@@ -933,7 +962,7 @@ function renderReport(){
     : T('التقرير للقراءة فقط. «المنفَّذ» يُحسب من التوزيعات المعتمدة فقط ولا يعدّل أي بيان.',
         'Read-only report. Executed is computed from approved distribution runs only and nothing is modified.');
 }
-function refreshAll(){ renderFilters(); renderMonths(); renderReport(); }
+function refreshAll(){ brSyncSource(); renderFilters(); renderMonths(); renderReport(); }
 
 /* ============================================================================
    REPORT TEST HARNESS — runs the report's own arithmetic on throwaway data.
@@ -963,7 +992,7 @@ function brRunSuite(){
   T2(T('إجمالي السنة المالية','Annual total'),function(){
     var rows=periodsOf(brFy,brType);
     var B=0; rows.forEach(function(b){ B=R2(B+(Number(b.inc)||0)); });
-    var ann=D.annualBudgets.filter(function(a){return a.fy===brFy&&a.t===brType;})[0];
+    var ann=RSRC().annualBudgets.filter(function(a){return a.fy===brFy&&a.t===brType;})[0];
     return {ok:rows.length>0&&B>0,
             detail:rows.length+' months · Σmonthly '+B.toFixed(2)+
                    ' · annual record '+(ann?Number(ann.inc).toFixed(2):'none')};
@@ -1073,6 +1102,110 @@ function brRunSuite(){
     periodsOf(brFy,brType).forEach(function(b){ distributedFor(brFy,brType,b.pi); });
     return {ok:JSON.stringify(D.items)===snap,detail:'GHS_DATA.items byte-identical'};
   });
+
+  /* ---------- source-aware filter lists (A – I) ---------- */
+  function withSrc(src,fn){
+    var RT=window.GHS_RUNTIME, keep=RT?RT.getSource:null;
+    if(RT) RT.getSource=function(){ return src; };
+    else window.GHS_RUNTIME={getRuns:function(){return[];},getLines:function(){return[];},
+                             getSource:function(){return src;}};
+    try{ return fn(); } finally { if(keep) window.GHS_RUNTIME.getSource=keep;
+      else if(!RT) delete window.GHS_RUNTIME; }
+  }
+  T2('A · '+T('قوائم LIVE لا تحوي السنة التجريبية','LIVE lists exclude the test year'),function(){
+    return withSrc('LIVE',function(){
+      var RS=RSRC(), ids=RS.fyears.map(function(f){return f.id;}),
+          labs=RS.fyears.map(function(f){return f.label;});
+      return {ok:RS.src==='LIVE'&&labs.indexOf('2099-2100')===-1&&ids.indexOf('DEMO_FY')===-1&&ids.length>0,
+              detail:'LIVE fyears: '+labs.join(', ')+' · 2099-2100 present: no'};
+    });
+  });
+  T2('B · '+T('قوائم FIXTURE تحوي 2099-2100 فقط','FIXTURE lists contain only 2099-2100'),function(){
+    return withSrc('FIXTURE',function(){
+      var RS=RSRC(), labs=RS.fyears.map(function(f){return f.label;});
+      return {ok:RS.src==='FIXTURE'&&labs.indexOf('2099-2100')>-1&&
+                 labs.indexOf('2025-2026')===-1&&labs.indexOf('2026-2027')===-1,
+              detail:'FIXTURE fyears: '+labs.join(', ')+' · LIVE years present: no'};
+    });
+  });
+  T2('C · '+T('نوع المصروف التجريبي يظهر في FIXTURE','FIXTURE type list shows the test type'),function(){
+    return withSrc('FIXTURE',function(){
+      var RS=RSRC(), ids=RS.types.map(function(t){return t.id;}),
+          names=RS.types.map(function(t){return t.n;});
+      return {ok:ids.indexOf('DEMO_T')>-1&&ids.indexOf('ET009')===-1&&ids.indexOf('ET008')===-1,
+              detail:'FIXTURE types: '+names.join(', ')+' · LIVE types present: no'};
+    });
+  });
+  T2('D · '+T('سبتمبر وموازنة 500,000 متاحان','September and the 500,000 budget are available'),function(){
+    return withSrc('FIXTURE',function(){
+      var rows=periodsOf('DEMO_FY','DEMO_T'), sep=rows.filter(function(b){return b.pm===9;})[0];
+      return {ok:!!sep&&Number(sep.inc)===500000&&rows.length>0,
+              detail:'periods '+rows.length+' · September period '+(sep?sep.pi:'—')+
+                     ' · budget '+(sep?Number(sep.inc).toFixed(2):'—')};
+    });
+  });
+  T2('E · '+T('لا خلط بين قوائم المصدرين','No mixed options between sources'),function(){
+    var live=withSrc('LIVE',function(){ return RSRC(); });
+    var fix =withSrc('FIXTURE',function(){ return RSRC(); });
+    var lf=live.fyears.map(function(f){return f.id;}), ff=fix.fyears.map(function(f){return f.id;});
+    var lt=live.types.map(function(t){return t.id;}),  ft=fix.types.map(function(t){return t.id;});
+    var overlapF=lf.filter(function(x){return ff.indexOf(x)>-1;});
+    var overlapT=lt.filter(function(x){return ft.indexOf(x)>-1;});
+    var mbMix=fix.monthlyBudgets.some(function(b){return b.fy==='FY001'||b.fy==='FY002';});
+    return {ok:overlapF.length===0&&overlapT.length===0&&!mbMix,
+            detail:'fy overlap '+overlapF.length+' · type overlap '+overlapT.length+
+                   ' · fixture budgets contain LIVE FY: no'};
+  });
+  T2('F · '+T('التبديل LIVE ← FIXTURE يعيد الضبط','Switch LIVE -> FIXTURE resets the selection'),function(){
+    var kT=brType,kF=brFy,kS=brSel,kL=brLastSrc;
+    var r=withSrc('LIVE',function(){ brLastSrc=null; brSyncSource();
+      var a={t:brType,f:brFy};
+      return withSrc('FIXTURE',function(){ brSyncSource();
+        var months=Object.keys(brSel).length;
+        return {live:a,fix:{t:brType,f:brFy,m:months}}; });
+    });
+    var ok=r.fix.f==='DEMO_FY'&&r.fix.t==='DEMO_T'&&r.fix.m>0&&r.live.f!==r.fix.f;
+    brType=kT;brFy=kF;brSel=kS;brLastSrc=kL;
+    return {ok:ok,detail:'LIVE '+r.live.t+'/'+r.live.f+'  ->  FIXTURE '+r.fix.t+'/'+r.fix.f+
+                         ' · months preselected '+r.fix.m};
+  });
+  T2('G · '+T('التبديل FIXTURE ← LIVE لا يترك قيمة قديمة','Switch FIXTURE -> LIVE leaves no stale value'),function(){
+    var kT=brType,kF=brFy,kS=brSel,kL=brLastSrc;
+    var r=withSrc('FIXTURE',function(){ brLastSrc=null; brSyncSource();
+      return withSrc('LIVE',function(){ brSyncSource();
+        return {t:brType,f:brFy,m:Object.keys(brSel).length}; });
+    });
+    var liveIds=D.fyears.map(function(f){return f.id;});
+    var ok=r.f!=='DEMO_FY'&&r.t!=='DEMO_T'&&liveIds.indexOf(r.f)>-1;
+    brType=kT;brFy=kF;brSel=kS;brLastSrc=kL;
+    return {ok:ok,detail:'after switch: '+r.t+'/'+r.f+' · DEMO_* remaining: no'};
+  });
+  T2('H · '+T('حساب FIXTURE المعتمد','Approved FIXTURE run figures'),function(){
+    var runs=[{runId:'RUN000001',fyId:'DEMO_FY',typeId:'DEMO_T',periodIndex:1,
+               status:APPROVED_RUN_STATUS,approvalStatus:APPROVED_RUN_STATUS,dataSource:'FIXTURE'}];
+    var lines=[{runId:'RUN000001',lineTotalInclVat:295288.50}];
+    var ctx={src:'FIXTURE',runs:runs,lines:lines};
+    var exec=distributedFor('DEMO_FY','DEMO_T',1,ctx);
+    var bud=withSrc('FIXTURE',function(){
+      var r=periodsOf('DEMO_FY','DEMO_T').filter(function(b){return b.pi===1;})[0];
+      return r?Number(r.inc):0; });
+    var remv=R2(bud-exec), pc=bud>0?R2(exec/bud*100):null;
+    return {ok:bud===500000&&exec===295288.5&&remv===204711.5&&pc===59.06,
+            detail:'budget '+bud.toFixed(2)+' · executed '+exec.toFixed(2)+
+                   ' · remaining '+remv.toFixed(2)+' · '+pc+'%'};
+  });
+  T2('I · '+T('FIXTURE بلا عمليات لا يعرض بيانات التشغيل','Empty FIXTURE runtime does not fall back to LIVE'),function(){
+    var ctx={src:'FIXTURE',runs:[],lines:[]};
+    var exec=distributedFor('DEMO_FY','DEMO_T',1,ctx);
+    var cnt=approvedRunCount(ctx);
+    var persisted=(D.runs||[]).filter(function(r){return r.status===APPROVED_RUN_STATUS;}).length;
+    var fixLists=withSrc('FIXTURE',function(){ return RSRC(); });
+    var noLive=fixLists.fyears.every(function(f){return f.id!=='FY001'&&f.id!=='FY002';});
+    return {ok:exec===0&&cnt===0&&noLive,
+            detail:'executed 0.00 · count 0 · persisted LIVE approved runs '+persisted+
+                   ' ignored · no LIVE FY offered'};
+  });
+
   return R;
 }
 function brRenderSourceText(){ return brSourceText; }
@@ -1096,7 +1229,10 @@ document.getElementById('brTNote').textContent=T(
  ['brT1','#','#'],['brT2','الاختبار','Test'],['brT3','النتيجة','Result'],['brT4','التفصيل','Detail']
 ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=T(x[1],x[2]); });
 
-brType=(D.types[0]||{}).id; brFy=(D.fyears[0]||{}).id; initSelections();
+brLastSrc=RSRC().src;
+brType=(RSRC().types[0]||{}).id; brFy=(RSRC().fyears[0]||{}).id; initSelections();
+Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
+  if(b.dataset.page==='budgetreport') b.addEventListener('click',function(){ refreshAll(); }); });
 document.getElementById('brType').onchange=function(e){ brType=e.target.value; initSelections(); renderMonths(); renderReport(); };
 document.getElementById('brFy').onchange=function(e){ brFy=e.target.value; initSelections(); renderMonths(); renderReport(); };
 document.getElementById('brAll').onclick=function(){ periodsOf(brFy,brType).forEach(function(b){brSel[b.pi]=true;}); renderMonths(); renderReport(); };
