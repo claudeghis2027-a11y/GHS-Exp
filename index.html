@@ -87,6 +87,16 @@ tr.over-row td{background:#fef2f2}
 .rs-sub{font-weight:400;font-size:13px;margin-top:6px;opacity:.9}
 .excl-tbl td{font-size:13px}
 .invrow>td{background:#f8fafc;padding:0}
+
+/* ===== Master Items & Prices ===== */
+.mi-in{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;width:100%;box-sizing:border-box;max-width:120px}
+.mi-in:focus{outline:0;border-color:var(--accent)}
+.mi-in.err{border-color:var(--danger);background:#fef2f2}
+.mi-in[readonly]{background:#f8fafc;color:var(--muted)}
+.mi-note{padding:11px 13px;background:#eff6ff;border-inline-start:4px solid var(--accent);border-radius:8px;color:#1e40af;font-size:13px;margin-bottom:14px}
+.mi-warn{padding:11px 13px;background:#fffbeb;border-inline-start:4px solid var(--warn);border-radius:8px;color:#92400e;font-size:13px;margin-bottom:14px}
+.mi-ok{padding:11px 13px;background:#dcfce7;border-inline-start:4px solid var(--accent2);border-radius:8px;color:#166534;font-size:13px;margin-bottom:14px}
+.mi-when{font-size:12px;color:var(--muted);white-space:nowrap}
 .chk{list-style:none;padding:0;margin:0 0 14px}
 .chk li{padding:7px 0;font-size:13px;border-bottom:1px solid #eef2f7;display:flex;gap:9px;align-items:flex-start}
 .chk li:last-child{border-bottom:0}
@@ -113,7 +123,7 @@ tr.over-row td{background:#fef2f2}
 <body>
 <div class="app">
 <aside class="side"><div class="brand">Expense Management<small>V1 — Prototype</small></div><div class="nav">
-<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="distribution">🎲 التوزيع</button><button data-page="invoices">🧾 الفواتير</button><button data-page="itemreview">📋 مراجعة الأصناف</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="distgen">🎲 توليد التوزيع</button><button data-page="items">📦 البنود</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
+<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="distribution">🎲 التوزيع</button><button data-page="invoices">🧾 الفواتير</button><button data-page="itemreview">📋 مراجعة الأصناف</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="distgen">🎲 توليد التوزيع</button><button data-page="master">📦 إدارة البنود والأسعار</button><button data-page="items">📦 البنود</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
 <main class="main">
 <div class="top"><div class="title"><h1 id="pageTitle">لوحة التحكم</h1><p id="pageDesc">متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.</p></div><div class="filters"><select class="field" id="year"><option>2026/2027</option></select><select class="field" id="month"></select><div class="langsw" id="langsw"><button data-lang="ar" class="active">العربية</button><button data-lang="en">English</button></div></div></div>
 <section id="dashboard" class="page">
@@ -314,6 +324,77 @@ tr.over-row td{background:#fef2f2}
     </table></div>
   </div>
 </section>
+<section id="master" class="page hidden">
+  <div class="panel">
+    <div class="section-title"><h2 id="miTitle">إدارة البنود والأسعار</h2>
+      <span class="pill neutral" id="miPill"></span></div>
+    <div class="mi-note" id="miNote"></div>
+    <div id="miMsg"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="miLSrc">مصدر البيانات</label>
+        <select class="field" id="miSrc">
+          <option value="LIVE">بيانات التشغيل (v6)</option>
+          <option value="FIXTURE">بيانات اختبار وهمية</option>
+        </select></div>
+      <div class="rep-f"><label class="lbl" id="miLType">نوع المصروف</label>
+        <select class="field" id="miType"></select></div>
+      <div class="rep-f"><label class="lbl" id="miLFy">السنة المالية</label>
+        <select class="field" id="miFy"></select></div>
+      <div class="rep-f rowacts"><button class="btn green" id="miAdd">+ إضافة بند جديد</button></div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th id="miC1">كود الصنف</th><th id="miC2">اسم الصنف</th>
+        <th id="miC3">سعر الوحدة — شامل VAT</th><th id="miC4">الحد الأدنى الشهري</th>
+        <th id="miC5">الحد الأقصى الشهري</th><th id="miC5b">الحد الأقصى السنوي</th>
+        <th id="miC6">الحالة</th><th id="miC7">آخر تعديل</th><th id="miC8">الإجراء</th>
+      </tr></thead>
+      <tbody id="miRows"></tbody>
+    </table></div>
+  </div>
+  <div class="panel" id="miHistPanel">
+    <div class="section-title"><h2 id="miHistTitle">سجل تعديلات البنود</h2>
+      <span class="pill neutral" id="miHistPill"></span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th id="miH1">التاريخ</th><th id="miH2">الكود</th><th id="miH3">الصنف</th>
+        <th id="miH4">الحقل</th><th id="miH5">القيمة القديمة</th><th id="miH6">القيمة الجديدة</th></tr></thead>
+      <tbody id="miHist"></tbody>
+    </table></div>
+  </div>
+
+  <div class="panel" id="miTestPanel">
+    <div class="section-title"><h2 id="miTTitle">اختبارات إدارة البنود</h2>
+      <span class="pill neutral" id="miTPill">—</span></div>
+    <div class="mi-warn" id="miTNote"></div>
+    <div class="rowacts" style="margin-bottom:14px">
+      <button class="btn" id="miRunTests">تشغيل الاختبارات</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th id="miT1">#</th><th id="miT2">الاختبار</th><th id="miT3">النتيجة</th><th id="miT4">التفصيل</th></tr></thead>
+      <tbody id="miTRows"></tbody>
+    </table></div>
+  </div>
+
+  <div class="modal hidden" id="miModal"><div class="modalbox" style="max-width:600px">
+    <button class="close" id="miMClose">إغلاق</button>
+    <h2 id="miMTitle" style="margin:0 0 16px">إضافة بند جديد</h2>
+    <div class="frm">
+      <div><label class="lbl" id="miFType">نوع المصروف</label><input class="inp" id="nType" readonly></div>
+      <div><label class="lbl" id="miFCode">كود الصنف</label><input class="inp" id="nCode"></div>
+      <div class="full"><label class="lbl" id="miFName">اسم الصنف</label><input class="inp" id="nName"></div>
+      <div><label class="lbl" id="miFPrice">سعر الوحدة — شامل VAT</label><input class="inp" id="nPrice" inputmode="decimal"></div>
+      <div><label class="lbl" id="miFStatus">الحالة</label>
+        <select class="inp" id="nActive"><option value="1">ACTIVE</option><option value="0">INACTIVE</option></select></div>
+      <div><label class="lbl" id="miFMin">الحد الأدنى الشهري</label><input class="inp" id="nMin" inputmode="numeric"></div>
+      <div><label class="lbl" id="miFMax">الحد الأقصى الشهري</label><input class="inp" id="nMax" inputmode="numeric"></div>
+      <div class="full"><div class="errmsg" id="nErr"></div></div>
+    </div>
+    <div class="rowacts" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn secondary" id="nCancel">إلغاء</button>
+      <button class="btn" id="nSave">حفظ البند</button>
+    </div>
+  </div></div>
+</section>
 <section id="items" class="page hidden"><div class="panel"><div class="section-title"><h2>البنود</h2><select class="field" id="typeSelect"></select></div><div class="table-wrap"><table><thead><tr><th>البند</th><th>سعر الوحدة</th><th>Max سنوي</th><th>Weight</th><th>الحالة</th></tr></thead><tbody id="itemRows"></tbody></table></div></div></section>
 <section id="settings" class="page hidden"><div class="panel"><h2>إعدادات النظام</h2><div class="cards"><div class="card"><b>VAT</b><div class="metric value">14%</div></div><div class="card"><b>Annual Max</b><div class="metric value">مفعل</div></div><div class="card"><b>Monthly Max</b><div class="metric value">قابل للتفعيل</div></div><div class="card"><b>Invoice Count</b><div class="metric value">لكل شهر</div></div></div><div class="notice">هذه صفحة إعدادات أولية. أي تغيير حقيقي سيُربط لاحقًا بقاعدة بيانات Google Sheets وApps Script.</div></div></section>
 </main></div>
@@ -349,7 +430,7 @@ function closeModal(){document.getElementById('modal').classList.add('hidden')}
 function saveBudget(){alert('V1: تم حفظ التعديل محليًا للواجهة فقط. في النسخة المتصلة سيتم الحفظ في Google Sheets.')}
 function generateDemo(){const total=types.reduce((s,t)=>s+t[3][currentMonth],0);const inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];let left=total;let vals=[];for(let i=0;i<inv-1;i++){let min=total*0.12,max=Math.min(total*0.32,left-(inv-i-1)*min);let v=Math.round((min+Math.random()*(max-min))/50)*50;vals.push(v);left-=v}vals.push(left);document.getElementById('distResult').innerHTML=`<h3>${months[currentMonth]} — توزيع تجريبي</h3><p>Target: <b>${fmt(total)}</b> — عدد الفواتير: <b>${inv}</b></p><div class="table-wrap"><table><thead><tr><th>الفاتورة</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${vals.map((v,i)=>`<tr><td>INV-${String(i+1).padStart(3,'0')}</td><td>${fmt(v)}</td><td><span class="pill ok">Valid</span></td></tr>`).join('')}</tbody><tfoot><tr><th>الإجمالي</th><th>${fmt(vals.reduce((a,b)=>a+b,0))}</th><th><span class="pill ok">مطابق</span></th></tr></tfoot></table></div>`}
 function showInvoiceDemo(){const t=types[3],budget=t[3][currentMonth],inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];document.getElementById('invoiceResult').innerHTML=`<div class="notice">هذه قائمة فواتير تجريبية لنوع <b>منظفات</b>. بعد اعتماد الـDistribution ستُنشأ الفواتير تلقائيًا.</div><table><thead><tr><th>رقم الفاتورة</th><th>نوع المصروف</th><th>الشهر</th><th>الإجمالي</th><th>التفاصيل</th></tr></thead><tbody>${Array.from({length:inv},(_,i)=>{let v=Math.round((budget/inv*(.75+Math.random()*.5))/50)*50;return `<tr><td>CLN-${currentMonth+1}-${String(i+1).padStart(3,'0')}</td><td>منظفات</td><td>${months[currentMonth]}</td><td>${fmt(v)}</td><td><button class="btn secondary" onclick="openType('منظفات')">فتح</button></td></tr>`}).join('')}</tbody></table>`}
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],distgen:['توليد التوزيع','توليد توزيع الموازنة الشهرية على الأصناف المؤهلة.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],distgen:['توليد التوزيع','توليد توزيع الموازنة الشهرية على الأصناف المؤهلة.'],master:['إدارة البنود والأسعار','تعديل أسعار البنود وحدودها الكمية — يسري على عمليات التوزيع المستقبلية فقط.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
 renderAll();
 
 /* ============ Prototype Item Management — SANDBOX (in-memory only) ============
@@ -889,10 +970,10 @@ function engineInput(seed,runId){
     targetInclVat: b?Number(b.inc)||0:0,
     invoiceCount: (function(){ var v=document.getElementById('dgInv').value.trim();
                                return /^\d+$/.test(v)?parseInt(v,10):null; })(),
-    items: SRC().items.map(function(x){ return {
+    items: MASTER().items.map(function(x){ return {
         id:x.i, typeId:x.t, name:x.n, level:'ITEM', active:x.a===true,
         price:x.p, priceStatus:x.s, weight:1 }; }),
-    limits: SRC().limits.map(function(l){ return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax}; }),
+    limits: MASTER().limits.map(function(l){ return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax}; }),
     approvedRuns: RUNS.filter(function(r){return r.status==='APPROVED';})
                       .map(function(r){return {id:r.runId,fy:r.fyId,typeId:r.typeId,periodIndex:r.periodIndex,status:r.status};}),
     approvedLines: LINES.map(function(l){return {runId:l.runId,itemId:l.itemId,quantity:l.quantity};}),
@@ -986,6 +1067,485 @@ function renderRuns(){
       '<td class="unconstrained">'+esc(String(r.generatedAt).replace('T',' ').slice(0,19))+'</td></tr>';
   }).join('');
 }
+
+/* ============================================================================
+   MASTER ITEMS & PRICES — runtime master data management.
+   Edits apply to FUTURE distribution runs only. Existing runs keep the values
+   frozen in run.masterSnapshot and in their own line snapshots, so no past run,
+   invoice or approval can ever be altered from here.
+   Runtime memory only — see the persistence note in the UI.
+   ========================================================================== */
+var MASTER_STORE={}, MI_HIST=[], miSrc='LIVE', miType=null, miFy=null;
+function MASTER(){
+  var key=miSrcActive();
+  if(!MASTER_STORE[key]){
+    var base=(key==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
+    MASTER_STORE[key]={
+      items:JSON.parse(JSON.stringify(base.items)),      /* deep clone — data.js untouched */
+      limits:JSON.parse(JSON.stringify(base.limits)),
+      types:base.types, fyears:base.fyears
+    };
+    MASTER_STORE[key].items.forEach(function(x){ x.mtime=null; });
+  }
+  return MASTER_STORE[key];
+}
+/* Master's data source is INDEPENDENT of the distribution page source (dSrc).
+   MASTER_STORE.LIVE and MASTER_STORE.FIXTURE are separate deep clones and are
+   never merged; editing one can never touch the other. */
+function miSrcActive(){ return miSrc; }
+function miT(ar,en){ return (document.documentElement.getAttribute('dir')==='ltr')?en:ar; }
+function miMoney(n){ if(n==null||isNaN(n)) return '—';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+
+    ((D.labels['currency.egp']||{}).ar||'ج.م'); }
+function miEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function miInt(v){ v=String(v).trim(); if(v==='') return null;
+  if(!/^\d+$/.test(v)) return undefined; return parseInt(v,10); }
+function miNow(){ var d=new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()+
+         ' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function miLimit(itemId){
+  var M=MASTER(), l=M.limits.filter(function(x){return x.item===itemId&&x.fy===miFy;})[0];
+  if(!l){ l={id:'ML'+(M.limits.length+1),fy:miFy,item:itemId,mmin:null,mmax:null,amax:null}; M.limits.push(l); }
+  return l;
+}
+function miLog(code,name,field,oldV,newV){
+  MI_HIST.unshift({when:miNow(),code:code,name:name,field:field,oldV:oldV,newV:newV});
+}
+function miMsg(kind,text){
+  document.getElementById('miMsg').innerHTML='<div class="mi-'+kind+'">'+miEsc(text)+'</div>';
+  setTimeout(function(){ var e=document.getElementById('miMsg'); if(e) e.innerHTML=''; },6000);
+}
+function miFillFilters(){
+  var M=MASTER();
+  var ss=document.getElementById('miSrc'); ss.value=miSrcActive();
+  var ts=document.getElementById('miType');
+  ts.innerHTML=M.types.map(function(t){return '<option value="'+t.id+'">'+miEsc(t.n)+'</option>';}).join('');
+  if(!M.types.some(function(t){return t.id===miType;})) miType=(M.types[0]||{}).id;
+  ts.value=miType;
+  var fs=document.getElementById('miFy');
+  fs.innerHTML=M.fyears.map(function(f){return '<option value="'+f.id+'">'+miEsc(f.label)+'</option>';}).join('');
+  if(!M.fyears.some(function(f){return f.id===miFy;})) miFy=(M.fyears[0]||{}).id;
+  fs.value=miFy;
+  [['miLSrc','مصدر البيانات','Data source'],['miLType','نوع المصروف','Expense Type'],
+   ['miLFy','السنة المالية','Financial Year'],['miAdd','+ إضافة بند جديد','+ Add new item'],
+   ['miTitle','إدارة البنود والأسعار','Master Items & Prices'],
+   ['miHistTitle','سجل تعديلات البنود','Item change log'],
+   ['miC1','كود الصنف','Item Code'],['miC2','اسم الصنف','Item Name'],
+   ['miC3','سعر الوحدة — شامل VAT','Unit Price — Incl. VAT'],['miC4','الحد الأدنى الشهري','Monthly Minimum'],
+   ['miC5','الحد الأقصى الشهري','Monthly Maximum'],
+   ['miC5b','الحد الأقصى السنوي','Annual Maximum'],['miC6','الحالة','Status'],
+   ['miC7','آخر تعديل','Last modified'],['miC8','الإجراء','Action'],
+   ['miH1','التاريخ','Date'],['miH2','الكود','Code'],['miH3','الصنف','Item'],
+   ['miH4','الحقل','Field'],['miH5','القيمة القديمة','Old value'],['miH6','القيمة الجديدة','New value'],
+   ['miFType','نوع المصروف','Expense Type'],['miFCode','كود الصنف','Item Code'],
+   ['miFName','اسم الصنف','Item Name'],['miFPrice','سعر الوحدة — شامل VAT','Unit Price — Incl. VAT'],
+   ['miFStatus','الحالة','Status'],['miFMin','الحد الأدنى الشهري','Monthly Minimum'],
+   ['miFMax','الحد الأقصى الشهري','Monthly Maximum'],
+   ['miMTitle','إضافة بند جديد','Add new item']
+  ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=miT(x[1],x[2]); });
+  document.getElementById('miNote').textContent=miT(
+    'التعديلات هنا تسري على عمليات التوزيع المستقبلية فقط. العمليات السابقة والفواتير والاعتمادات تحتفظ بقيمها الأصلية ولا تتغير. بيانات التشغيل وبيانات الاختبار منفصلتان تمامًا. الحالة في ذاكرة المتصفح فقط وتزول عند تحديث الصفحة.',
+    'Changes here apply to future distribution runs only. Past runs, invoices and approvals keep their original values. LIVE and TEST data are fully separate. State lives in browser memory only and is lost on refresh.');
+}
+function miRender(){
+  miFillFilters();
+  var M=MASTER(), rows=M.items.filter(function(x){return x.t===miType;});
+  document.getElementById('miPill').textContent=rows.length+' '+miT('بند','items');
+  var tb=document.getElementById('miRows');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="unconstrained" style="text-align:center;padding:24px">'+
+    miT('لا توجد بنود لهذا النوع','No items for this type')+'</td></tr>'; miRenderHist(); return; }
+  tb.innerHTML=rows.map(function(x){
+    var l=M.limits.filter(function(y){return y.item===x.i&&y.fy===miFy;})[0]||{};
+    var act=x.a===true;
+    return '<tr'+(act?'':' class="inactive-row"')+'>'+
+      '<td><span class="sub-id" style="margin:0">'+miEsc(x.i)+'</span></td>'+
+      '<td style="white-space:normal;max-width:280px">'+miEsc(x.n)+'</td>'+
+      '<td><input class="mi-in" data-f="price" data-id="'+miEsc(x.i)+'" value="'+(x.p==null?'':x.p)+'" inputmode="decimal"></td>'+
+      '<td><input class="mi-in" data-f="min" data-id="'+miEsc(x.i)+'" value="'+(l.mmin==null?'':l.mmin)+'" inputmode="numeric"></td>'+
+      '<td><input class="mi-in" data-f="max" data-id="'+miEsc(x.i)+'" value="'+(l.mmax==null?'':l.mmax)+'" inputmode="numeric"></td>'+
+      '<td><input class="mi-in" value="'+(l.amax==null?'':l.amax)+'" readonly title="'+miT('يُقرأ من ITEM_YEAR_LIMITS — غير قابل للتحرير في هذه المرحلة','Read from ITEM_YEAR_LIMITS — not editable at this stage')+'"></td>'+
+      '<td><span class="pill '+(act?'ok':'neutral')+'">'+(act?'ACTIVE':'INACTIVE')+'</span></td>'+
+      '<td class="mi-when">'+(x.mtime||'—')+'</td>'+
+      '<td><div class="rowacts">'+
+        '<button class="btn sm" data-save="'+miEsc(x.i)+'">'+miT('حفظ','Save')+'</button>'+
+        '<button class="btn '+(act?'danger':'green')+' sm" data-tog="'+miEsc(x.i)+'">'+
+          (act?miT('تعطيل','Deactivate'):miT('تفعيل','Activate'))+'</button>'+
+      '</div></td></tr>';
+  }).join('');
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-save]'),function(b){
+    b.onclick=function(){ miSave(b.getAttribute('data-save')); }; });
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-tog]'),function(b){
+    b.onclick=function(){ miToggle(b.getAttribute('data-tog')); }; });
+  miRenderHist();
+}
+function miRenderHist(){
+  document.getElementById('miHistPill').textContent=MI_HIST.length+' '+miT('تعديل','changes');
+  var tb=document.getElementById('miHist');
+  tb.innerHTML=MI_HIST.length?MI_HIST.map(function(r){
+    return '<tr><td class="mi-when">'+miEsc(r.when)+'</td>'+
+      '<td><span class="sub-id" style="margin:0">'+miEsc(r.code)+'</span></td>'+
+      '<td style="white-space:normal">'+miEsc(r.name)+'</td><td>'+miEsc(r.field)+'</td>'+
+      '<td class="unconstrained">'+miEsc(r.oldV)+'</td><td><b>'+miEsc(r.newV)+'</b></td></tr>';
+  }).join(''):'<tr><td colspan="6" class="unconstrained" style="text-align:center;padding:20px">'+
+    miT('لا توجد تعديلات بعد','No changes yet')+'</td></tr>';
+}
+function miSave(id){
+  var M=MASTER(), it=M.items.filter(function(x){return x.i===id;})[0]; if(!it) return;
+  var tb=document.getElementById('miRows');
+  var gp=function(f){ return tb.querySelector('[data-f="'+f+'"][data-id="'+id+'"]'); };
+  var pEl=gp('price'), nEl=gp('min'), xEl=gp('max');
+  [pEl,nEl,xEl].forEach(function(e){ e.classList.remove('err'); });
+
+  var praw=pEl.value.trim(), errs=[];
+  var price=null;
+  if(praw===''||!/^\d+(\.\d{1,2})?$/.test(praw)||Number(praw)<0){ pEl.classList.add('err');
+    errs.push(miT('السعر مطلوب ورقم موجب بمنزلتين عشريتين كحد أقصى','Price is required, non-negative, max 2 decimals')); }
+  else price=Number(praw);
+  var mn=miInt(nEl.value), mx=miInt(xEl.value);
+  if(mn===undefined){ nEl.classList.add('err'); errs.push(miT('الحد الأدنى: عدد صحيح ≥ 0','Minimum must be an integer >= 0')); }
+  if(mx===undefined){ xEl.classList.add('err'); errs.push(miT('الحد الأقصى: عدد صحيح ≥ 0','Maximum must be an integer >= 0')); }
+  if(mn!=null&&mx!=null&&mx<mn){ nEl.classList.add('err'); xEl.classList.add('err');
+    errs.push(miT('الحد الأقصى الشهري لا يمكن أن يقل عن الحد الأدنى الشهري','Monthly Maximum cannot be lower than Monthly Minimum')); }
+  var lchk=miLimit(id);
+  if(lchk.amax!=null&&(!/^\d+$/.test(String(lchk.amax))||Number(lchk.amax)<0)){
+    errs.push(miT('الحد الأقصى السنوي غير صالح','Annual Maximum is invalid')); }
+  if(errs.length){ miMsg('warn',errs.join(' · ')); return; }
+
+  var l=miLimit(id), changed=[];
+  if(price!==it.p){ miLog(id,it.n,miT('السعر','Price'),it.p==null?'—':it.p,price); it.p=price; changed.push('price'); }
+  if(mn!==l.mmin){ miLog(id,it.n,'Min',l.mmin==null?'—':l.mmin,mn==null?'—':mn); l.mmin=mn; changed.push('min'); }
+  if(mx!==l.mmax){ miLog(id,it.n,'Max',l.mmax==null?'—':l.mmax,mx==null?'—':mx); l.mmax=mx; changed.push('max'); }
+  if(!changed.length){ miMsg('note',miT('لا يوجد تغيير للحفظ','Nothing to save')); return; }
+  it.mtime=miNow();
+  miRender();
+  miMsg('ok',miT('تم حفظ التعديل — سيُستخدم في عمليات التوزيع المستقبلية فقط. هذا التعديل لا يؤثر على العمليات السابقة.',
+                 'Change saved — it applies to future distribution runs only. It does not affect past runs.'));
+}
+function miToggle(id){
+  var it=MASTER().items.filter(function(x){return x.i===id;})[0]; if(!it) return;
+  var was=it.a===true;
+  miLog(id,it.n,miT('الحالة','Status'),was?'ACTIVE':'INACTIVE',was?'INACTIVE':'ACTIVE');
+  it.a=!was; it.mtime=miNow();
+  miRender();
+  miMsg('ok',miT('تم تغيير الحالة — يسري على عمليات التوزيع المستقبلية فقط. العمليات السابقة لا تتأثر.',
+                 'Status changed — applies to future runs only. Past runs are unaffected.'));
+}
+function miOpenAdd(){
+  document.getElementById('nType').value=(MASTER().types.filter(function(t){return t.id===miType;})[0]||{n:''}).n;
+  ['nCode','nName','nPrice','nMin','nMax'].forEach(function(k){ document.getElementById(k).value=''; document.getElementById(k).classList.remove('err'); });
+  document.getElementById('nActive').value='1';
+  document.getElementById('nErr').textContent='';
+  document.getElementById('miModal').classList.remove('hidden');
+  document.getElementById('nCode').focus();
+}
+function miSaveNew(){
+  var M=MASTER(), e=document.getElementById('nErr'), errs=[];
+  var code=document.getElementById('nCode').value.trim();
+  var name=document.getElementById('nName').value.trim();
+  var praw=document.getElementById('nPrice').value.trim();
+  var mn=miInt(document.getElementById('nMin').value), mx=miInt(document.getElementById('nMax').value);
+  var act=document.getElementById('nActive').value==='1';
+  ['nCode','nName','nPrice','nMin','nMax'].forEach(function(k){ document.getElementById(k).classList.remove('err'); });
+
+  if(!code){ document.getElementById('nCode').classList.add('err'); errs.push(miT('كود الصنف مطلوب','Item code is required')); }
+  else if(M.items.some(function(x){return x.t===miType&&String(x.i).toLowerCase()===code.toLowerCase();})){
+    document.getElementById('nCode').classList.add('err');
+    errs.push(miT('الكود مكرر داخل نفس نوع المصروف','Duplicate code within this expense type')); }
+  if(!name){ document.getElementById('nName').classList.add('err'); errs.push(miT('اسم الصنف مطلوب','Item name is required')); }
+  if(praw===''||!/^\d+(\.\d{1,2})?$/.test(praw)||Number(praw)<0){ document.getElementById('nPrice').classList.add('err');
+    errs.push(miT('السعر مطلوب ويجب أن يكون ≥ 0','Price is required and must be >= 0')); }
+  if(mn===undefined){ document.getElementById('nMin').classList.add('err'); errs.push(miT('الحد الأدنى: عدد صحيح ≥ 0','Minimum must be an integer >= 0')); }
+  if(mx===undefined){ document.getElementById('nMax').classList.add('err'); errs.push(miT('الحد الأقصى: عدد صحيح ≥ 0','Maximum must be an integer >= 0')); }
+  if(mn!=null&&mx!=null&&mx<mn){ document.getElementById('nMin').classList.add('err'); document.getElementById('nMax').classList.add('err');
+    errs.push(miT('الحد الأقصى لا يمكن أن يقل عن الحد الأدنى','Maximum cannot be lower than Minimum')); }
+  if(errs.length){ e.textContent=errs.join(' · '); return false; }
+
+  M.items.push({i:code,t:miType,n:name,p:Number(praw),s:'APPROVED',a:act,u:null,mn:null,mx:null,mtime:miNow()});
+  M.limits.push({id:'ML'+(M.limits.length+1),fy:miFy,item:code,mmin:mn,mmax:mx,amax:null});
+  miLog(code,name,miT('بند جديد','New item'),'—',miT('أُضيف','added'));
+  document.getElementById('miModal').classList.add('hidden');
+  miRender();
+  miMsg('ok',miT('تمت إضافة البند — سيُستخدم في عمليات التوزيع المستقبلية فقط. لن يظهر في أي عملية سابقة.',
+                 'Item added — it will be used in future runs only and never appears in a past run.'));
+  return true;
+}
+document.getElementById('miSrc').onchange=function(ev){ miSrc=ev.target.value; miType=null; miFy=null; miRender(); };
+document.getElementById('miType').onchange=function(ev){ miType=ev.target.value; miRender(); };
+document.getElementById('miFy').onchange=function(ev){ miFy=ev.target.value; miRender(); };
+document.getElementById('miAdd').onclick=miOpenAdd;
+document.getElementById('nCancel').onclick=function(){ document.getElementById('miModal').classList.add('hidden'); };
+document.getElementById('miMClose').onclick=function(){ document.getElementById('miModal').classList.add('hidden'); };
+document.getElementById('nSave').onclick=miSaveNew;
+Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
+  if(b.dataset.page==='master') b.addEventListener('click',function(){ miRender(); }); });
+Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+  b.addEventListener('click',function(){ setTimeout(function(){
+    if(!document.getElementById('master').classList.contains('hidden')) miRender(); },0); }); });
+miRender();
+
+/* ============================================================================
+   MASTER TEST HARNESS — runnable inside the page, no external library.
+   Every test builds its OWN throwaway clones, so running the suite never
+   touches the master data the user is editing, GHS_DATA or GHS_FIXTURE.
+   ========================================================================== */
+function miRunSuite(){
+  var R=[], n=0;
+  function T(name,fn){
+    n++; var ok=false, detail='';
+    try{ var r=fn(); ok=!!(r&&r.ok); detail=(r&&r.detail)||''; }
+    catch(e){ ok=false; detail='ERROR: '+e.message; }
+    R.push({n:n,name:name,ok:ok,detail:detail});
+  }
+  var clone=function(o){ return JSON.parse(JSON.stringify(o)); };
+  var r2f=function(x){ return Math.round((Number(x)+Number.EPSILON)*100)/100; };
+  function store(base){
+    var st={items:clone(base.items),limits:clone(base.limits)};
+    st.items.forEach(function(x){ x.mtime=null; });
+    return st;
+  }
+  function limOf(st,fy,id){
+    var l=st.limits.filter(function(x){return x.item===id&&x.fy===fy;})[0];
+    if(!l){ l={fy:fy,item:id,mmin:null,mmax:null,amax:null}; st.limits.push(l); }
+    return l;
+  }
+  function intOf(v){ v=String(v).trim(); if(v==='') return null;
+    if(!/^\d+$/.test(v)) return undefined; return parseInt(v,10); }
+  /* the exact save rule used by miSave */
+  function doSave(st,fy,id,praw,nraw,xraw,hist){
+    var it=st.items.filter(function(x){return x.i===id;})[0], l=limOf(st,fy,id);
+    if(praw===''||!/^\d+(\.\d{1,2})?$/.test(praw)||Number(praw)<0) return {ok:false,why:'price'};
+    var mn=intOf(nraw), mx=intOf(xraw);
+    if(mn===undefined||mx===undefined) return {ok:false,why:'int'};
+    if(mn!=null&&mx!=null&&mx<mn) return {ok:false,why:'max<min'};
+    var price=Number(praw), changed=0;
+    if(price!==it.p){ if(hist)hist.push({c:id,f:'Price',o:it.p,v:price}); it.p=price; changed++; }
+    if(mn!==l.mmin){ if(hist)hist.push({c:id,f:'Min',o:l.mmin,v:mn}); l.mmin=mn; changed++; }
+    if(mx!==l.mmax){ if(hist)hist.push({c:id,f:'Max',o:l.mmax,v:mx}); l.mmax=mx; changed++; }
+    return {ok:true,changed:changed};
+  }
+  function gen(st,fy,ty,pi,target,ic,seed,runId){
+    var items=st.items.map(function(x){ return {id:x.i,typeId:x.t,name:x.n,level:'ITEM',
+      active:x.a===true,price:x.p,priceStatus:x.s,weight:1}; });
+    var o=ENG.generate({fyId:fy,typeId:ty,periodIndex:pi,targetInclVat:target,invoiceCount:ic,
+      items:items,limits:st.limits.map(function(l){return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax};}),
+      approvedRuns:[],approvedLines:[],settings:{},seed:seed,runId:runId});
+    o.run.approvalStatus='GENERATED';
+    o.run.masterSnapshot=o.lines.map(function(l){
+      var m=st.items.filter(function(x){return x.i===l.itemId;})[0]||{}, L=limOf(st,fy,l.itemId);
+      return {itemCode:l.itemId,itemName:l.itemName,itemType:m.t||null,
+              unitPriceInclVat:l.unitPriceSnapshotInclVat,monthlyMinQty:L.mmin,
+              monthlyMaxQty:L.mmax,annualMaxQty:L.amax,
+              quantity:l.quantity,lineTotalInclVat:l.lineTotalInclVat};});
+    o.grp=o.lines.length?buildInvoiceGroups(o.lines,ic,runId,o.run.distributedInclVat):null;
+    return o;
+  }
+  var FX=window.GHS_FIXTURE, FY='DEMO_FY', TY='DEMO_T';
+  var hasFx=!!(FX&&FX.items&&FX.items.length);
+
+  /* ---------------- 1–4 : LIVE / FIXTURE isolation ---------------- */
+  T(miT('LIVE و FIXTURE مخزنان منفصلان','LIVE and FIXTURE are separate stores'),function(){
+    var L=store(D), F=hasFx?store(FX):null;
+    if(!F) return {ok:false,detail:'fixture missing'};
+    return {ok:L.items!==F.items && L.limits!==F.limits &&
+               L.items.length!==0 && F.items.length!==0,
+            detail:'LIVE '+L.items.length+' items · FIXTURE '+F.items.length+' items · distinct objects'};
+  });
+  T(miT('تعديل سعر LIVE لا يغيّر FIXTURE','LIVE price edit does not change FIXTURE'),function(){
+    var L=store(D), F=store(FX);
+    var id=L.items[0].i, before=clone(F.items);
+    doSave(L,L.limits[0]?L.limits[0].fy:'FY001',id,'999.99','','');
+    return {ok:JSON.stringify(F.items)===JSON.stringify(before)&&L.items[0].p===999.99,
+            detail:'LIVE '+id+' -> 999.99 · FIXTURE untouched'};
+  });
+  T(miT('تعديل سعر FIXTURE لا يغيّر LIVE','FIXTURE price edit does not change LIVE'),function(){
+    var L=store(D), F=store(FX);
+    var before=clone(L.items);
+    doSave(F,FY,'DM001','777.77','','');
+    var f=F.items.filter(function(x){return x.i==='DM001';})[0];
+    return {ok:JSON.stringify(L.items)===JSON.stringify(before)&&f.p===777.77,
+            detail:'FIXTURE DM001 -> 777.77 · LIVE untouched'};
+  });
+  T(miT('تعديل الحدود في LIVE لا يغيّر FIXTURE','LIVE Min/Max edit does not change FIXTURE'),function(){
+    var L=store(D), F=store(FX);
+    var before=clone(F.limits), id=L.items[0].i, fy=L.limits[0]?L.limits[0].fy:'FY001';
+    doSave(L,fy,id,String(L.items[0].p||1),'3','9');
+    var l=limOf(L,fy,id);
+    return {ok:JSON.stringify(F.limits)===JSON.stringify(before)&&l.mmin===3&&l.mmax===9,
+            detail:'LIVE min 3 / max 9 · FIXTURE limits untouched'};
+  });
+
+  /* ---------------- 5–7 : historical isolation ---------------- */
+  T(miT('تعديل Master لا يغيّر masterSnapshot لعملية سابقة','Master edit does not alter a past run snapshot'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,101,'RUN000001');
+    var snap=JSON.stringify(run.run.masterSnapshot);
+    doSave(F,FY,run.lines[0].itemId,'4321.00','5','50');
+    return {ok:JSON.stringify(run.run.masterSnapshot)===snap,
+            detail:'snapshot price '+run.run.masterSnapshot[0].unitPriceInclVat+' unchanged after master -> 4321.00'};
+  });
+  T(miT('تعديل Master لا يغيّر لقطة بنود التوزيع','Master edit does not alter distribution line snapshots'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,102,'RUN000002');
+    var before=JSON.stringify(run.lines);
+    doSave(F,FY,run.lines[0].itemId,'8888.00','','');
+    return {ok:JSON.stringify(run.lines)===before,
+            detail:run.lines.length+' lines byte-identical'};
+  });
+  T(miT('تعديل Master بعد اعتماد لا يغيّر العملية المعتمدة','Master edit does not alter an APPROVED run'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,103,'RUN000003');
+    run.run.approvalStatus='REVIEW';
+    var chk=approvalChecks({run:run.run,lines:run.lines,grp:run.grp});
+    if(chk.ok){ run.run.approvalStatus='APPROVED'; run.run.status='APPROVED'; }
+    var before=JSON.stringify({r:run.run,l:run.lines,g:run.grp});
+    doSave(F,FY,run.lines[0].itemId,'1.00','0','1');
+    return {ok:run.run.approvalStatus==='APPROVED'&&JSON.stringify({r:run.run,l:run.lines,g:run.grp})===before,
+            detail:'approval '+run.run.approvalStatus+' · payload byte-identical'};
+  });
+
+  /* ---------------- 8–11 : master behaviour ---------------- */
+  T(miT('البند الجديد لا يظهر في عملية سابقة','New item never appears in a past run'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,104,'RUN000004');
+    F.items.push({i:'NEW999',t:TY,n:'new',p:100,s:'APPROVED',a:true,mtime:'now'});
+    F.limits.push({fy:FY,item:'NEW999',mmin:0,mmax:50,amax:500});
+    var inOld=run.lines.some(function(l){return l.itemId==='NEW999';});
+    var run2=gen(F,FY,TY,2,250000,3,105,'RUN000005');
+    return {ok:!inOld&&F.items.some(function(x){return x.i==='NEW999';}),
+            detail:'past run lines '+run.lines.length+' · new item present in master: yes · in past run: no'};
+  });
+  T(miT('البند الموقوف لا يدخل التوزيع المستقبلي','Inactive item is excluded from future runs'),function(){
+    var F=store(FX), before=gen(F,FY,TY,2,250000,3,106,'RUN000006');
+    var used=before.lines[0].itemId;
+    F.items.filter(function(x){return x.i===used;})[0].a=false;
+    var after=gen(F,FY,TY,2,250000,3,106,'RUN000007');
+    return {ok:!after.lines.some(function(l){return l.itemId===used;}),
+            detail:used+' used before: yes · after deactivation: no'};
+  });
+  T(miT('الحد الأقصى أقل من الأدنى يمنع الحفظ','Max < Min blocks the save'),function(){
+    var F=store(FX), id='DM001', l=limOf(F,FY,id), it=F.items.filter(function(x){return x.i===id;})[0];
+    var b={p:it.p,mn:l.mmin,mx:l.mmax};
+    var r=doSave(F,FY,id,String(it.p),'9','3');
+    return {ok:!r.ok&&r.why==='max<min'&&it.p===b.p&&l.mmin===b.mn&&l.mmax===b.mx,
+            detail:'blocked ('+r.why+') · nothing changed'};
+  });
+  T(miT('الحفظ بلا تغيير لا يضيف سجلًا','Save with no change adds no log entry'),function(){
+    var F=store(FX), id='DM001', it=F.items.filter(function(x){return x.i===id;})[0],
+        l=limOf(F,FY,id), hist=[];
+    var r=doSave(F,FY,id,String(it.p),l.mmin==null?'':String(l.mmin),l.mmax==null?'':String(l.mmax),hist);
+    return {ok:r.ok&&r.changed===0&&hist.length===0,detail:'changed '+r.changed+' · log entries '+hist.length};
+  });
+
+  /* ---------------- 12–15 : grouping / VAT / approval ---------------- */
+  T(miT('تجميع الفواتير بلا تقسيم كميات','Invoice grouping never splits a quantity'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,107,'RUN000008');
+    var c={}; run.grp.invoices.forEach(function(v){ v.lines.forEach(function(l){
+      c[l.itemId]=(c[l.itemId]||0)+1; }); });
+    var split=Object.keys(c).some(function(k){return c[k]>1;});
+    return {ok:!split&&run.grp.invoiceGroupingStatus==='OK',
+            detail:run.lines.length+' lines -> '+run.grp.invoices.length+' invoices · split: no'};
+  });
+  T(miT('فواتير أكثر من البنود → NEEDS_REVIEW بلا فواتير','More invoices than lines -> NEEDS_REVIEW, zero invoices'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,108,'RUN000009');
+    var before=JSON.stringify({l:run.lines,d:run.run.distributedInclVat});
+    var g=buildInvoiceGroups(run.lines,run.lines.length+5,'RUN000009',run.run.distributedInclVat);
+    return {ok:g.invoiceGroupingStatus==='NEEDS_REVIEW'&&g.invoices.length===0&&
+               g.maxPossibleInvoices===run.lines.length&&
+               JSON.stringify({l:run.lines,d:run.run.distributedInclVat})===before,
+            detail:'requested '+(run.lines.length+5)+' · generated 0 · max '+g.maxPossibleInvoices+' · distribution unchanged'};
+  });
+  T(miT('حساب الضريبة والتسوية','VAT split and reconciliation'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,109,'RUN000010'), vr=VATRATE();
+    var sub=0,vat=0,tot=0,perLine=true;
+    run.grp.invoices.forEach(function(v){ v.lines.forEach(function(l){
+      var ti=r2f(l.lineTotalInclVat), bv=r2f(ti/(1+vr)), vv=r2f(ti-bv);
+      if(r2f(bv+vv)!==ti) perLine=false;
+      sub=r2f(sub+bv); vat=r2f(vat+vv); tot=r2f(tot+ti); }); });
+    return {ok:perLine&&r2f(sub+vat)===tot&&tot===r2f(run.run.distributedInclVat),
+            detail:sub.toFixed(2)+' + '+vat.toFixed(2)+' = '+tot.toFixed(2)+' = distributed '+run.run.distributedInclVat.toFixed(2)};
+  });
+  T(miT('العملية المعتمدة محصَّنة ضد أي تعديل في Master','Approved run immune to every master edit'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,110,'RUN000011');
+    run.run.approvalStatus='REVIEW';
+    var chk=approvalChecks({run:run.run,lines:run.lines,grp:run.grp});
+    if(chk.ok){ run.run.approvalStatus='APPROVED'; run.run.status='APPROVED'; }
+    var before=JSON.stringify(run);
+    F.items.forEach(function(x){ x.p=1; x.a=false; });
+    F.limits.forEach(function(l){ l.mmin=0; l.mmax=1; l.amax=1; });
+    F.items.push({i:'ZZZ',t:TY,n:'z',p:5,s:'APPROVED',a:true});
+    return {ok:JSON.stringify(run)===before&&run.run.approvalStatus==='APPROVED',
+            detail:'all prices/limits/status rewritten · approved run byte-identical'};
+  });
+
+  /* ---------------- A–G : monthly / annual limits ---------------- */
+  T('A · '+miT('تعديل الحد الأدنى الشهري يُستخدم في العملية التالية','New Monthly Minimum is used by the next run'),function(){
+    var F=store(FX), id='DM002';
+    F.items.forEach(function(x){ if(x.i!==id) x.a=false; });
+    doSave(F,FY,id,String(F.items.filter(function(x){return x.i===id;})[0].p),'40','400');
+    var run=gen(F,FY,TY,2,250000,1,111,'RUN000012');
+    var q=run.lines.length?run.lines[0].quantity:0;
+    return {ok:run.lines.length===1&&q>=40&&run.run.masterSnapshot[0].monthlyMinQty===40,
+            detail:'min 40 · allocated qty '+q+' · snapshot min '+run.run.masterSnapshot[0].monthlyMinQty};
+  });
+  T('B · '+miT('تعديل الحد الأقصى الشهري يُستخدم في العملية التالية','New Monthly Maximum is used by the next run'),function(){
+    var F=store(FX), id='DM002';
+    F.items.forEach(function(x){ if(x.i!==id) x.a=false; });
+    doSave(F,FY,id,String(F.items.filter(function(x){return x.i===id;})[0].p),'0','12');
+    var run=gen(F,FY,TY,2,250000,1,112,'RUN000013');
+    var q=run.lines.length?run.lines[0].quantity:0;
+    return {ok:q<=12&&run.run.masterSnapshot[0].monthlyMaxQty===12,
+            detail:'max 12 · allocated qty '+q+' (capped) · snapshot max 12'};
+  });
+  T('C · '+miT('الأقصى الشهري أقل من الأدنى يمنع الحفظ','Monthly Max below Monthly Min blocks the save'),function(){
+    var F=store(FX), id='DM003', l=limOf(F,FY,id), b={mn:l.mmin,mx:l.mmax};
+    var r=doSave(F,FY,id,String(F.items.filter(function(x){return x.i===id;})[0].p),'20','5');
+    return {ok:!r.ok&&l.mmin===b.mn&&l.mmax===b.mx,detail:'blocked ('+r.why+') · limits unchanged'};
+  });
+  T('D · '+miT('تعديل الحدود الشهرية بعد عملية لا يغيّر لقطتها','Monthly limit edit does not alter a past snapshot'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,113,'RUN000014');
+    var snap=JSON.stringify(run.run.masterSnapshot.map(function(x){return [x.monthlyMinQty,x.monthlyMaxQty];}));
+    run.lines.forEach(function(l){ doSave(F,FY,l.itemId,
+      String(F.items.filter(function(x){return x.i===l.itemId;})[0].p),'77','777'); });
+    return {ok:JSON.stringify(run.run.masterSnapshot.map(function(x){return [x.monthlyMinQty,x.monthlyMaxQty];}))===snap,
+            detail:'master now 77/777 · snapshot unchanged'};
+  });
+  T('E · '+miT('تغيير الحد الأقصى السنوي لا يغيّر لقطة عملية سابقة','Annual Maximum change does not alter a past snapshot'),function(){
+    var F=store(FX), run=gen(F,FY,TY,2,250000,3,114,'RUN000015');
+    var snap=JSON.stringify(run.run.masterSnapshot.map(function(x){return x.annualMaxQty;}));
+    F.limits.forEach(function(l){ l.amax=99999; });
+    return {ok:JSON.stringify(run.run.masterSnapshot.map(function(x){return x.annualMaxQty;}))===snap,
+            detail:'master amax -> 99999 · snapshot annual maxima unchanged'};
+  });
+  T('F · '+miT('كل سنة مالية تعرض حدودها فقط','Each financial year shows only its own limits'),function(){
+    var F=store(FX), id='DM001';
+    F.limits.push({fy:'FY_OTHER',item:id,mmin:11,mmax:22,amax:33});
+    var a=limOf(F,FY,id), b=limOf(F,'FY_OTHER',id);
+    return {ok:a.fy===FY&&b.fy==='FY_OTHER'&&(a.mmin!==b.mmin||a.mmax!==b.mmax),
+            detail:FY+' -> '+a.mmin+'/'+a.mmax+' · FY_OTHER -> '+b.mmin+'/'+b.mmax};
+  });
+  T('G · '+miT('حدود كل بند مستقلة عن غيره','Each item has independent limits'),function(){
+    var F=store(FX);
+    doSave(F,FY,'DM001',String(F.items.filter(function(x){return x.i==='DM001';})[0].p),'5','50');
+    var a=limOf(F,FY,'DM001'), b=limOf(F,FY,'DM002');
+    return {ok:a.mmin===5&&a.mmax===50&&!(b.mmin===5&&b.mmax===50),
+            detail:'DM001 5/50 · DM002 '+b.mmin+'/'+b.mmax};
+  });
+
+  return R;
+}
+function miRenderTests(R){
+  var pass=R.filter(function(x){return x.ok;}).length;
+  document.getElementById('miTPill').textContent=pass+' / '+R.length;
+  document.getElementById('miTPill').className='pill '+(pass===R.length?'ok':'bad');
+  document.getElementById('miTRows').innerHTML=R.map(function(x){
+    return '<tr><td>'+x.n+'</td><td style="white-space:normal">'+miEsc(x.name)+'</td>'+
+      '<td><span class="pill '+(x.ok?'ok':'bad')+'">'+(x.ok?'PASS':'FAIL')+'</span></td>'+
+      '<td class="unconstrained" style="white-space:normal">'+miEsc(x.detail)+'</td></tr>';
+  }).join('');
+}
+document.getElementById('miRunTests').onclick=function(){ miRenderTests(miRunSuite()); };
+document.getElementById('miTNote').textContent=miT(
+  'الاختبارات تعمل على نسخ مؤقتة منفصلة ولا تمس بياناتك المعروضة ولا data.js ولا fixtures.js.',
+  'Tests run on separate throwaway clones and never touch your working data, data.js or fixtures.js.');
+[['miTTitle','اختبارات إدارة البنود','Master Items tests'],['miRunTests','تشغيل الاختبارات','Run tests'],
+ ['miT1','#','#'],['miT2','الاختبار','Test'],['miT3','النتيجة','Result'],['miT4','التفصيل','Detail']
+].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=miT(x[1],x[2]); });
 
 /* ============================================================================
    APPROVAL WORKFLOW — GENERATED -> REVIEW -> APPROVED
@@ -1322,6 +1882,18 @@ function doGenerate(isRegen){
      --------------------------------------------------------------------- */
   out.run.approvalStatus='GENERATED';          /* every new run starts fresh */
   out.run.approvedBy=null; out.run.approvedAt=null; out.run.reviewAttempted=false;
+  /* SNAPSHOT — the master values actually used, frozen with the run.
+     A later master edit can never alter what this run recorded. */
+  out.run.masterSnapshot=out.lines.map(function(l){
+    var m=MASTER().items.filter(function(x){return x.i===l.itemId;})[0]||{};
+    var lim=MASTER().limits.filter(function(x){return x.item===l.itemId&&x.fy===dFy;})[0]||{};
+    return {itemCode:l.itemId,itemName:l.itemName,itemType:m.t||null,
+            unitPriceInclVat:l.unitPriceSnapshotInclVat,
+            monthlyMinQty:(lim.mmin===undefined?null:lim.mmin),
+            monthlyMaxQty:(lim.mmax===undefined?null:lim.mmax),
+            annualMaxQty:(lim.amax===undefined?null:lim.amax),
+            quantity:l.quantity,lineTotalInclVat:l.lineTotalInclVat};
+  });
   if(out.lines.length){
     var grp=buildInvoiceGroups(out.lines,out.run.invoiceCount,runId,out.run.distributedInclVat);
     out.run.invoiceGroupingStatus=grp.invoiceGroupingStatus;
