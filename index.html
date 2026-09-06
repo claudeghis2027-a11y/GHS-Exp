@@ -87,6 +87,15 @@ tr.over-row td{background:#fef2f2}
 .rs-sub{font-weight:400;font-size:13px;margin-top:6px;opacity:.9}
 .excl-tbl td{font-size:13px}
 .invrow>td{background:#f8fafc;padding:0}
+.chk{list-style:none;padding:0;margin:0 0 14px}
+.chk li{padding:7px 0;font-size:13px;border-bottom:1px solid #eef2f7;display:flex;gap:9px;align-items:flex-start}
+.chk li:last-child{border-bottom:0}
+.chk .m{font-weight:800;min-width:16px}
+.chk .yes{color:#166534}.chk .no{color:#991b1b}
+.appr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.appr-kv{font-size:13px;color:var(--muted)}
+.appr-kv b{display:block;color:var(--ink);font-size:15px;margin-top:3px;font-weight:800}
+@media(max-width:1100px){.appr-grid{grid-template-columns:repeat(2,1fr)}}
 .invrow .srcinner{padding:10px 12px}
 .runmeta{font-size:12px;color:var(--muted);margin-top:10px;direction:ltr;text-align:start;font-family:monospace}
 @media(max-width:1100px){.res-grid{grid-template-columns:repeat(2,1fr)}}
@@ -278,6 +287,18 @@ tr.over-row td{background:#fef2f2}
     </table></div>
     <div class="runmeta" id="dgInvMeta"></div>
   </div>
+  <div class="panel hidden" id="dgApprPanel">
+    <div class="section-title"><h2 id="dgApprTitle">اعتماد التوزيع والفواتير</h2>
+      <span class="pill neutral" id="dgApprPill"></span></div>
+    <div class="appr-grid" id="dgApprInfo"></div>
+    <div class="res-status" id="dgApprStatus"></div>
+    <ul class="chk hidden" id="dgApprChk"></ul>
+    <div class="rowacts">
+      <button class="btn secondary" id="dgReview">مراجعة قبل الاعتماد</button>
+      <button class="btn green" id="dgApprove">✓ اعتماد التوزيع والفواتير</button>
+    </div>
+    <div class="runmeta" id="dgApprMeta"></div>
+  </div>
   <div class="panel hidden" id="dgExclPanel">
     <div class="section-title"><h2>الأصناف المستبعدة</h2><span class="pill neutral" id="dgExclCount"></span></div>
     <div class="table-wrap"><table class="excl-tbl">
@@ -288,7 +309,7 @@ tr.over-row td{background:#fef2f2}
   <div class="panel hidden" id="dgRunsPanel">
     <div class="section-title"><h2>سجل عمليات التوليد</h2><span class="pill neutral" id="dgRunsCount"></span></div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Run ID</th><th>الشهر</th><th>المستهدف</th><th>المنفَّذ</th><th>الحالة</th><th>الحالة التشغيلية</th><th>Seed</th><th>الوقت</th></tr></thead>
+      <thead><tr><th>Run ID</th><th>الشهر</th><th>المستهدف</th><th>المنفَّذ</th><th>الحالة</th><th>الحالة التشغيلية</th><th>الاعتماد</th><th>Seed</th><th>الوقت</th></tr></thead>
       <tbody id="dgRuns"></tbody>
     </table></div>
   </div>
@@ -960,9 +981,138 @@ function renderRuns(){
       '<td><span class="pill '+(r.distributionStatus==='EXACT'||r.distributionStatus==='PARTIAL'?'ok':
          (r.distributionStatus==='CLOSEST_POSSIBLE'?'warn':'bad'))+'">'+esc(r.distributionStatus)+'</span></td>'+
       '<td><span class="pill '+(r.status==='GENERATED'?'warn':(r.status==='APPROVED'?'ok':'neutral'))+'">'+esc(r.status)+'</span></td>'+
+      '<td><span class="pill '+APPR_PILL(r.approvalStatus)+'">'+esc(r.approvalStatus||'—')+'</span></td>'+
       '<td class="sub-id" style="margin:0">'+r.randomSeed+'</td>'+
       '<td class="unconstrained">'+esc(String(r.generatedAt).replace('T',' ').slice(0,19))+'</td></tr>';
   }).join('');
+}
+
+/* ============================================================================
+   APPROVAL WORKFLOW — GENERATED -> REVIEW -> APPROVED
+   Runtime state only. No storage, no backend, no persistence layer.
+   Approval NEVER recomputes distribution or grouping and NEVER changes a
+   quantity, a unit price, a line total or any total. It only sets a status.
+   ========================================================================== */
+var CURRENT=null;                 /* {run, lines, grp} of the run on screen */
+function APPR_PILL(st){ return st==='APPROVED'?'ok':(st==='REVIEW'?'warn':'neutral'); }
+
+/* every check the approval gate performs — pure, read-only */
+function approvalChecks(cur){
+  var out=[], run=cur.run, lines=cur.lines, grp=cur.grp, vr=VATRATE();
+
+  var distOK = !!lines.length && run.distributionStatus!=='INFEASIBLE' && run.distributionStatus!=='OVER_BUDGET';
+  out.push({ok:distOK, ar:'التوزيع مكتمل', en:'Distribution complete'});
+
+  var grpOK = !!grp && grp.invoiceGroupingStatus==='OK' && grp.invoices.length>0;
+  out.push({ok:grpOK, ar:'تجميع الفواتير مكتمل', en:'Invoice grouping complete'});
+
+  /* no split: every distribution line appears in exactly one invoice, once */
+  var seen={}, dupOrSplit=false, invCount=0;
+  if(grpOK) grp.invoices.forEach(function(v){ v.lines.forEach(function(l){
+      invCount++; var k=l.distributionLineId||l.itemId;
+      if(seen[k]) dupOrSplit=true; seen[k]=l; }); });
+  out.push({ok:grpOK&&!dupOrSplit, ar:'لا يوجد تقسيم للكميات', en:'No quantity splitting'});
+
+  var noLoss = grpOK && invCount===lines.length &&
+               lines.every(function(l){ var k=l.lineId||l.itemId; var f=seen[k];
+                 return f && f.quantity===l.quantity &&
+                        f.unitPriceSnapshotInclVat===l.unitPriceSnapshotInclVat &&
+                        r2(f.lineTotalInclVat)===r2(l.lineTotalInclVat); });
+  out.push({ok:noLoss, ar:'لا يوجد فقد أو تكرار للبنود', en:'No missing or duplicated lines'});
+
+  var sTot=0,sSub=0,sVat=0;
+  if(grpOK) grp.invoices.forEach(function(v){ v.lines.forEach(function(l){
+      var ti=r2(l.lineTotalInclVat), bv=r2(ti/(1+vr));
+      sTot=r2(sTot+ti); sSub=r2(sSub+bv); sVat=r2(sVat+r2(ti-bv)); }); });
+  var totOK = grpOK && r2(sTot)===r2(run.distributedInclVat);
+  out.push({ok:totOK, ar:'إجمالي الفواتير مطابق للتوزيع', en:'Invoice total matches distribution'});
+
+  var vatOK = grpOK && r2(sSub+sVat)===r2(sTot);
+  out.push({ok:vatOK, ar:'ضريبة القيمة المضافة 14% مطابقة', en:'VAT 14% reconciles'});
+
+  var allOK = out.every(function(c){ return c.ok; });
+  out.push({ok:allOK, ar:'البيانات جاهزة للاعتماد', en:'Data ready for approval'});
+  return {checks:out, ok:allOK, sTot:sTot, sSub:sSub, sVat:sVat};
+}
+
+function renderApproval(){
+  var p=document.getElementById('dgApprPanel');
+  if(!CURRENT||!CURRENT.lines.length){ p.classList.add('hidden'); return; }
+  p.classList.remove('hidden');
+  var run=CURRENT.run, grp=CURRENT.grp, st=run.approvalStatus||'GENERATED';
+  document.getElementById('dgApprTitle').textContent=T('اعتماد التوزيع والفواتير','Distribution & Invoice Approval');
+  document.getElementById('dgApprPill').textContent=st;
+  document.getElementById('dgApprPill').className='pill '+APPR_PILL(st);
+
+  function kv(l,v){ return '<div class="appr-kv">'+esc(l)+'<b>'+v+'</b></div>'; }
+  document.getElementById('dgApprInfo').innerHTML=
+    kv('Run ID',esc(run.runId||'—'))+
+    kv(T('الشهر','Month'),esc(monthName((SRC().monthlyBudgets.filter(function(x){
+        return x.fy===run.fyId&&x.t===run.typeId&&x.pi===run.periodIndex;})[0]||{pm:1}).pm)))+
+    kv(T('الموازنة المستهدفة','Target Budget'),money(run.targetInclVat))+
+    kv(T('إجمالي التوزيع','Distributed Total'),money(run.distributedInclVat))+
+    kv(T('عدد بنود التوزيع','Distribution Lines'),String(CURRENT.lines.length))+
+    kv(T('عدد الفواتير','Invoices'),String(grp&&grp.invoices?grp.invoices.length:0))+
+    kv(T('إجمالي الفواتير','Invoices Total'),money(grp?grp.invoicedTotalInclVat:0))+
+    kv(T('حالة التوزيع','Distribution Status'),esc(run.distributionStatus))+
+    kv(T('حالة التجميع','Grouping Status'),esc(grp?grp.invoiceGroupingStatus:'—'));
+
+  var res=approvalChecks(CURRENT);
+  var chk=document.getElementById('dgApprChk'), box=document.getElementById('dgApprStatus');
+  var bReview=document.getElementById('dgReview'), bAppr=document.getElementById('dgApprove');
+  bReview.textContent=T('مراجعة قبل الاعتماد','Review before approval');
+  bAppr.textContent=T('✓ اعتماد التوزيع والفواتير','✓ Approve distribution & invoices');
+
+  if(st==='APPROVED'){
+    chk.classList.add('hidden');
+    box.className='res-status rs-exact';
+    box.innerHTML=T('✓ تم اعتماد التوزيع والفواتير','✓ Distribution and invoices approved')+
+      '<div class="rs-sub">'+T('Run','Run')+' '+esc(run.runId)+' · '+
+      T('وقت الاعتماد','approved at')+' '+esc(String(run.approvedAt).replace('T',' ').slice(0,19))+' · '+
+      T('إجمالي التوزيع','distributed')+' '+money(run.distributedInclVat)+' · '+
+      T('عدد الفواتير','invoices')+' '+grp.invoices.length+' · '+
+      T('إجمالي الفواتير','invoices total')+' '+money(grp.invoicedTotalInclVat)+'</div>';
+    bReview.disabled=true; bAppr.disabled=true;
+  } else if(st==='REVIEW'){
+    chk.classList.remove('hidden');
+    chk.innerHTML=res.checks.map(function(c){
+      return '<li><span class="m '+(c.ok?'yes':'no')+'">'+(c.ok?'✓':'✗')+'</span><span>'+
+             esc(lang()==='en'?c.en:c.ar)+'</span></li>'; }).join('');
+    box.className='res-status '+(res.ok?'rs-partial':'rs-infeasible');
+    box.innerHTML=res.ok
+      ? T('النتيجة جاهزة للاعتماد','Result is ready for approval')
+      : T('⛔ لا يمكن اعتماد النتيجة','⛔ Result cannot be approved');
+    bReview.disabled=false; bAppr.disabled=!res.ok;
+  } else {
+    var blocked = grp && grp.invoiceGroupingStatus!=='OK';
+    if(run.reviewAttempted && !res.ok){
+      /* review gate rejected the run — show exactly which checks failed */
+      chk.classList.remove('hidden');
+      chk.innerHTML=res.checks.map(function(c){
+        return '<li><span class="m '+(c.ok?'yes':'no')+'">'+(c.ok?'✓':'✗')+'</span><span>'+
+               esc(lang()==='en'?c.en:c.ar)+'</span></li>'; }).join('');
+      box.className='res-status rs-infeasible';
+      box.innerHTML=T('لا يمكن الانتقال للمراجعة — توجد فحوص تحتاج تصحيحًا.',
+                      'Cannot move to review — some checks need correction.')+
+        (blocked?'<div class="rs-sub">'+T('تجميع الفواتير يحتاج مراجعة.',
+                 'Invoice grouping needs review.')+'</div>':'');
+    } else {
+      chk.classList.add('hidden');
+      box.className='res-status '+(blocked?'rs-closest':'rs-partial');
+      box.innerHTML=blocked
+        ? T('لا يمكن اعتماد النتيجة — تجميع الفواتير يحتاج مراجعة.',
+            'Result cannot be approved — invoice grouping needs review.')
+        : T('النتيجة مولَّدة — اضغط «مراجعة قبل الاعتماد».',
+            'Result generated — press "Review before approval".');
+    }
+    bReview.disabled=false; bAppr.disabled=true;
+  }
+  document.getElementById('dgApprMeta').textContent=
+    'run_id='+run.runId+' · approval_status='+st+
+    ' · approved_by='+(run.approvedBy||'null')+' · approved_at='+(run.approvedAt||'null')+
+    ' · checks_passed='+res.checks.filter(function(c){return c.ok;}).length+'/'+res.checks.length+
+    ' · Σ_invoices='+res.sTot.toFixed(2)+' · distributed='+run.distributedInclVat.toFixed(2);
+  renderRuns();
 }
 
 /* ============================================================================
@@ -1148,8 +1298,11 @@ function audit(action,run){
 function doGenerate(isRegen){
   if(isRegen){
     RUNS.forEach(function(r){
-      if(r.status==='GENERATED'&&r.fyId===dFy&&r.typeId===dType&&r.periodIndex===dPi){
-        r.status='CANCELLED'; audit('DISTRIBUTION_CANCELLED',r);
+      /* an unapproved run (GENERATED or REVIEW) is cancelled; APPROVED is never touched */
+      var unapproved = (r.approvalStatus==='GENERATED'||r.approvalStatus==='REVIEW');
+      if(unapproved && r.approvalStatus!=='APPROVED' && r.status!=='APPROVED' &&
+         r.fyId===dFy && r.typeId===dType && r.periodIndex===dPi){
+        r.status='CANCELLED'; r.approvalStatus='CANCELLED'; audit('DISTRIBUTION_CANCELLED',r);
       }
     });
   }
@@ -1167,13 +1320,18 @@ function doGenerate(isRegen){
      The guard below enforces this before the engine is called, so no
      quantity is ever divided. Distribution result is never altered.
      --------------------------------------------------------------------- */
+  out.run.approvalStatus='GENERATED';          /* every new run starts fresh */
+  out.run.approvedBy=null; out.run.approvedAt=null; out.run.reviewAttempted=false;
   if(out.lines.length){
     var grp=buildInvoiceGroups(out.lines,out.run.invoiceCount,runId,out.run.distributedInclVat);
     out.run.invoiceGroupingStatus=grp.invoiceGroupingStatus;
     renderGrouping(grp,out.run);
+    CURRENT={run:out.run,lines:out.lines,grp:grp};      /* approved runs are never touched */
   } else {
     document.getElementById('dgInvPanel').classList.add('hidden');
+    CURRENT=null;
   }
+  renderApproval();
   syncBudget();
 }
 
@@ -1186,11 +1344,36 @@ document.getElementById('dgSrc').onchange=function(e){
   document.getElementById('dgExclPanel').classList.add('hidden');
   document.getElementById('dgRunsPanel').classList.add('hidden');
   document.getElementById('dgInvPanel').classList.add('hidden');
+  document.getElementById('dgApprPanel').classList.add('hidden');
+  CURRENT=null;
   fillFilters();
 };
 document.getElementById('dgType').onchange=function(e){ dType=e.target.value; fillMonths(); };
 document.getElementById('dgFy').onchange=function(e){ dFy=e.target.value; fillMonths(); };
 document.getElementById('dgMonth').onchange=function(e){ dPi=parseInt(e.target.value,10); syncBudget(); };
+document.getElementById('dgReview').onclick=function(){
+  if(!CURRENT||CURRENT.run.approvalStatus==='APPROVED') return;
+  CURRENT.run.reviewAttempted=true;
+  /* REVIEW IS A VALIDATION GATE — the status only advances when every check passes */
+  if(approvalChecks(CURRENT).ok){
+    CURRENT.run.approvalStatus='REVIEW';
+    audit('DISTRIBUTION_REVIEWED',CURRENT.run);
+  } else {
+    CURRENT.run.approvalStatus='GENERATED';        /* stays GENERATED on failure */
+    audit('DISTRIBUTION_REVIEW_FAILED',CURRENT.run);
+  }
+  renderApproval();
+};
+document.getElementById('dgApprove').onclick=function(){
+  if(!CURRENT||CURRENT.run.approvalStatus!=='REVIEW') return;
+  if(!approvalChecks(CURRENT).ok) return;               /* gate — never bypassed */
+  CURRENT.run.approvalStatus='APPROVED';                /* status only — no data touched */
+  CURRENT.run.approvedAt=new Date().toISOString();
+  CURRENT.run.approvedBy='U001';
+  CURRENT.run.status='APPROVED';
+  audit('DISTRIBUTION_APPROVED',CURRENT.run);
+  renderApproval();
+};
 document.getElementById('dgGen').onclick=function(){ doGenerate(false); };
 document.getElementById('dgRegen').onclick=function(){ doGenerate(true); };
 Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
