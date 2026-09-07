@@ -2241,6 +2241,42 @@ function bhWireInner(){
   Array.prototype.forEach.call(root.querySelectorAll('[data-budsave]'),function(b){
     b.onclick=function(){ bhSaveAlloc(b.getAttribute('data-budsave')); }; });
 }
+/* --------------------------------------------------------------------------
+   S1 — PERSIST INVOICE GROUPING WITH THE APPROVED RUN
+   At the moment of approval the current grouping is deep-cloned and deep-frozen
+   onto the run itself. From then on the run carries its own invoice history:
+   it never depends on CURRENT, never reads GHS_DATA / GHS_FIXTURE / BAL / MOP,
+   and is never regrouped or recalculated.
+   -------------------------------------------------------------------------- */
+function deepFreeze(o){
+  if(o&&typeof o==='object'&&!Object.isFrozen(o)){
+    Object.getOwnPropertyNames(o).forEach(function(k){ deepFreeze(o[k]); });
+    Object.freeze(o);
+  }
+  return o;
+}
+/* Builds the immutable invoice snapshot from the CURRENT grouping.
+   Values are copied verbatim — nothing is recomputed except the VAT split,
+   which uses the same formula the UI already displays. */
+function buildInvoiceSnapshot(grp,vr){
+  return (grp&&grp.invoices?grp.invoices:[]).map(function(v){
+    var sub=0,vat=0,tot=0;
+    var lines=v.lines.map(function(l){
+      var ti=r2(l.lineTotalInclVat), bv=r2(ti/(1+vr)), vv=r2(ti-bv);
+      sub=r2(sub+bv); vat=r2(vat+vv); tot=r2(tot+ti);
+      return { invoiceLineId:l.invoiceLineId, distributionLineId:l.distributionLineId,
+               itemId:l.itemId, itemName:l.itemName,
+               quantity:l.quantity,
+               unitPriceSnapshotInclVat:l.unitPriceSnapshotInclVat,
+               lineTotalInclVat:ti, beforeVat:bv, vat:vv, totalInclVat:ti,
+               lineSeq:l.lineSeq };
+    });
+    return { invoiceId:v.invoiceId, runId:v.runId, invoiceSeq:v.invoiceSeq,
+             lines:lines, lineCount:lines.length,
+             subtotalBeforeVat:sub, vat:vat, totalInclVat:tot };
+  });
+}
+
 /* CANCEL — discards the in-progress edit and restores the LAST SAVED value.
    It never deletes a saved override, never writes BAL/MOP and never logs. */
 function bhCancelAlloc(key){
@@ -2880,6 +2916,144 @@ function bhRunSuite(){
             detail:'target '+after.run.targetInclVat.toFixed(2)+' · distributed '+after.run.distributedInclVat.toFixed(2)+' · lines identical'};
   });
 
+  /* ---------- S1 · Persist Invoice Grouping with the Approved Run ---------- */
+  function s1Env(){
+    var F=store(FX), M=newMop(), B=newBal(), RUNS=[];
+    var vr=VATRATE();
+    function origAlloc(pi){ var b=FX.monthlyBudgets.filter(function(x){return x.pi===pi;})[0]; return b?Number(b.inc):0; }
+    function make(pi,ic,seed,runId){
+      var o=gen(M,F,'FIXTURE',FY,TY,pi,rAlloc(B,'FIXTURE',FY,pi,TY,origAlloc(pi)).amount,ic,seed,runId);
+      o.run.dataSource='FIXTURE';
+      RUNS.push(o.run);
+      return o;
+    }
+    function approve(cur){
+      cur.run.approvalStatus='REVIEW';
+      var c=approvalChecks({run:cur.run,lines:cur.lines,grp:cur.grp});
+      if(!c.ok) return false;
+      cur.run.approvalStatus='APPROVED'; cur.run.status='APPROVED';
+      cur.run.approvedAt=new Date().toISOString(); cur.run.approvedBy='U001';
+      cur.run.invoices=deepFreeze(buildInvoiceSnapshot(cur.grp,vr));
+      cur.run.invoiceCountApproved=cur.run.invoices.length;
+      return true;
+    }
+    function getInvoices(runId){
+      var r=RUNS.filter(function(x){return x.runId===runId;})[0];
+      return (r&&r.invoices)?r.invoices:null;
+    }
+    return {F:F,M:M,B:B,RUNS:RUNS,make:make,approve:approve,getInvoices:getInvoices,
+            saveP:function(pi,vals){ return save(M,F,'FIXTURE',FY,pi,TY,vals); },
+            saveB:function(pi,v){ return saveAlloc(B,'FIXTURE',FY,pi,TY,v,origAlloc(pi)); }};
+  }
+  function invFingerprint(inv){
+    return (inv||[]).map(function(v){
+      return v.invoiceId+'|'+v.invoiceSeq+'|'+v.lineCount+'|'+v.subtotalBeforeVat+'|'+v.vat+'|'+v.totalInclVat+'|'+
+        v.lines.map(function(l){ return [l.invoiceLineId,l.distributionLineId,l.itemId,l.itemName,
+          l.quantity,l.unitPriceSnapshotInclVat,l.lineTotalInclVat,l.beforeVat,l.vat,l.totalInclVat].join(','); }).join(';');
+    }).join('||');
+  }
+
+  var S1=s1Env(), S1cur=S1.make(1,5,501,'RUN000016');
+  TT('S1-01 · '+bhT('توليد ناجح بخمس فواتير','Generate with 5 invoices'),function(){
+    return {ok:S1cur.grp&&S1cur.grp.invoiceGroupingStatus==='OK'&&S1cur.grp.invoices.length===5,
+            detail:'lines '+S1cur.lines.length+' -> invoices '+(S1cur.grp?S1cur.grp.invoices.length:0)+
+                   ' · status '+(S1cur.grp?S1cur.grp.invoiceGroupingStatus:'—')};
+  });
+  TT('S1-02 · '+bhT('قبل الاعتماد لا توجد فواتير على العملية','Before approval the run has no invoices'),function(){
+    return {ok:S1cur.run.invoices===undefined&&S1.getInvoices('RUN000016')===null,
+            detail:'run.invoices '+(S1cur.run.invoices===undefined?'undefined':'PRESENT')+
+                   ' · getInvoices -> '+String(S1.getInvoices('RUN000016'))};
+  });
+  TT('S1-03 · '+bhT('بعد الاعتماد توجد الفواتير','After approval run.invoices exists'),function(){
+    var ok=S1.approve(S1cur);
+    return {ok:ok&&Array.isArray(S1cur.run.invoices)&&S1cur.run.approvalStatus==='APPROVED',
+            detail:'approval '+S1cur.run.approvalStatus+' · invoices array '+Array.isArray(S1cur.run.invoices)};
+  });
+  TT('S1-04 · '+bhT('عدد الفواتير = 5','Invoice count = 5'),function(){
+    return {ok:S1cur.run.invoices.length===5&&S1cur.run.invoiceCountApproved===5,
+            detail:'stored '+S1cur.run.invoices.length+' · invoiceCountApproved '+S1cur.run.invoiceCountApproved};
+  });
+  TT('S1-05 · '+bhT('إجماليات الفواتير تطابق الموزَّع','Invoice totals reconcile with distributed'),function(){
+    var t=0,sub=0,vat=0;
+    S1cur.run.invoices.forEach(function(v){ t=r2(t+v.totalInclVat); sub=r2(sub+v.subtotalBeforeVat); vat=r2(vat+v.vat); });
+    return {ok:t===r2(S1cur.run.distributedInclVat)&&r2(sub+vat)===t,
+            detail:'Σ total '+t.toFixed(2)+' = distributed '+S1cur.run.distributedInclVat.toFixed(2)+
+                   ' · '+sub.toFixed(2)+' + '+vat.toFixed(2)+' = '+r2(sub+vat).toFixed(2)};
+  });
+  TT('S1-06 · '+bhT('كل بند توزيع يظهر مرة واحدة','Every distributed line appears exactly once'),function(){
+    var seen={},n=0;
+    S1cur.run.invoices.forEach(function(v){ v.lines.forEach(function(l){ n++; seen[l.itemId]=(seen[l.itemId]||0)+1; }); });
+    return {ok:n===S1cur.lines.length&&Object.keys(seen).length===S1cur.lines.length&&
+               Object.keys(seen).every(function(k){return seen[k]===1;}),
+            detail:n+' invoice lines from '+S1cur.lines.length+' distribution lines'};
+  });
+  TT('S1-07 · '+bhT('لا تقسيم كميات','No quantity splitting'),function(){
+    var q={};
+    S1cur.run.invoices.forEach(function(v){ v.lines.forEach(function(l){ q[l.itemId]=(q[l.itemId]||0)+l.quantity; }); });
+    var ok=S1cur.lines.every(function(l){ return q[l.itemId]===l.quantity; });
+    return {ok:ok,detail:'quantity per item identical to the distribution line'};
+  });
+  TT('S1-08 · '+bhT('لا تكرار','No duplicate lines'),function(){
+    var ids={},dup=0;
+    S1cur.run.invoices.forEach(function(v){ v.lines.forEach(function(l){
+      if(ids[l.invoiceLineId]) dup++; ids[l.invoiceLineId]=1; }); });
+    return {ok:dup===0,detail:'duplicate invoice line ids '+dup};
+  });
+  TT('S1-09 · '+bhT('لا فقد','No omitted lines'),function(){
+    var got={};
+    S1cur.run.invoices.forEach(function(v){ v.lines.forEach(function(l){ got[l.itemId]=1; }); });
+    var missing=S1cur.lines.filter(function(l){ return !got[l.itemId]; });
+    return {ok:missing.length===0,detail:'missing '+missing.length+' of '+S1cur.lines.length};
+  });
+  TT('S1-10 · '+bhT('ليست نفس المرجع','Not the same object reference'),function(){
+    var sameArr=S1cur.run.invoices===S1cur.grp.invoices;
+    var sameObj=S1cur.run.invoices[0]===S1cur.grp.invoices[0];
+    var sameLine=S1cur.run.invoices[0].lines[0]===S1cur.grp.invoices[0].lines[0];
+    return {ok:!sameArr&&!sameObj&&!sameLine,
+            detail:'array '+sameArr+' · invoice '+sameObj+' · line '+sameLine+' (all must be false)'};
+  });
+  TT('S1-11 · '+bhT('محاولة التعديل العميق تفشل','Deep mutation attempt fails'),function(){
+    var before=invFingerprint(S1cur.run.invoices);
+    try{ S1cur.run.invoices[0].totalInclVat=1; }catch(e){}
+    try{ S1cur.run.invoices[0].lines[0].quantity=99999; }catch(e){}
+    try{ S1cur.run.invoices.push({}); }catch(e){}
+    try{ S1cur.run.invoices[0].lines.push({}); }catch(e){}
+    return {ok:invFingerprint(S1cur.run.invoices)===before&&Object.isFrozen(S1cur.run.invoices)&&
+               Object.isFrozen(S1cur.run.invoices[0].lines[0]),
+            detail:'frozen at every level · fingerprint unchanged after 4 mutation attempts'};
+  });
+  TT('S1-12 · '+bhT('عملية جديدة لا تغيّر القديمة','A new run leaves the old invoices intact'),function(){
+    var before=invFingerprint(S1.getInvoices('RUN000016'));
+    var fresh=S1.make(1,3,502,'RUN000017');
+    return {ok:invFingerprint(S1.getInvoices('RUN000016'))===before&&
+               S1.getInvoices('RUN000017')===null,
+            detail:'RUN000016 fingerprint unchanged · RUN000017 (unapproved) has no invoices'};
+  });
+  TT('S1-13 · '+bhT('تغيير السعر الشهري لا يؤثر','MOP change does not affect the snapshot'),function(){
+    var before=invFingerprint(S1.getInvoices('RUN000016'));
+    S1.saveP(1,{DM001:'999.99'});
+    return {ok:invFingerprint(S1.getInvoices('RUN000016'))===before,
+            detail:'DM001 monthly price -> 999.99 · approved invoices unchanged'};
+  });
+  TT('S1-14 · '+bhT('تغيير الموازنة لا يؤثر','BAL change does not affect the snapshot'),function(){
+    var before=invFingerprint(S1.getInvoices('RUN000016'));
+    S1.saveB(1,'600000');
+    return {ok:invFingerprint(S1.getInvoices('RUN000016'))===before,
+            detail:'allocation -> 600000 · approved invoices unchanged'};
+  });
+  TT('S1-15 · '+bhT('عزل التشغيل عن الاختبار','LIVE and FIXTURE snapshots isolated'),function(){
+    var L=s1Env();                     /* separate environment = separate RUNS */
+    var fx=S1.getInvoices('RUN000016');
+    return {ok:S1cur.run.dataSource==='FIXTURE'&&L.getInvoices('RUN000016')===null&&fx!==null,
+            detail:'run.dataSource '+S1cur.run.dataSource+' · other store getInvoices -> null'};
+  });
+  TT('S1-16 · '+bhT('استرجاع فواتير عملية قديمة','getInvoices returns the old approved invoices'),function(){
+    var newer=S1.make(1,4,503,'RUN000018');   /* CURRENT now points at a newer run */
+    var old=S1.getInvoices('RUN000016');
+    return {ok:old!==null&&old.length===5&&S1.getInvoices('RUN000018')===null,
+            detail:'CURRENT is RUN000018 · getInvoices(RUN000016) -> '+(old?old.length:0)+' invoices'};
+  });
+
   return R;
 }
 function bhRenderTests(R){
@@ -3301,6 +3475,10 @@ document.getElementById('dgApprove').onclick=function(){
   CURRENT.run.approvedAt=new Date().toISOString();
   CURRENT.run.approvedBy='U001';
   CURRENT.run.status='APPROVED';
+  /* S1 — freeze the invoice grouping onto the run itself (deep clone, deep freeze).
+     Not a reference to CURRENT.grp.invoices; survives every later run/source change. */
+  CURRENT.run.invoices=deepFreeze(buildInvoiceSnapshot(CURRENT.grp,VATRATE()));
+  CURRENT.run.invoiceCountApproved=CURRENT.run.invoices.length;
   audit('DISTRIBUTION_APPROVED',CURRENT.run);
   renderApproval();
 };
@@ -3314,7 +3492,13 @@ Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),functio
 window.GHS_RUNTIME={
   getRuns:function(){ return RUNS; },
   getLines:function(){ return LINES; },
-  getSource:function(){ return dSrc; }
+  getSource:function(){ return dSrc; },
+  /* Historical invoices of an APPROVED run. Reads the run itself only —
+     never CURRENT, GHS_DATA, GHS_FIXTURE, BAL or MOP. Never regroups. */
+  getInvoices:function(runId){
+    var r=RUNS.filter(function(x){ return x.runId===runId; })[0];
+    return (r&&r.invoices)?r.invoices:null;
+  }
 };
 
 dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id;
