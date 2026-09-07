@@ -1344,7 +1344,7 @@ function fillMonths(){
 }
 function syncBudget(){
   var b=currentBudget();
-  document.getElementById('dgBudget').value = b ? money(b.inc) : '—';
+  document.getElementById('dgBudget').value = b ? money(resolveAlloc(dSrc,dFy,dPi,dType,b.inc).amount) : '—';
   document.getElementById('dgEng').textContent='Engine '+ENG.ALGORITHM_VERSION;
   var added=RUNS.length;
   var srcMsg = SRC().fixture
@@ -1363,7 +1363,8 @@ function engineInput(seed,runId){
   var b=currentBudget();
   return {
     fyId:dFy, typeId:dType, periodIndex:dPi,
-    targetInclVat: b?Number(b.inc)||0:0,
+    /* budget = Allocation override (Source+FY+Month+Type) ?? original row */
+    targetInclVat: b?resolveAlloc(dSrc,dFy,dPi,dType,b.inc).amount:0,
     invoiceCount: (function(){ var v=document.getElementById('dgInv').value.trim();
                                return /^\d+$/.test(v)?parseInt(v,10):null; })(),
     /* MASTER dataset resolved by the DISTRIBUTION source (dSrc), never by miSrc */
@@ -2024,6 +2025,31 @@ function mopGet(src,fy,pi,itemId){
   return (b&&b[itemId]!==undefined)?b[itemId]:null;
 }
 function mopSet(src,fy,pi,itemId,price){ mopStore(src,fy,pi,true)[itemId]=price; }
+/* --------------------------------------------------------------------------
+   BUDGET ALLOCATION OVERRIDE  —  key: Source + FY + Month + Expense Type
+   Same philosophy as MOP: a runtime layer over the original data. GHS_DATA and
+   GHS_FIXTURE are never written. Completely separate from item prices/limits.
+   -------------------------------------------------------------------------- */
+var BAL={}, BAL_LOG=[];
+function balStore(src,fy,pi,make){
+  src=(src==='FIXTURE')?'FIXTURE':'LIVE';
+  if(!BAL[src]){ if(!make) return null; BAL[src]={}; }
+  if(!BAL[src][fy]){ if(!make) return null; BAL[src][fy]={}; }
+  if(!BAL[src][fy][pi]){ if(!make) return null; BAL[src][fy][pi]={}; }
+  return BAL[src][fy][pi];
+}
+function balGet(src,fy,pi,typeId){
+  var b=balStore(src,fy,pi,false);
+  return (b&&b[typeId]!==undefined)?b[typeId]:null;
+}
+function balSet(src,fy,pi,typeId,amount){ balStore(src,fy,pi,true)[typeId]=amount; }
+/* resolved allocation = override ?? original monthly budget row */
+function resolveAlloc(src,fy,pi,typeId,original){
+  var o=balGet(src,fy,pi,typeId);
+  if(o!==null&&o!==undefined) return {amount:o,origin:'OVERRIDE'};
+  return {amount:Number(original)||0,origin:'ORIGINAL'};
+}
+
 /* the single price resolver used by BOTH the Budget view and the engine input */
 function resolvePrice(src,fy,pi,item){
   var m=mopGet(src,fy,pi,item.i);
@@ -2031,7 +2057,7 @@ function resolvePrice(src,fy,pi,item){
   return {price:item.p,origin:'MASTER'};
 }
 
-var bhFy=null, bhOpenMonth=null, bhOpenType=null, bhDirty={};
+var bhFy=null, bhOpenMonth=null, bhOpenType=null, bhDirty={}, bhBudDirty={};
 /* The Budget page owns its OWN data source. It is deliberately INDEPENDENT of
    the Distribution page selector (dSrc). LIVE and FIXTURE are never mixed. */
 var bhSource='LIVE';
@@ -2061,7 +2087,7 @@ function bhMonths(fy){
   var byPi={};
   rows.forEach(function(b){
     if(!byPi[b.pi]) byPi[b.pi]={pi:b.pi,pm:b.pm,total:0,types:[]};
-    byPi[b.pi].total=bhR2(byPi[b.pi].total+(Number(b.inc)||0));
+    byPi[b.pi].total=bhR2(byPi[b.pi].total+resolveAlloc(bhSrc(),fy,b.pi,b.t,b.inc).amount);
     byPi[b.pi].types.push(b);
   });
   return Object.keys(byPi).map(function(k){return byPi[k];})
@@ -2143,8 +2169,14 @@ function bhTypes(m){
     '<th>'+bhT('\u0639\u062f\u062f \u0627\u0644\u0623\u0635\u0646\u0627\u0641','Items')+'</th><th></th></tr></thead><tbody>'+
     rows.map(function(b){
       var open=bhOpenType===(m.pi+'|'+b.t);
+      var ra=resolveAlloc(bhSrc(),bhFy,m.pi,b.t,b.inc);
+      var bk=bhSrc()+'|'+bhFy+'|'+m.pi+'|'+b.t;
       return '<tr><td>'+bhEsc(tn[b.t]||b.t)+'</td>'+
-        '<td class="num">'+bhMoney(Number(b.inc)||0)+'</td>'+
+        '<td><input class="bh-in'+(bhBudDirty[bk]!==undefined?' dirty':'')+'" data-bud="'+bhEsc(bk)+'" inputmode="decimal" value="'+
+          (bhBudDirty[bk]!==undefined?bhBudDirty[bk]:ra.amount)+'">'+
+          '<button class="btn green sm" data-budsave="'+bhEsc(bk)+'" style="margin-inline-start:8px">'+bhT('\u062d\u0641\u0638','Save')+'</button>'+
+          '<span class="bh-src '+(ra.origin==='OVERRIDE'?'m':'b')+'" style="margin-inline-start:8px">'+
+          (ra.origin==='OVERRIDE'?bhT('\u0645\u0639\u062f\u0651\u0644\u0629','Edited'):bhT('\u0627\u0644\u0623\u0635\u0644\u064a\u0629','Original'))+'</span></td>'+
         '<td class="num">'+bhItems(b.t).length+'</td>'+
         '<td><button class="srcbtn" data-typ="'+m.pi+'|'+b.t+'">'+(open?bhT('\u0625\u062e\u0641\u0627\u0621','Hide'):bhT('\u0627\u0644\u0623\u0635\u0646\u0627\u0641','Items'))+(open?' \u25b4':' \u25be')+'</button></td></tr>'+
         (open?'<tr><td colspan="4" style="padding:0">'+bhItemsTable(m.pi,b.t)+'</td></tr>':'');
@@ -2189,6 +2221,33 @@ function bhWireInner(){
   Array.prototype.forEach.call(root.querySelectorAll('[data-save]'),function(b){
     b.onclick=function(){ var p=b.getAttribute('data-save').split('|');
       bhSave(parseInt(p[0],10),p[1]); }; });
+  Array.prototype.forEach.call(root.querySelectorAll('[data-bud]'),function(inp){
+    inp.oninput=function(){ bhBudDirty[inp.getAttribute('data-bud')]=inp.value;
+      inp.classList.add('dirty'); inp.classList.remove('err'); }; });
+  Array.prototype.forEach.call(root.querySelectorAll('[data-budsave]'),function(b){
+    b.onclick=function(){ bhSaveAlloc(b.getAttribute('data-budsave')); }; });
+}
+/* Save one expense-type allocation. Touches ONLY the budget layer:
+   item prices, monthly prices and quantity limits are never read or written. */
+function bhSaveAlloc(key){
+  var parts=key.split('|'), src=parts[0], fy=parts[1], pi=parseInt(parts[2],10), typeId=parts[3];
+  var root=document.getElementById('bhRows');
+  var inp=root.querySelector('[data-bud="'+key+'"]'); if(!inp) return;
+  var raw=String(inp.value).trim();
+  if(raw===''||!/^\d+(\.\d{1,2})?$/.test(raw)||Number(raw)<0){
+    inp.classList.add('err');
+    bhMsg('warn',bhT('\u0645\u0648\u0627\u0632\u0646\u0629 \u063a\u064a\u0631 \u0635\u0627\u0644\u062d\u0629','Invalid budget')); return; }
+  var v=Number(raw);
+  var orig=(bhData().monthlyBudgets.filter(function(b){return b.fy===fy&&b.pi===pi&&b.t===typeId;})[0]||{}).inc;
+  var cur=resolveAlloc(src,fy,pi,typeId,orig).amount;
+  if(v===cur){ bhMsg('note',bhT('\u0644\u0627 \u064a\u0648\u062c\u062f \u062a\u063a\u064a\u064a\u0631 \u0644\u0644\u062d\u0641\u0638.','Nothing to save.')); return; }
+  balSet(src,fy,pi,typeId,v);
+  BAL_LOG.push({src:src,fy:fy,pi:pi,type:typeId,old:cur,val:v,at:new Date().toISOString()});
+  console.log('[AUDIT] BUDGET_ALLOCATION_SET',JSON.stringify(BAL_LOG[BAL_LOG.length-1]));
+  delete bhBudDirty[key];
+  bhRender();
+  bhMsg('ok',bhT('\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u2014 \u0623\u0633\u0639\u0627\u0631 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0648\u0627\u0644\u062d\u062f\u0648\u062f \u0644\u0645 \u062a\u062a\u0623\u062b\u0631.',
+    'Budget saved - item prices and limits are untouched.'));
 }
 /* Save only the CHANGED monthly prices for this Source + FY + Month */
 function bhSave(pi,typeId){
@@ -2219,7 +2278,7 @@ function bhSave(pi,typeId){
 document.getElementById('bhSrcSel').onchange=function(e){
   bhSource=(e.target.value==='FIXTURE')?'FIXTURE':'LIVE';
   bhFy=(bhData().fyears[0]||{}).id;            /* never keep a value from the other source */
-  bhOpenMonth=null; bhOpenType=null; bhDirty={};
+  bhOpenMonth=null; bhOpenType=null; bhDirty={}; bhBudDirty={};
   bhRender();
 };
 document.getElementById('bhFy').onchange=function(e){ bhFy=e.target.value; bhOpenMonth=null; bhOpenType=null; bhRender(); };
@@ -2569,6 +2628,100 @@ function bhRunSuite(){
   TT('L · '+bhT('المحرك سليم بلا تجميع فواتير','Engine intact, no grouping inside it'),function(){
     return {ok:ENG.ALGORITHM_VERSION==='DE-1.2.1'&&typeof ENG.groupInvoices==='undefined',
             detail:'engine '+ENG.ALGORITHM_VERSION+' · groupInvoices undefined · no quantity splitting'};
+  });
+
+  /* ---------- Budget Allocation editing (A - K) ---------- */
+  function newBal(){ return {}; }
+  function bGet(B,src,fy,pi,t){ return (B[src]&&B[src][fy]&&B[src][fy][pi]&&B[src][fy][pi][t]!==undefined)?B[src][fy][pi][t]:null; }
+  function bSet(B,src,fy,pi,t,v){ B[src]=B[src]||{}; B[src][fy]=B[src][fy]||{}; B[src][fy][pi]=B[src][fy][pi]||{}; B[src][fy][pi][t]=v; }
+  function rAlloc(B,src,fy,pi,t,orig){ var o=bGet(B,src,fy,pi,t);
+    return (o!==null)?{amount:o,origin:'OVERRIDE'}:{amount:Number(orig)||0,origin:'ORIGINAL'}; }
+  /* the exact bhSaveAlloc rule */
+  function saveAlloc(B,src,fy,pi,t,raw,orig,log){
+    if(String(raw).trim()===''||!/^\d+(\.\d{1,2})?$/.test(String(raw).trim())||Number(raw)<0) return {ok:false,why:'invalid'};
+    var v=Number(raw), cur=rAlloc(B,src,fy,pi,t,orig).amount;
+    if(v===cur) return {ok:true,changed:0};
+    bSet(B,src,fy,pi,t,v); if(log) log.push({t:t,old:cur,val:v});
+    return {ok:true,changed:1};
+  }
+  var FXB=function(pi){ var b=FX.monthlyBudgets.filter(function(x){return x.pi===pi;})[0]; return b?Number(b.inc):0; };
+
+  TT('A · '+bhT('الموازنة الأولية 500,000','Initial allocation is 500,000'),function(){
+    var B=newBal(), r=rAlloc(B,'FIXTURE',FY,1,TY,FXB(1));
+    return {ok:r.amount===500000&&r.origin==='ORIGINAL',
+            detail:'September / DEMO_T -> '+r.amount.toFixed(2)+' ('+r.origin+')'};
+  });
+  TT('B · '+bhT('التعديل إلى 600,000 وحفظه','Edit to 600,000 and save'),function(){
+    var B=newBal(), r=saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    var a=rAlloc(B,'FIXTURE',FY,1,TY,FXB(1));
+    return {ok:r.ok&&r.changed===1&&a.amount===600000&&a.origin==='OVERRIDE',
+            detail:'500,000 -> '+a.amount.toFixed(2)+' ('+a.origin+')'};
+  });
+  TT('C · '+bhT('إجمالي الشهر يصبح 600,000','Month total becomes 600,000'),function(){
+    var B=newBal(); saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    var rows=FX.monthlyBudgets.filter(function(b){return b.fy===FY&&b.pi===1;});
+    var tot=0; rows.forEach(function(b){ tot=r2(tot+rAlloc(B,'FIXTURE',FY,b.pi,b.t,b.inc).amount); });
+    return {ok:tot===600000&&rows.length===1,
+            detail:rows.length+' type in September · total '+tot.toFixed(2)};
+  });
+  TT('D · '+bhT('الأسعار والحدود لا تتأثر','Item prices and limits unaffected'),function(){
+    var F=store(FX), M=newMop(), B=newBal();
+    var before=JSON.stringify({items:F.items,limits:F.limits,mop:M});
+    saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    return {ok:JSON.stringify({items:F.items,limits:F.limits,mop:M})===before,
+            detail:'items · limits · monthly prices byte-identical after the budget edit'};
+  });
+  TT('E · '+bhT('أكتوبر لا يتغير','October unchanged'),function(){
+    var B=newBal(); saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    var oct=rAlloc(B,'FIXTURE',FY,2,TY,FXB(2));
+    return {ok:oct.amount===FXB(2)&&oct.origin==='ORIGINAL',
+            detail:'October '+oct.amount.toFixed(2)+' ('+oct.origin+')'};
+  });
+  TT('F · '+bhT('سنة مالية أخرى لا تتغير','Another FY unchanged'),function(){
+    var B=newBal(); saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    var o=rAlloc(B,'FIXTURE','FY_OTHER',1,TY,FXB(1));
+    return {ok:o.amount===500000&&o.origin==='ORIGINAL',
+            detail:'FY_OTHER '+o.amount.toFixed(2)+' ('+o.origin+')'};
+  });
+  TT('G · '+bhT('موازنة التشغيل لا تتغير','LIVE allocation unchanged'),function(){
+    var B=newBal(); saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    var lb=D.monthlyBudgets[0];
+    var l=rAlloc(B,'LIVE',lb.fy,lb.pi,lb.t,lb.inc);
+    return {ok:l.origin==='ORIGINAL'&&l.amount===Number(lb.inc)&&bGet(B,'LIVE',lb.fy,lb.pi,lb.t)===null,
+            detail:'LIVE '+lb.t+' '+l.amount.toFixed(2)+' ('+l.origin+') · no LIVE override stored'};
+  });
+  TT('H · '+bhT('حفظ بلا تغيير لا ينشئ سجلًا','No-op save creates no audit'),function(){
+    var B=newBal(), log=[];
+    var r=saveAlloc(B,'FIXTURE',FY,1,TY,String(FXB(1)),FXB(1),log);
+    return {ok:r.ok&&r.changed===0&&log.length===0,detail:'changed '+r.changed+' · audit entries '+log.length};
+  });
+  TT('I · '+bhT('القيم غير الصالحة مرفوضة','Invalid values rejected'),function(){
+    var B=newBal();
+    var a=saveAlloc(B,'FIXTURE',FY,1,TY,'-1',FXB(1));
+    var b=saveAlloc(B,'FIXTURE',FY,1,TY,'abc',FXB(1));
+    var c=saveAlloc(B,'FIXTURE',FY,1,TY,'100.123',FXB(1));
+    var d=saveAlloc(B,'FIXTURE',FY,1,TY,'',FXB(1));
+    var z=saveAlloc(B,'FIXTURE',FY,1,TY,'0',FXB(1));      /* zero IS valid (>= 0) */
+    return {ok:!a.ok&&!b.ok&&!c.ok&&!d.ok&&z.ok,
+            detail:'-1 · abc · 100.123 · empty rejected · 0 accepted (>= 0)'};
+  });
+  TT('J · '+bhT('التوزيع الجديد يستخدم 600,000','New run uses the 600,000 allocation'),function(){
+    var F=store(FX), M=newMop(), B=newBal();
+    saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    var target=rAlloc(B,'FIXTURE',FY,1,TY,FXB(1)).amount;
+    var run=gen(M,F,'FIXTURE',FY,TY,1,target,5,301,'RUN000201');
+    return {ok:target===600000&&run.run.targetInclVat===600000,
+            detail:'target passed to engine '+run.run.targetInclVat.toFixed(2)+' · distributed '+run.run.distributedInclVat.toFixed(2)};
+  });
+  TT('K · '+bhT('العملية القديمة تحتفظ بالموازنة القديمة','Older run keeps the old budget'),function(){
+    var F=store(FX), M=newMop(), B=newBal();
+    var old=gen(M,F,'FIXTURE',FY,TY,1,rAlloc(B,'FIXTURE',FY,1,TY,FXB(1)).amount,5,302,'RUN000202');
+    var snap=JSON.stringify({r:old.run,l:old.lines,g:old.grp});
+    saveAlloc(B,'FIXTURE',FY,1,TY,'600000',FXB(1));
+    var fresh=gen(M,F,'FIXTURE',FY,TY,1,rAlloc(B,'FIXTURE',FY,1,TY,FXB(1)).amount,5,302,'RUN000203');
+    return {ok:old.run.targetInclVat===500000&&fresh.run.targetInclVat===600000&&
+               JSON.stringify({r:old.run,l:old.lines,g:old.grp})===snap,
+            detail:'old target '+old.run.targetInclVat.toFixed(2)+' (byte-identical) · new target '+fresh.run.targetInclVat.toFixed(2)};
   });
 
   return R;
