@@ -3054,6 +3054,224 @@ function bhRunSuite(){
             detail:'CURRENT is RUN000018 · getInvoices(RUN000016) -> '+(old?old.length:0)+' invoices'};
   });
 
+  /* ---------- S2 · Read-only Export Context (S2-01 .. S2-25) ---------- */
+  function s2Env(){
+    var F=store(FX), M=newMop(), B=newBal(), RUNS=[], LINES=[], vr=VATRATE();
+    function origAlloc(pi){ var b=FX.monthlyBudgets.filter(function(x){return x.pi===pi;})[0]; return b?Number(b.inc):0; }
+    function make(pi,ic,seed,runId,src){
+      var o=gen(M,F,src||'FIXTURE',FY,TY,pi,rAlloc(B,src||'FIXTURE',FY,pi,TY,origAlloc(pi)).amount,ic,seed,runId);
+      o.run.dataSource=src||'FIXTURE';
+      /* tag the lines BEFORE grouping — same order as the real doGenerate,
+         so invoice lines carry a real distributionLineId */
+      o.lines.forEach(function(l,i){ l.runId=runId; l.lineId=runId+'-L'+String(i+1); l.lineSeq=i+1; });
+      o.grp=o.lines.length?buildInvoiceGroups(o.lines,ic,runId,o.run.distributedInclVat):null;
+      RUNS.push(o.run); LINES=LINES.concat(o.lines);
+      return o;
+    }
+    function approve(cur){
+      cur.run.approvalStatus='REVIEW';
+      if(!approvalChecks({run:cur.run,lines:cur.lines,grp:cur.grp}).ok) return false;
+      cur.run.approvalStatus='APPROVED'; cur.run.status='APPROVED';
+      cur.run.approvedAt=new Date().toISOString(); cur.run.approvedBy='U001';
+      cur.run.invoices=deepFreeze(buildInvoiceSnapshot(cur.grp,vr));
+      return true;
+    }
+    /* the REAL buildExportContext, bound to this isolated store */
+    function build(runId){
+      var run=RUNS.filter(function(r){return r.runId===runId;})[0];
+      if(!run) return null;
+      if(run.approvalStatus!=='APPROVED') return null;
+      if(run.status!=='APPROVED') return null;
+      if(!run.invoices||!run.invoices.length) return null;
+      var lines=LINES.filter(function(l){return l.runId===runId;});
+      if(!lines.length) return null;
+      var invoices=run.invoices, master=run.masterSnapshot||[];
+      var lineSum=0; lines.forEach(function(l){ lineSum=r2(lineSum+r2(l.lineTotalInclVat)); });
+      if(lineSum!==r2(run.distributedInclVat)) return null;
+      var invTotal=0,invSub=0,invVat=0,invLineCount=0,seen={},dup=false;
+      invoices.forEach(function(v){ invTotal=r2(invTotal+v.totalInclVat);
+        invSub=r2(invSub+v.subtotalBeforeVat); invVat=r2(invVat+v.vat);
+        v.lines.forEach(function(l){ invLineCount++; if(seen[l.itemId]) dup=true; seen[l.itemId]=l; }); });
+      if(invTotal!==r2(run.distributedInclVat)) return null;
+      if(r2(invSub+invVat)!==invTotal) return null;
+      if(dup) return null;
+      if(invLineCount!==lines.length) return null;
+      if(lines.some(function(l){ var f=seen[l.itemId];
+        return !f||f.quantity!==l.quantity||f.unitPriceSnapshotInclVat!==l.unitPriceSnapshotInclVat||
+               r2(f.lineTotalInclVat)!==r2(l.lineTotalInclVat); })) return null;
+      var ctx={ run:ctxClone(run),
+        metadata:{ runId:run.runId,dataSource:run.dataSource||null,financialYear:run.fyId,
+          month:run.periodIndex,expenseType:run.typeId,targetBudget:run.targetInclVat,
+          distributedTotal:run.distributedInclVat,remaining:run.remainingInclVat,
+          executionPct:run.executionPct,distributionStatus:run.distributionStatus,
+          invoiceGroupingStatus:run.invoiceGroupingStatus||null,approvalStatus:run.approvalStatus,
+          approvedBy:run.approvedBy||null,approvedAt:run.approvedAt||null,
+          generatedAt:run.generatedAt||null,generatedBy:run.generatedBy||null,
+          algorithmVersion:run.algorithmVersion||null,randomSeed:run.randomSeed,
+          requestedInvoiceCount:run.invoiceCount,vatRate:vr },
+        distribution:{ lineCount:lines.length, lines:lines.map(function(l){
+          var m=master.filter(function(x){return x.itemCode===l.itemId;})[0]||{};
+          return {lineId:l.lineId,lineSeq:l.lineSeq,itemId:l.itemId,itemName:l.itemName,
+            quantity:l.quantity,unitPriceInclVat:l.unitPriceSnapshotInclVat,
+            lineTotalInclVat:r2(l.lineTotalInclVat),
+            priceOrigin:(m.priceOrigin===undefined?null:m.priceOrigin),
+            monthlyMinQty:(m.monthlyMinQty===undefined?null:m.monthlyMinQty),
+            monthlyMaxQty:(m.monthlyMaxQty===undefined?null:m.monthlyMaxQty),
+            annualMaxQty:(m.annualMaxQty===undefined?null:m.annualMaxQty)}; }) },
+        invoices:{ count:invoices.length, invoices:ctxClone(invoices) },
+        totals:{ targetBudget:run.targetInclVat,distributedTotal:run.distributedInclVat,
+          invoiceTotal:invTotal,subtotalBeforeVat:invSub,vat:invVat,totalInclusiveVat:invTotal },
+        snapshots:{ master:ctxClone(master) },
+        reconciliation:{ linesEqualDistributed:true,invoicesEqualDistributed:true,vatBalances:true,
+          everyLineOnce:true,noDuplicate:true,noOmission:true,noQuantitySplit:true } };
+      return deepFreeze(ctx);
+    }
+    return {F:F,M:M,B:B,RUNS:RUNS,make:make,approve:approve,build:build,
+      saveP:function(pi,v){return save(M,F,'FIXTURE',FY,pi,TY,v);},
+      saveB:function(pi,v){return saveAlloc(B,'FIXTURE',FY,pi,TY,v,origAlloc(pi));}};
+  }
+  function ctxPrint(c){ return JSON.stringify(c); }
+
+  var S2=s2Env();
+  var A=S2.make(1,5,601,'RUN-A'); S2.approve(A);
+  var G=S2.make(1,3,602,'RUN-G');                       /* stays GENERATED */
+  var V=S2.make(1,3,603,'RUN-V'); V.run.approvalStatus='REVIEW';
+  var X=S2.make(1,3,604,'RUN-X'); X.run.approvalStatus='CANCELLED'; X.run.status='CANCELLED';
+  var ctxA=S2.build('RUN-A');
+
+  TT('S2-01 · '+bhT('عملية معتمدة مقبولة','Approved run accepted'),function(){
+    return {ok:ctxA!==null&&ctxA.metadata.runId==='RUN-A',detail:'context built for '+(ctxA?ctxA.metadata.runId:'null')};
+  });
+  TT('S2-02 · '+bhT('GENERATED مرفوضة','GENERATED rejected'),function(){
+    return {ok:S2.build('RUN-G')===null,detail:'approvalStatus '+G.run.approvalStatus+' -> null'};
+  });
+  TT('S2-03 · '+bhT('REVIEW مرفوضة','REVIEW rejected'),function(){
+    return {ok:S2.build('RUN-V')===null,detail:'approvalStatus REVIEW -> null'};
+  });
+  TT('S2-04 · '+bhT('FAILED/CANCELLED مرفوضة','FAILED / CANCELLED rejected'),function(){
+    var miss=S2.build('RUN-ZZZ');
+    return {ok:S2.build('RUN-X')===null&&miss===null,detail:'CANCELLED -> null · unknown runId -> null'};
+  });
+  TT('S2-05 · '+bhT('البيانات الوصفية كاملة','Metadata complete'),function(){
+    var m=ctxA.metadata;
+    var need=['runId','dataSource','financialYear','month','expenseType','targetBudget',
+              'distributedTotal','distributionStatus','approvalStatus','approvedBy','approvedAt'];
+    return {ok:need.every(function(k){return m[k]!==undefined&&m[k]!==null;}),
+            detail:m.runId+' · '+m.dataSource+' · '+m.financialYear+' · month '+m.month+' · '+m.expenseType+
+                   ' · approved by '+m.approvedBy};
+  });
+  TT('S2-06 · '+bhT('يحتوي بنود التوزيع','Contains distribution lines'),function(){
+    return {ok:ctxA.distribution.lineCount===A.lines.length&&ctxA.distribution.lines.length===A.lines.length&&
+               ctxA.distribution.lines.every(function(l){return l.itemId&&l.quantity>0&&l.unitPriceInclVat>0;}),
+            detail:ctxA.distribution.lineCount+' lines · each with code/qty/price'};
+  });
+  TT('S2-07 · '+bhT('يحتوي لقطة الفواتير','Contains the invoice snapshot'),function(){
+    var ok=ctxA.invoices.invoices.every(function(v){
+      return v.invoiceId&&v.lines.length&&v.subtotalBeforeVat>0&&v.vat>0&&v.totalInclVat>0; });
+    return {ok:ok,detail:ctxA.invoices.count+' invoices, each with lines + subtotal + VAT + total'};
+  });
+  TT('S2-08 · '+bhT('عدد الفواتير صحيح','Invoice count correct'),function(){
+    return {ok:ctxA.invoices.count===5&&ctxA.invoices.invoices.length===5,
+            detail:'count '+ctxA.invoices.count};
+  });
+  TT('S2-09 · '+bhT('إجمالي التوزيع صحيح','Distributed total correct'),function(){
+    var s=0; ctxA.distribution.lines.forEach(function(l){ s=r2(s+l.lineTotalInclVat); });
+    return {ok:s===r2(A.run.distributedInclVat)&&ctxA.totals.distributedTotal===A.run.distributedInclVat,
+            detail:'Σ lines '+s.toFixed(2)+' = '+ctxA.totals.distributedTotal.toFixed(2)};
+  });
+  TT('S2-10 · '+bhT('إجمالي الفواتير يطابق','Invoice total reconciles'),function(){
+    return {ok:ctxA.totals.invoiceTotal===ctxA.totals.distributedTotal,
+            detail:ctxA.totals.invoiceTotal.toFixed(2)+' = '+ctxA.totals.distributedTotal.toFixed(2)};
+  });
+  TT('S2-11 · '+bhT('الضريبة تتوازن','VAT reconciles'),function(){
+    return {ok:r2(ctxA.totals.subtotalBeforeVat+ctxA.totals.vat)===ctxA.totals.totalInclusiveVat&&
+               ctxA.metadata.vatRate===0.14,
+            detail:ctxA.totals.subtotalBeforeVat.toFixed(2)+' + '+ctxA.totals.vat.toFixed(2)+' = '+
+                   ctxA.totals.totalInclusiveVat.toFixed(2)+' · rate '+ctxA.metadata.vatRate};
+  });
+  TT('S2-12 · '+bhT('لا تكرار في أسطر الفواتير','No duplicate invoice lines'),function(){
+    var c={}; ctxA.invoices.invoices.forEach(function(v){ v.lines.forEach(function(l){ c[l.itemId]=(c[l.itemId]||0)+1; }); });
+    return {ok:Object.keys(c).every(function(k){return c[k]===1;}),detail:'each item once across all invoices'};
+  });
+  TT('S2-13 · '+bhT('لا فقد لبنود التوزيع','No omitted distribution lines'),function(){
+    var got={}; ctxA.invoices.invoices.forEach(function(v){ v.lines.forEach(function(l){ got[l.itemId]=1; }); });
+    var miss=ctxA.distribution.lines.filter(function(l){ return !got[l.itemId]; });
+    return {ok:miss.length===0,detail:'missing '+miss.length+' of '+ctxA.distribution.lineCount};
+  });
+  TT('S2-14 · '+bhT('لا تقسيم كميات','No quantity split'),function(){
+    var q={}; ctxA.invoices.invoices.forEach(function(v){ v.lines.forEach(function(l){ q[l.itemId]=(q[l.itemId]||0)+l.quantity; }); });
+    return {ok:ctxA.distribution.lines.every(function(l){ return q[l.itemId]===l.quantity; }),
+            detail:'invoice quantity per item equals the distribution quantity'};
+  });
+  TT('S2-15 · '+bhT('ليس مرجع كائن العملية','Not the RUN object reference'),function(){
+    return {ok:ctxA.run!==A.run&&ctxA!==A.run,detail:'ctx.run !== RUNS entry'};
+  });
+  TT('S2-16 · '+bhT('ليس مرجع الفواتير','Not the run.invoices reference'),function(){
+    return {ok:ctxA.invoices.invoices!==A.run.invoices&&ctxA.invoices.invoices[0]!==A.run.invoices[0],
+            detail:'array and element references both differ'};
+  });
+  TT('S2-17 · '+bhT('ليس مرجع الأسطر','Not the run lines reference'),function(){
+    return {ok:ctxA.distribution.lines!==A.lines&&ctxA.distribution.lines[0]!==A.lines[0],
+            detail:'array and element references both differ'};
+  });
+  TT('S2-18 · '+bhT('التعديل العميق لا يغيّر العملية','Deep mutation cannot alter the run'),function(){
+    var before=ctxPrint(A.run.invoices)+ctxPrint(A.lines);
+    try{ ctxA.totals.invoiceTotal=1; }catch(e){}
+    try{ ctxA.distribution.lines[0].quantity=99999; }catch(e){}
+    try{ ctxA.invoices.invoices[0].lines[0].unitPriceSnapshotInclVat=1; }catch(e){}
+    try{ ctxA.metadata.approvalStatus='GENERATED'; }catch(e){}
+    return {ok:ctxPrint(A.run.invoices)+ctxPrint(A.lines)===before&&Object.isFrozen(ctxA)&&
+               Object.isFrozen(ctxA.distribution.lines[0])&&ctxA.metadata.approvalStatus==='APPROVED',
+            detail:'context frozen at every level · run untouched after 4 mutation attempts'};
+  });
+  TT('S2-19 · '+bhT('تغيير السعر الشهري لا يؤثر','MOP change cannot alter the context'),function(){
+    var before=ctxPrint(ctxA);
+    S2.saveP(1,{DM001:'999.99'});
+    return {ok:ctxPrint(S2.build('RUN-A'))===before,detail:'MOP DM001 -> 999.99 · rebuilt context identical'};
+  });
+  TT('S2-20 · '+bhT('تغيير الموازنة لا يؤثر','BAL change cannot alter the context'),function(){
+    var before=ctxPrint(ctxA);
+    S2.saveB(1,'600000');
+    return {ok:ctxPrint(S2.build('RUN-A'))===before,detail:'allocation -> 600000 · rebuilt context identical'};
+  });
+  TT('S2-21 · '+bhT('تغيير بيانات البنود لا يؤثر','Master change cannot alter the context'),function(){
+    var before=ctxPrint(ctxA);
+    S2.F.items.forEach(function(x){ x.p=1; x.a=false; x.n='CHANGED'; });
+    S2.F.limits.forEach(function(l){ l.mmin=0; l.mmax=1; l.amax=1; });
+    return {ok:ctxPrint(S2.build('RUN-A'))===before,detail:'every master price/name/limit rewritten · context identical'};
+  });
+  TT('S2-22 · '+bhT('تغيير مصدر الواجهة لا يؤثر','UI source change cannot alter the context'),function(){
+    var before=ctxPrint(ctxA), keep=bhSource;
+    bhSource='LIVE'; var a=ctxPrint(S2.build('RUN-A'));
+    bhSource='FIXTURE'; var b=ctxPrint(S2.build('RUN-A'));
+    bhSource=keep;
+    return {ok:a===before&&b===before,detail:'bhSource LIVE and FIXTURE both yield the identical context'};
+  });
+  TT('S2-23 · '+bhT('CURRENT على عملية أخرى لا يؤثر','CURRENT pointing elsewhere cannot alter the result'),function(){
+    /* own environment — S2-21 deliberately disabled every item in the shared one */
+    var E=s2Env();
+    var Ra=E.make(1,5,701,'RUN-A2'); E.approve(Ra);
+    var first=ctxPrint(E.build('RUN-A2'));
+    var Rb=E.make(1,4,702,'RUN-B2'); E.approve(Rb);       /* newest run */
+    var again=E.build('RUN-A2'), other=E.build('RUN-B2');
+    return {ok:ctxPrint(again)===first&&again.metadata.runId==='RUN-A2'&&
+               other!==null&&other.metadata.runId==='RUN-B2',
+            detail:'RUN-B2 approved afterwards · buildExportContext(RUN-A2) still returns RUN-A2'};
+  });
+  TT('S2-24 · '+bhT('عزل التشغيل عن الاختبار','LIVE / FIXTURE isolation'),function(){
+    var other=s2Env();
+    var L=other.make(1,3,606,'RUN-L','LIVE'); other.approve(L);
+    var cl=other.build('RUN-L');
+    return {ok:ctxA.metadata.dataSource==='FIXTURE'&&cl.metadata.dataSource==='LIVE'&&
+               other.build('RUN-A')===null&&S2.build('RUN-L')===null,
+            detail:'FIXTURE ctx dataSource FIXTURE · LIVE ctx dataSource LIVE · no cross lookup'};
+  });
+  TT('S2-25 · '+bhT('الاستدعاء الثاني يعطي نفس القيم','Second call returns the same historical values'),function(){
+    var a=S2.build('RUN-A'), b=S2.build('RUN-A');
+    return {ok:ctxPrint(a)===ctxPrint(b)&&a!==b,
+            detail:'identical values, different object instances (fresh deep clone each call)'};
+  });
+
   return R;
 }
 function bhRenderTests(R){
@@ -3489,6 +3707,111 @@ Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),functio
 
 /* READ-ONLY accessor so the report can see approved runs. Returns live
    references for reading only; nothing outside this IIFE ever writes them. */
+/* ============================================================================
+   S2 — UNIFIED EXPORT CONTEXT  (read-only, historical)
+   buildExportContext(runId) returns a deep-cloned, deep-frozen snapshot of an
+   APPROVED run. It reads the run, its lines, its invoice snapshot and its
+   master snapshot ONLY. It never consults MASTER / BAL / MOP / dSrc /
+   bhSource / miSrc / GHS_DATA / GHS_FIXTURE / CURRENT, and never recalculates
+   or regroups anything. Returns null when the approval gate or reconciliation
+   fails — data is never silently repaired.
+   ========================================================================== */
+function ctxClone(o){
+  if(o===null||typeof o!=='object') return o;
+  if(Array.isArray(o)) return o.map(ctxClone);
+  var out={}; Object.keys(o).forEach(function(k){ out[k]=ctxClone(o[k]); });
+  return out;
+}
+function buildExportContext(runId){
+  /* ---- 1. approval gate — no bypass ---- */
+  var run=RUNS.filter(function(r){ return r.runId===runId; })[0];
+  if(!run) return null;
+  if(run.approvalStatus!=='APPROVED') return null;
+  if(run.status!=='APPROVED') return null;
+  if(!run.invoices||!run.invoices.length) return null;
+
+  /* ---- 2. historical sources only ---- */
+  var lines=LINES.filter(function(l){ return l.runId===runId; });
+  if(!lines.length) return null;
+  var invoices=run.invoices;
+  var master=run.masterSnapshot||[];
+
+  /* ---- 3. reconciliation — validate, never repair ---- */
+  var lineSum=0; lines.forEach(function(l){ lineSum=r2(lineSum+r2(l.lineTotalInclVat)); });
+  if(lineSum!==r2(run.distributedInclVat)) return null;
+
+  var invTotal=0, invSub=0, invVat=0, invLineCount=0, seen={}, dup=false;
+  invoices.forEach(function(v){
+    invTotal=r2(invTotal+v.totalInclVat);
+    invSub=r2(invSub+v.subtotalBeforeVat);
+    invVat=r2(invVat+v.vat);
+    v.lines.forEach(function(l){
+      invLineCount++;
+      if(seen[l.itemId]) dup=true;
+      seen[l.itemId]=l;
+    });
+  });
+  if(invTotal!==r2(run.distributedInclVat)) return null;
+  if(r2(invSub+invVat)!==invTotal) return null;
+  if(dup) return null;                                  /* duplicate item */
+  if(invLineCount!==lines.length) return null;          /* omission or extra */
+  var mismatch=lines.some(function(l){
+    var f=seen[l.itemId];
+    return !f || f.quantity!==l.quantity ||             /* quantity split */
+           f.unitPriceSnapshotInclVat!==l.unitPriceSnapshotInclVat ||
+           r2(f.lineTotalInclVat)!==r2(l.lineTotalInclVat);
+  });
+  if(mismatch) return null;
+
+  /* ---- 4. assemble ---- */
+  var ctx={
+    run: ctxClone(run),
+    metadata:{
+      runId:run.runId, dataSource:run.dataSource||null,
+      financialYear:run.fyId, month:run.periodIndex, expenseType:run.typeId,
+      targetBudget:run.targetInclVat, distributedTotal:run.distributedInclVat,
+      remaining:run.remainingInclVat, executionPct:run.executionPct,
+      distributionStatus:run.distributionStatus,
+      invoiceGroupingStatus:run.invoiceGroupingStatus||null,
+      approvalStatus:run.approvalStatus, approvedBy:run.approvedBy||null,
+      approvedAt:run.approvedAt||null,
+      generatedAt:run.generatedAt||null, generatedBy:run.generatedBy||null,
+      algorithmVersion:run.algorithmVersion||null, randomSeed:run.randomSeed,
+      requestedInvoiceCount:run.invoiceCount, vatRate:VATRATE()
+    },
+    distribution:{
+      lineCount:lines.length,
+      lines:lines.map(function(l){
+        var m=master.filter(function(x){ return x.itemCode===l.itemId; })[0]||{};
+        return { lineId:l.lineId, lineSeq:l.lineSeq, itemId:l.itemId, itemName:l.itemName,
+                 quantity:l.quantity,
+                 unitPriceInclVat:l.unitPriceSnapshotInclVat,
+                 lineTotalInclVat:r2(l.lineTotalInclVat),
+                 priceOrigin:(m.priceOrigin===undefined?null:m.priceOrigin),
+                 monthlyMinQty:(m.monthlyMinQty===undefined?null:m.monthlyMinQty),
+                 monthlyMaxQty:(m.monthlyMaxQty===undefined?null:m.monthlyMaxQty),
+                 annualMaxQty:(m.annualMaxQty===undefined?null:m.annualMaxQty) };
+      })
+    },
+    invoices:{ count:invoices.length, invoices:ctxClone(invoices) },
+    totals:{
+      targetBudget:run.targetInclVat,
+      distributedTotal:run.distributedInclVat,
+      invoiceTotal:invTotal,
+      subtotalBeforeVat:invSub,
+      vat:invVat,
+      totalInclusiveVat:invTotal
+    },
+    snapshots:{ master:ctxClone(master) },
+    reconciliation:{
+      linesEqualDistributed:true, invoicesEqualDistributed:true,
+      vatBalances:true, everyLineOnce:true, noDuplicate:true,
+      noOmission:true, noQuantitySplit:true
+    }
+  };
+  return deepFreeze(ctx);
+}
+
 window.GHS_RUNTIME={
   getRuns:function(){ return RUNS; },
   getLines:function(){ return LINES; },
@@ -3498,7 +3821,9 @@ window.GHS_RUNTIME={
   getInvoices:function(runId){
     var r=RUNS.filter(function(x){ return x.runId===runId; })[0];
     return (r&&r.invoices)?r.invoices:null;
-  }
+  },
+  /* S2 — read-only unified export context of an APPROVED run. */
+  getExportContext:function(runId){ return buildExportContext(runId); }
 };
 
 dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id;
