@@ -2175,6 +2175,8 @@ function bhTypes(m){
         '<td><input class="bh-in'+(bhBudDirty[bk]!==undefined?' dirty':'')+'" data-bud="'+bhEsc(bk)+'" inputmode="decimal" value="'+
           (bhBudDirty[bk]!==undefined?bhBudDirty[bk]:ra.amount)+'">'+
           '<button class="btn green sm" data-budsave="'+bhEsc(bk)+'" style="margin-inline-start:8px">'+bhT('\u062d\u0641\u0638','Save')+'</button>'+
+          '<button class="btn secondary sm" data-budcancel="'+bhEsc(bk)+'" style="margin-inline-start:6px"'+
+            (bhBudDirty[bk]===undefined?' disabled':'')+'>'+bhT('\u0625\u0644\u063a\u0627\u0621','Cancel')+'</button>'+
           '<span class="bh-src '+(ra.origin==='OVERRIDE'?'m':'b')+'" style="margin-inline-start:8px">'+
           (ra.origin==='OVERRIDE'?bhT('\u0645\u0639\u062f\u0651\u0644\u0629','Edited'):bhT('\u0627\u0644\u0623\u0635\u0644\u064a\u0629','Original'))+'</span></td>'+
         '<td class="num">'+bhItems(b.t).length+'</td>'+
@@ -2200,7 +2202,9 @@ function bhItemsTable(pi,typeId){
       return '<tr><td><span class="sub-id" style="margin:0">'+bhEsc(x.i)+'</span></td>'+
         '<td style="white-space:normal;max-width:250px">'+bhEsc(x.n)+'</td>'+
         '<td><input class="bh-in'+(bhDirty[k]!==undefined?' dirty':'')+'" data-px="'+bhEsc(k)+'" inputmode="decimal" value="'+
-          (bhDirty[k]!==undefined?bhDirty[k]:(r.price==null?'':r.price))+'"></td>'+
+          (bhDirty[k]!==undefined?bhDirty[k]:(r.price==null?'':r.price))+'">'+
+          '<button class="btn secondary sm" data-pxcancel="'+bhEsc(k)+'" style="margin-inline-start:6px"'+
+            (bhDirty[k]===undefined?' disabled':'')+'>'+bhT('\u0625\u0644\u063a\u0627\u0621','Cancel')+'</button></td>'+
         '<td><span class="bh-src '+(r.origin==='MONTHLY'?'m':'b')+'">'+
           (r.origin==='MONTHLY'?bhT('\u0633\u0639\u0631 \u0634\u0647\u0631\u064a','Monthly price'):bhT('\u0645\u0648\u0631\u0648\u062b \u0645\u0646 \u0627\u0644\u0633\u0639\u0631 \u0627\u0644\u0623\u0633\u0627\u0633\u064a','Inherited from master'))+'</span></td>'+
         '<td class="num">'+(l.mmin==null?'\u2014':l.mmin)+'</td><td class="num">'+(l.mmax==null?'\u2014':l.mmax)+'</td>'+
@@ -2216,17 +2220,40 @@ function bhWireInner(){
     b.onclick=function(){ var k=b.getAttribute('data-typ');
       bhOpenType=(bhOpenType===k)?null:k; bhRender(); }; });
   Array.prototype.forEach.call(root.querySelectorAll('[data-px]'),function(inp){
-    inp.oninput=function(){ bhDirty[inp.getAttribute('data-px')]=inp.value;
-      inp.classList.add('dirty'); inp.classList.remove('err'); }; });
+    var k=inp.getAttribute('data-px');
+    inp.oninput=function(){ var was=bhDirty[k]!==undefined;
+      bhDirty[k]=inp.value; inp.classList.add('dirty'); inp.classList.remove('err');
+      if(!was){ var b=root.querySelector('[data-pxcancel="'+k+'"]'); if(b) b.disabled=false; } };
+    inp.onkeydown=function(ev){ if(ev.key==='Escape'||ev.keyCode===27){ ev.preventDefault(); bhCancelPrice(k); } }; });
+  Array.prototype.forEach.call(root.querySelectorAll('[data-pxcancel]'),function(b){
+    b.onclick=function(){ bhCancelPrice(b.getAttribute('data-pxcancel')); }; });
   Array.prototype.forEach.call(root.querySelectorAll('[data-save]'),function(b){
     b.onclick=function(){ var p=b.getAttribute('data-save').split('|');
       bhSave(parseInt(p[0],10),p[1]); }; });
   Array.prototype.forEach.call(root.querySelectorAll('[data-bud]'),function(inp){
-    inp.oninput=function(){ bhBudDirty[inp.getAttribute('data-bud')]=inp.value;
-      inp.classList.add('dirty'); inp.classList.remove('err'); }; });
+    var k=inp.getAttribute('data-bud');
+    inp.oninput=function(){ var was=bhBudDirty[k]!==undefined;
+      bhBudDirty[k]=inp.value; inp.classList.add('dirty'); inp.classList.remove('err');
+      if(!was){ var b=root.querySelector('[data-budcancel="'+k+'"]'); if(b) b.disabled=false; } };
+    inp.onkeydown=function(ev){ if(ev.key==='Escape'||ev.keyCode===27){ ev.preventDefault(); bhCancelAlloc(k); } }; });
+  Array.prototype.forEach.call(root.querySelectorAll('[data-budcancel]'),function(b){
+    b.onclick=function(){ bhCancelAlloc(b.getAttribute('data-budcancel')); }; });
   Array.prototype.forEach.call(root.querySelectorAll('[data-budsave]'),function(b){
     b.onclick=function(){ bhSaveAlloc(b.getAttribute('data-budsave')); }; });
 }
+/* CANCEL — discards the in-progress edit and restores the LAST SAVED value.
+   It never deletes a saved override, never writes BAL/MOP and never logs. */
+function bhCancelAlloc(key){
+  if(bhBudDirty[key]===undefined) return;      /* nothing pending — no-op */
+  delete bhBudDirty[key];
+  bhRender();
+}
+function bhCancelPrice(key){
+  if(bhDirty[key]===undefined) return;         /* nothing pending — no-op */
+  delete bhDirty[key];
+  bhRender();
+}
+
 /* Save one expense-type allocation. Touches ONLY the budget layer:
    item prices, monthly prices and quantity limits are never read or written. */
 function bhSaveAlloc(key){
@@ -2722,6 +2749,135 @@ function bhRunSuite(){
     return {ok:old.run.targetInclVat===500000&&fresh.run.targetInclVat===600000&&
                JSON.stringify({r:old.run,l:old.lines,g:old.grp})===snap,
             detail:'old target '+old.run.targetInclVat.toFixed(2)+' (byte-identical) · new target '+fresh.run.targetInclVat.toFixed(2)};
+  });
+
+  /* ---------- Cancel / ESC for editable numeric fields (A - J) ---------- */
+  /* Simulates the real dirty-buffer + cancel semantics used by the page:
+     the input value lives in a dirty map until Save; Cancel/ESC deletes the
+     dirty entry so the field falls back to the last saved value. */
+  function editSim(){
+    var dirtyB={}, dirtyP={}, B=newBal(), M=newMop(), F=store(FX), logB=[], logP=[];
+    var origAlloc=function(pi){ var b=FX.monthlyBudgets.filter(function(x){return x.pi===pi;})[0];
+      return b?Number(b.inc):0; };
+    return {
+      B:B, M:M, F:F, logB:logB, logP:logP,
+      /* --- allocation --- */
+      allocShown:function(src,fy,pi,t){ var k=src+'|'+fy+'|'+pi+'|'+t;
+        return dirtyB[k]!==undefined?dirtyB[k]:rAlloc(B,src,fy,pi,t,origAlloc(pi)).amount; },
+      allocDirty:function(src,fy,pi,t){ return dirtyB[src+'|'+fy+'|'+pi+'|'+t]!==undefined; },
+      allocType:function(src,fy,pi,t,v){ dirtyB[src+'|'+fy+'|'+pi+'|'+t]=v; },
+      allocCancel:function(src,fy,pi,t){ delete dirtyB[src+'|'+fy+'|'+pi+'|'+t]; },
+      allocSave:function(src,fy,pi,t){ var k=src+'|'+fy+'|'+pi+'|'+t;
+        var raw=dirtyB[k]; if(raw===undefined) return {ok:true,changed:0};
+        var r=saveAlloc(B,src,fy,pi,t,raw,origAlloc(pi),logB);
+        if(r.ok) delete dirtyB[k];
+        return r; },
+      allocOrigin:function(src,fy,pi,t){ return rAlloc(B,src,fy,pi,t,origAlloc(pi)).origin; },
+      /* --- item price --- */
+      priceShown:function(src,fy,pi,id){ var k=src+'|'+fy+'|'+pi+'|'+id;
+        if(dirtyP[k]!==undefined) return dirtyP[k];
+        var it=F.items.filter(function(x){return x.i===id;})[0];
+        return rp(M,src,fy,pi,it).price; },
+      priceDirty:function(src,fy,pi,id){ return dirtyP[src+'|'+fy+'|'+pi+'|'+id]!==undefined; },
+      priceType:function(src,fy,pi,id,v){ dirtyP[src+'|'+fy+'|'+pi+'|'+id]=v; },
+      priceCancel:function(src,fy,pi,id){ delete dirtyP[src+'|'+fy+'|'+pi+'|'+id]; },
+      priceSave:function(src,fy,pi,typeId,id){ var k=src+'|'+fy+'|'+pi+'|'+id;
+        var raw=dirtyP[k]; if(raw===undefined) return {ok:true,changed:0};
+        var o={}; o[id]=raw;
+        var r=save(M,F,src,fy,pi,typeId,o,logP);
+        if(r.ok) delete dirtyP[k];
+        return r; },
+      priceOrigin:function(src,fy,pi,id){ var it=F.items.filter(function(x){return x.i===id;})[0];
+        return rp(M,src,fy,pi,it).origin; }
+    };
+  }
+
+  TT('A · '+bhT('إلغاء الموازنة يرجع 500,000','Allocation Cancel returns to 500,000'),function(){
+    var s=editSim();
+    var start=s.allocShown('FIXTURE',FY,1,TY);
+    s.allocType('FIXTURE',FY,1,TY,'600000');
+    var mid=s.allocShown('FIXTURE',FY,1,TY);
+    s.allocCancel('FIXTURE',FY,1,TY);
+    var back=s.allocShown('FIXTURE',FY,1,TY);
+    return {ok:start===500000&&mid==='600000'&&back===500000&&
+               bGet(s.B,'FIXTURE',FY,1,TY)===null&&!s.allocDirty('FIXTURE',FY,1,TY),
+            detail:'500000 -> typed 600000 -> Cancel -> '+back+' · BAL untouched · dirty cleared'};
+  });
+  TT('B · '+bhT('ESC للموازنة','Allocation ESC'),function(){
+    var s=editSim();
+    s.allocType('FIXTURE',FY,1,TY,'600000');
+    s.allocCancel('FIXTURE',FY,1,TY);            /* ESC runs the same path as Cancel */
+    return {ok:s.allocShown('FIXTURE',FY,1,TY)===500000&&s.logB.length===0,
+            detail:'ESC -> '+s.allocShown('FIXTURE',FY,1,TY)+' · BAL_LOG entries '+s.logB.length};
+  });
+  TT('C · '+bhT('حفظ الموازنة 600,000','Allocation Save 600,000'),function(){
+    var s=editSim();
+    s.allocType('FIXTURE',FY,1,TY,'600000');
+    var r=s.allocSave('FIXTURE',FY,1,TY);
+    return {ok:r.ok&&r.changed===1&&s.allocShown('FIXTURE',FY,1,TY)===600000&&
+               s.allocOrigin('FIXTURE',FY,1,TY)==='OVERRIDE'&&!s.allocDirty('FIXTURE',FY,1,TY),
+            detail:'value '+s.allocShown('FIXTURE',FY,1,TY)+' · origin '+s.allocOrigin('FIXTURE',FY,1,TY)+' · field clean'};
+  });
+  TT('D · '+bhT('إلغاء بعد الحفظ يرجع 600,000','Cancel after Save returns to 600,000'),function(){
+    var s=editSim();
+    s.allocType('FIXTURE',FY,1,TY,'600000'); s.allocSave('FIXTURE',FY,1,TY);
+    s.allocType('FIXTURE',FY,1,TY,'700000');
+    s.allocCancel('FIXTURE',FY,1,TY);
+    return {ok:s.allocShown('FIXTURE',FY,1,TY)===600000&&bGet(s.B,'FIXTURE',FY,1,TY)===600000,
+            detail:'typed 700000 -> Cancel -> '+s.allocShown('FIXTURE',FY,1,TY)+' · saved override still 600000'};
+  });
+  TT('E · '+bhT('إلغاء سعر الصنف يرجع 193.80','Item price Cancel returns to 193.80'),function(){
+    var s=editSim();
+    var start=s.priceShown('FIXTURE',FY,1,'DM001');
+    s.priceType('FIXTURE',FY,1,'DM001','205');
+    s.priceCancel('FIXTURE',FY,1,'DM001');
+    return {ok:start===193.8&&s.priceShown('FIXTURE',FY,1,'DM001')===193.8&&
+               mGet(s.M,'FIXTURE',FY,1,'DM001')===null,
+            detail:'193.8 -> typed 205 -> Cancel -> '+s.priceShown('FIXTURE',FY,1,'DM001')+' · MOP untouched'};
+  });
+  TT('F · '+bhT('ESC لسعر الصنف','Item price ESC'),function(){
+    var s=editSim();
+    s.priceType('FIXTURE',FY,1,'DM001','888.88');
+    s.priceCancel('FIXTURE',FY,1,'DM001');
+    return {ok:s.priceShown('FIXTURE',FY,1,'DM001')===193.8&&s.logP.length===0,
+            detail:'ESC -> '+s.priceShown('FIXTURE',FY,1,'DM001')+' · audit entries '+s.logP.length};
+  });
+  TT('G · '+bhT('حفظ سعر الصنف 205','Item price Save 205'),function(){
+    var s=editSim();
+    s.priceType('FIXTURE',FY,1,'DM001','205.00');
+    var r=s.priceSave('FIXTURE',FY,1,TY,'DM001');
+    return {ok:r.ok&&r.changed===1&&s.priceShown('FIXTURE',FY,1,'DM001')===205&&
+               s.priceOrigin('FIXTURE',FY,1,'DM001')==='MONTHLY'&&!s.priceDirty('FIXTURE',FY,1,'DM001'),
+            detail:'value '+s.priceShown('FIXTURE',FY,1,'DM001')+' · origin '+s.priceOrigin('FIXTURE',FY,1,'DM001')};
+  });
+  TT('H · '+bhT('إلغاء سعر الصنف بعد الحفظ','Item price Cancel after Save'),function(){
+    var s=editSim();
+    s.priceType('FIXTURE',FY,1,'DM001','205.00'); s.priceSave('FIXTURE',FY,1,TY,'DM001');
+    s.priceType('FIXTURE',FY,1,'DM001','220');
+    s.priceCancel('FIXTURE',FY,1,'DM001');
+    return {ok:s.priceShown('FIXTURE',FY,1,'DM001')===205&&mGet(s.M,'FIXTURE',FY,1,'DM001')===205,
+            detail:'typed 220 -> Cancel -> '+s.priceShown('FIXTURE',FY,1,'DM001')+' · saved override still 205'};
+  });
+  TT('I · '+bhT('الإلغاء لا ينشئ أي سجل','Cancel creates no audit entry'),function(){
+    var s=editSim();
+    s.allocType('FIXTURE',FY,1,TY,'600000'); s.allocCancel('FIXTURE',FY,1,TY);
+    s.priceType('FIXTURE',FY,1,'DM001','205'); s.priceCancel('FIXTURE',FY,1,'DM001');
+    s.allocType('FIXTURE',FY,1,TY,'999'); s.allocCancel('FIXTURE',FY,1,TY);
+    return {ok:s.logB.length===0&&s.logP.length===0&&
+               bGet(s.B,'FIXTURE',FY,1,TY)===null&&mGet(s.M,'FIXTURE',FY,1,'DM001')===null,
+            detail:'3 cancels · BAL_LOG '+s.logB.length+' · price log '+s.logP.length+' · no override stored'};
+  });
+  TT('J · '+bhT('التوزيع لا يتأثر بالإلغاء','Distribution unaffected by Cancel'),function(){
+    var s=editSim();
+    var before=gen(s.M,s.F,'FIXTURE',FY,TY,1,rAlloc(s.B,'FIXTURE',FY,1,TY,500000).amount,5,401,'RUN000301');
+    s.allocType('FIXTURE',FY,1,TY,'600000'); s.allocCancel('FIXTURE',FY,1,TY);
+    s.priceType('FIXTURE',FY,1,'DM001','205'); s.priceCancel('FIXTURE',FY,1,'DM001');
+    var after=gen(s.M,s.F,'FIXTURE',FY,TY,1,rAlloc(s.B,'FIXTURE',FY,1,TY,500000).amount,5,401,'RUN000302');
+    return {ok:before.run.targetInclVat===after.run.targetInclVat&&
+               before.run.distributedInclVat===after.run.distributedInclVat&&
+               JSON.stringify(before.lines.map(function(l){return [l.itemId,l.quantity,l.unitPriceSnapshotInclVat];}))===
+               JSON.stringify(after.lines.map(function(l){return [l.itemId,l.quantity,l.unitPriceSnapshotInclVat];})),
+            detail:'target '+after.run.targetInclVat.toFixed(2)+' · distributed '+after.run.distributedInclVat.toFixed(2)+' · lines identical'};
   });
 
   return R;
