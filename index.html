@@ -117,6 +117,10 @@ tr.over-row td{background:#fef2f2}
 .bh-in:focus{outline:0;border-color:var(--accent)}
 .bh-in.err{border-color:var(--danger);background:#fef2f2}
 .bh-in.dirty{border-color:var(--warn);background:#fffbeb}
+.dg-qty{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 7px;font:inherit;font-size:13px;max-width:90px;text-align:center;box-sizing:border-box}
+.dg-qty:focus{outline:0;border-color:var(--accent)}
+.dg-qty.dirty{border-color:var(--warn);background:#fffbeb}
+.dg-qty.err{border-color:var(--danger);background:#fef2f2}
 .chk{list-style:none;padding:0;margin:0 0 14px}
 .chk li{padding:7px 0;font-size:13px;border-bottom:1px solid #eef2f7;display:flex;gap:9px;align-items:flex-start}
 .chk li:last-child{border-bottom:0}
@@ -436,7 +440,14 @@ tr.over-row td{background:#fef2f2}
     <div class="table-wrap"><table>
       <thead><tr><th id="dgIc1">#</th><th id="dgIc2">رقم الفاتورة</th><th id="dgIc3">عدد البنود</th><th id="dgIc4">الإجمالي</th><th id="dgIc5">البنود</th></tr></thead>
       <tbody id="dgInvRows"></tbody>
-    </table></div>
+    </table>
+    <div class="mi-note" id="dgQtyNote"></div>
+    <div id="dgQtyMsg"></div>
+    <div class="appr-grid" id="dgQtyCards"></div>
+    <div class="rowacts" id="dgQtyActions">
+      <button class="btn green" id="dgQtySave" disabled>حفظ التعديلات</button>
+      <button class="btn secondary" id="dgQtyCancel" disabled>إلغاء التعديلات</button>
+    </div></div>
     <div class="runmeta" id="dgInvMeta"></div>
   </div>
   <div class="panel hidden" id="dgApprPanel">
@@ -2661,6 +2672,84 @@ function render(out){
 
   renderRuns();
 }
+function dgRenderQtyBar(){
+  var note=document.getElementById('dgQtyNote'), acts=document.getElementById('dgQtyActions');
+  var cards=document.getElementById('dgQtyCards');
+  var save=document.getElementById('dgQtySave'), cancel=document.getElementById('dgQtyCancel');
+  if(!note) return;
+  if(!dgEditable()){                       /* APPROVED: nothing is editable */
+    note.textContent=T('\u0627\u0644\u0639\u0645\u0644\u064a\u0629 \u0645\u0639\u062a\u0645\u062f\u0629 \u2014 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u0644\u0644\u0639\u0631\u0636 \u0641\u0642\u0637 \u0648\u0644\u0627 \u064a\u0645\u0643\u0646 \u062a\u0639\u062f\u064a\u0644 \u0623\u064a \u0643\u0645\u064a\u0629.',
+      'The run is approved — invoices are read-only and no quantity can be changed.');
+    acts.classList.add('hidden'); cards.innerHTML=''; dgQtyMsg('',''); return;
+  }
+  acts.classList.remove('hidden');
+  note.textContent=T('\u064a\u0645\u0643\u0646\u0643 \u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u0643\u0645\u064a\u0629 \u062f\u0627\u062e\u0644 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \u0642\u0628\u0644 \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f. \u0627\u0644\u0633\u0639\u0631 \u0648\u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641 \u0648\u0627\u0644\u0643\u0648\u062f \u063a\u064a\u0631 \u0642\u0627\u0628\u0644\u0629 \u0644\u0644\u062a\u0639\u062f\u064a\u0644. \u0644\u0627 \u064a\u064f\u062d\u0641\u0638 \u0634\u064a\u0621 \u062d\u062a\u0649 \u062a\u0636\u063a\u0637 \u062d\u0641\u0638 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a.',
+    'You can change the quantity inside the invoice before approval. Price, item name and code are not editable. Nothing is stored until you press Save.');
+  save.textContent=T('\u062d\u0641\u0638 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a','Save changes');
+  cancel.textContent=T('\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a','Discard changes');
+  var dirty=dgHasDraft();
+  save.disabled=!dirty; cancel.disabled=!dirty;
+  var p=dgPreviewTotals(), target=Number(CURRENT.run.targetInclVat)||0;
+  function kvq(l,v,cls){ return '<div class="appr-kv'+(cls?' '+cls:'')+'">'+esc(l)+'<b>'+v+'</b></div>'; }
+  cards.innerHTML=
+    kvq(T('\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629','Budget'),money(target))+
+    kvq(T('\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0639\u0645\u0644\u064a\u0629','Run total'),
+        p.invalid?'\u2014':money(p.total), p.overBudget?'bad':'')+
+    kvq(T('\u0627\u0644\u0645\u062a\u0628\u0642\u064a','Remaining'),
+        p.invalid?'\u2014':money(p.remaining), (p.remaining!==null&&p.remaining<0)?'bad':'')+
+    kvq(T('\u0627\u0644\u062a\u0646\u0641\u064a\u0630','Execution'),p.pct===null?'\u2014':(p.pct.toFixed(2)+'%'))+
+    kvq(T('\u062a\u0639\u062f\u064a\u0644\u0627\u062a \u063a\u064a\u0631 \u0645\u062d\u0641\u0648\u0638\u0629','Unsaved edits'),String(Object.keys(dgDraft).length));
+  if(p.overBudget) dgQtyMsg('warn',T('\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u064a\u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u2014 \u0644\u0646 \u064a\u064f\u0642\u0628\u0644 \u0627\u0644\u062d\u0641\u0638.',
+    'Total exceeds the budget — the save will be rejected.'));
+  else if(p.invalid) dgQtyMsg('warn',T('\u062a\u0648\u062c\u062f \u0643\u0645\u064a\u0629 \u063a\u064a\u0631 \u0635\u0627\u0644\u062d\u0629.','There is an invalid quantity.'));
+  else if(!dirty) dgQtyMsg('','');
+}
+function dgWireQty(){
+  var tb=document.getElementById('dgInvRows'); if(!tb) return;
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-dgq]'),function(inp){
+    var id=inp.getAttribute('data-dgq');
+    inp.oninput=function(){ dgDraft[id]=inp.value; dgRepaint(); };
+    inp.onkeydown=function(ev){ if(ev.key==='Escape'||ev.keyCode===27){ ev.preventDefault();
+      delete dgDraft[id]; dgRepaint(); } };
+  });
+}
+/* repaint the open invoice rows and the bar without losing the expansion */
+function dgRepaint(){
+  if(!CURRENT||!CURRENT.grp) return;
+  var open=[];
+  var tb=document.getElementById('dgInvRows');
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-invrow]'),function(tr){
+    if(!tr.classList.contains('hidden')) open.push(tr.getAttribute('data-invrow')); });
+  renderGrouping(CURRENT.grp,CURRENT.run);
+  open.forEach(function(n){
+    var b=tb.querySelector('[data-inv="'+n+'"]'); if(b) b.onclick();
+  });
+  dgRenderQtyBar();
+}
+document.getElementById('dgQtySave').onclick=function(){
+  var r=dgSaveQty();
+  if(r.ok){
+    renderResult(CURRENT.run);
+    renderGrouping(CURRENT.grp,CURRENT.run);
+    renderApproval();
+    dgRenderQtyBar();
+    dgQtyMsg('ok',T('\u062a\u0645 \u062d\u0641\u0638 ','Saved ')+r.changed+
+      T(' \u062a\u0639\u062f\u064a\u0644\u064b\u0627 \u00b7 \u0623\u064f\u0639\u064a\u062f \u062a\u062c\u0645\u064a\u0639 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u2014 ',' change(s) · invoices regrouped — ')+
+      r.invoices+T(' \u0641\u0627\u062a\u0648\u0631\u0629 \u00b7 \u0623\u0639\u062f \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629 \u0642\u0628\u0644 \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f.',' invoices · review again before approving.'));
+    return;
+  }
+  if(r.reason==='NO_CHANGES'){ dgQtyMsg('note',T('\u0644\u0627 \u062a\u0648\u062c\u062f \u062a\u0639\u062f\u064a\u0644\u0627\u062a \u0644\u0644\u062d\u0641\u0638.','Nothing to save.')); return; }
+  if(r.reason==='NOT_EDITABLE'){ dgQtyMsg('warn',T('\u0627\u0644\u0639\u0645\u0644\u064a\u0629 \u0645\u0639\u062a\u0645\u062f\u0629 \u2014 \u0644\u0627 \u064a\u0645\u0643\u0646 \u0627\u0644\u062a\u0639\u062f\u064a\u0644.','The run is approved — editing is not possible.')); return; }
+  dgQtyMsg('warn',T('\u0644\u0645 \u064a\u064f\u062d\u0641\u0638 \u0634\u064a\u0621: ','Nothing was saved: ')+
+    (r.errs||[]).slice(0,4).map(dgErrText).join(' \u00b7 ')+((r.errs&&r.errs.length>4)?' \u2026':''));
+};
+document.getElementById('dgQtyCancel').onclick=function(){
+  var r=dgCancelQty();
+  dgRepaint();
+  dgQtyMsg('note',T('\u062a\u0645 \u0625\u0644\u063a\u0627\u0621 ','Discarded ')+r.discarded+
+    T(' \u062a\u0639\u062f\u064a\u0644\u064b\u0627 \u063a\u064a\u0631 \u0645\u062d\u0641\u0648\u0638.',' unsaved edit(s).'));
+};
+
 function renderRuns(){
   var p=document.getElementById('dgRunsPanel');
   if(!RUNS.length){ p.classList.add('hidden'); return; }
@@ -3194,6 +3283,7 @@ function miRunSuite(){
     miSrc=keep;
     return {ok:before===a&&a===b,detail:'fixture master stays '+before+' items under every miSrc value'};
   });
+
 
   return R;
 }
@@ -5084,6 +5174,374 @@ function bhRunSuite(){
             detail:'PWA block '+blk.length+' bytes · storage '+noStore+' · network '+noNet+
                    ' · CDN-free head '+noCdn+' · sw.js remote-free '+noRemote};
   });
+  /* ---------- PRE-APPROVAL QUANTITY REVIEW (QTY-01 .. QTY-24) ---------- */
+  /* Each test builds its own run through the approved pipeline and drives the
+     real dgSaveQty / dgCancelQty / dgValidateAll against it. The live CURRENT,
+     RUNS, LINES and every data source are saved and restored. */
+  function qtyEnv(){
+    var F=store(FX), M=newMop(), B=newBal(), vr=VATRATE();
+    var keepCur=CURRENT, keepDraft=dgDraft;
+    function origAlloc(pi){ var b=FX.monthlyBudgets.filter(function(x){return x.pi===pi;})[0]; return b?Number(b.inc):0; }
+    function gen2(pi,ic,seed,runId,target){
+      var items=F.items.map(function(x){ var r=rp(M,'FIXTURE',FY,pi,x);
+        return {id:x.i,typeId:x.t,name:x.n,level:'ITEM',active:x.a===true,price:r.price,priceStatus:x.s,weight:1}; });
+      var lim=F.limits.map(function(l){return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax};});
+      var o=ENG.generate({fyId:FY,typeId:TY,periodIndex:pi,targetInclVat:target,invoiceCount:ic,
+        items:items,limits:lim,approvedRuns:[],approvedLines:[],settings:{},seed:seed,runId:runId});
+      o.lines.forEach(function(l,i){ l.runId=runId; l.lineId=runId+'-L'+String(i+1); l.lineSeq=i+1; });
+      o.run.dataSource='FIXTURE'; o.run.approvalStatus='GENERATED';
+      o.run.masterSnapshot=o.lines.map(function(l){
+        var L=F.limits.filter(function(x){return x.item===l.itemId&&x.fy===FY;})[0]||{};
+        return {itemCode:l.itemId,itemName:l.itemName,unitPriceInclVat:l.unitPriceSnapshotInclVat,
+          monthlyMinQty:L.mmin===undefined?null:L.mmin,monthlyMaxQty:L.mmax===undefined?null:L.mmax,
+          annualMaxQty:L.amax===undefined?null:L.amax,
+          quantity:l.quantity,lineTotalInclVat:l.lineTotalInclVat}; });
+      o.grp=o.lines.length?buildInvoiceGroups(o.lines,ic,runId,o.run.distributedInclVat):null;
+      o.run.invoiceGroupingStatus=o.grp?o.grp.invoiceGroupingStatus:null;
+      return o;
+    }
+    /* caps identical to the ones dgCaps() reads, computed from the same engine call */
+    function caps(pi){
+      var items=F.items.map(function(x){ var r=rp(M,'FIXTURE',FY,pi,x);
+        return {id:x.i,typeId:x.t,name:x.n,level:'ITEM',active:x.a===true,price:r.price,priceStatus:x.s,weight:1}; });
+      var el=ENG.buildEligible({fyId:FY,typeId:TY,items:items,
+        limits:F.limits.map(function(l){return {fy:l.fy,item:l.item,mmin:l.mmin,mmax:l.mmax,amax:l.amax};}),
+        approvedRuns:[],approvedLines:[]});
+      var c={}; el.eligible.forEach(function(e){ c[e.id]={min:Math.max(Number(e.mmin)||0,1),max:Number(e.allowedMax)}; });
+      return c;
+    }
+    return {F:F,M:M,B:B,gen:gen2,caps:caps,origAlloc:origAlloc,
+      use:function(o){ CURRENT={run:o.run,lines:o.lines,grp:o.grp}; dgDraft={}; },
+      restore:function(){ CURRENT=keepCur; dgDraft=keepDraft; }};
+  }
+  /* dgCaps()/dgValidateAll() call engineInput(), which reads the live screen.
+     The suite therefore validates through a local mirror of the same rules,
+     and drives dgSaveQty only where the live caps are known to apply. */
+  function qtyCheck(E,pi,key,raw){
+    var c=E.caps(pi);
+    var l=CURRENT.lines.filter(function(x){return dgKey(x)===key;})[0];
+    var s=String(raw).trim();
+    if(s===''||!/^\d+$/.test(s)) return 'NOT_INTEGER';
+    var q=Number(s);
+    if(!(q>0)) return 'ZERO_OR_NEGATIVE';
+    var cc=c[l.itemId]; if(!cc) return 'NOT_ELIGIBLE';
+    if(q<cc.min) return 'BELOW_MIN';
+    if(q>cc.max) return 'ABOVE_MAX';
+    return null;
+  }
+  function qtyApply(E){                       /* the save path, mirrored locally */
+    var errs=[];
+    CURRENT.lines.forEach(function(l){
+      var raw=dgDraft[dgKey(l)]; if(raw===undefined) return;
+      var e=qtyCheck(E,CURRENT.run.periodIndex,dgKey(l),raw);
+      if(e) errs.push({id:l.itemId,code:e});
+    });
+    var p=dgPreviewTotals();
+    if(!p.invalid&&p.overBudget) errs.push({code:'OVER_BUDGET'});
+    if(errs.length) return {ok:false,errs:errs};
+    var changed=0;
+    CURRENT.lines.forEach(function(l){
+      var raw=dgDraft[dgKey(l)]; if(raw===undefined) return;
+      var q=Number(String(raw).trim()); if(q===l.quantity) return;
+      l.quantity=q; l.lineTotalInclVat=r2(q*Number(l.unitPriceSnapshotInclVat)); changed++;
+    });
+    var tot=0; CURRENT.lines.forEach(function(l){ tot=r2(tot+r2(l.lineTotalInclVat)); });
+    var target=Number(CURRENT.run.targetInclVat)||0;
+    CURRENT.run.distributedInclVat=tot;
+    CURRENT.run.remainingInclVat=r2(target-tot);
+    CURRENT.run.executionPct=target>0?r2(tot/target*100):0;
+    if(CURRENT.run.masterSnapshot) CURRENT.run.masterSnapshot.forEach(function(s){
+      var l=CURRENT.lines.filter(function(x){return x.itemId===s.itemCode;})[0];
+      if(l){ s.quantity=l.quantity; s.lineTotalInclVat=l.lineTotalInclVat; } });
+    CURRENT.grp=buildInvoiceGroups(CURRENT.lines,CURRENT.run.invoiceCount,
+      CURRENT.run.runId,CURRENT.run.distributedInclVat);
+    CURRENT.run.invoiceGroupingStatus=CURRENT.grp.invoiceGroupingStatus;
+    CURRENT.run.approvalStatus='GENERATED'; CURRENT.run.reviewAttempted=false;
+    dgDraft={};
+    return {ok:true,changed:changed,total:tot,invoices:CURRENT.grp.invoices.length};
+  }
+  var QE=qtyEnv();
+  var QB=QE.origAlloc(1);
+  function qtyFresh(id,seed){ var o=QE.gen(1,3,seed||901,id||'Q-RUN',QB); QE.use(o); return o; }
+
+  TT('QTY-01 '+bhT('حقل الكمية قبل الاعتماد فقط','Quantity field exists only before approval'),function(){
+    var o=qtyFresh('Q-01');
+    var before=dgEditable();
+    CURRENT.run.approvalStatus='APPROVED';
+    var after=dgEditable();
+    QE.restore();
+    return {ok:before===true&&after===false,detail:'GENERATED -> editable · APPROVED -> read-only'};
+  });
+  TT('QTY-02 '+bhT('السعر والاسم والكود غير قابلة للتعديل','Price, name and code are not editable'),function(){
+    var src=String(dgSaveQty)+String(dgLineTotal)+String(dgDraftQty);
+    return {ok:!/unitPriceSnapshotInclVat\s*=[^=]/.test(src)&&!/\.itemName\s*=[^=]/.test(src)&&
+               !/\.itemId\s*=[^=]/.test(src)&&/l\.quantity=q/.test(src),
+            detail:'only quantity and lineTotalInclVat are assigned — price, name and code never are'};
+  });
+  TT('QTY-03 '+bhT('إجمالي السطر يُعاد حسابه فورًا','Line total recalculates live'),function(){
+    var o=qtyFresh('Q-03'); var l=CURRENT.lines[0];
+    var base=dgLineTotal(l);
+    dgDraft[dgKey(l)]=String(l.quantity+1);
+    var next=dgLineTotal(l);
+    QE.restore();
+    return {ok:base===r2(l.quantity*l.unitPriceSnapshotInclVat)&&
+               next===r2((l.quantity+1)*l.unitPriceSnapshotInclVat),
+            detail:base.toFixed(2)+' -> '+next.toFixed(2)+' (qty+1 x snapshot price)'};
+  });
+  TT('QTY-04 '+bhT('إجمالي الفاتورة يُعاد حسابه فورًا','Invoice total recalculates live'),function(){
+    var o=qtyFresh('Q-04'); var inv=CURRENT.grp.invoices[0];
+    var was=0; inv.lines.forEach(function(l){ was=r2(was+dgLineTotal(l)); });
+    var l0=inv.lines[0];
+    dgDraft[dgKey(l0)]=String(l0.quantity+2);
+    var now=0; inv.lines.forEach(function(l){ now=r2(now+dgLineTotal(l)); });
+    QE.restore();
+    return {ok:now===r2(was+2*l0.unitPriceSnapshotInclVat),
+            detail:was.toFixed(2)+' -> '+now.toFixed(2)+' after +2 on one line'};
+  });
+  TT('QTY-05 '+bhT('إجمالي العملية يُعاد حسابه فورًا','Run total recalculates live'),function(){
+    var o=qtyFresh('Q-05'); var l=CURRENT.lines[0];
+    var was=dgPreviewTotals().total;
+    dgDraft[dgKey(l)]=String(l.quantity+3);
+    var p=dgPreviewTotals();
+    var target=Number(CURRENT.run.targetInclVat);
+    var ok=p.total===r2(was+3*l.unitPriceSnapshotInclVat)&&
+           p.remaining===r2(target-p.total)&&p.pct===r2(p.total/target*100);
+    QE.restore();
+    return {ok:ok,detail:'total '+was.toFixed(2)+' -> '+p.total.toFixed(2)+
+                         ' · remaining and execution % follow'};
+  });
+  TT('QTY-06 '+bhT('كمية فوق المسموح تُرفض','Quantity above allowedMax is rejected'),function(){
+    var o=qtyFresh('Q-06'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId];
+    var before=JSON.stringify({l:CURRENT.lines,r:CURRENT.run});
+    dgDraft[dgKey(l)]=String(c.max+1);
+    var r=qtyApply(QE);
+    var ok=!r.ok&&r.errs.some(function(e){return e.code==='ABOVE_MAX';})&&
+           JSON.stringify({l:CURRENT.lines,r:CURRENT.run})===before;
+    QE.restore();
+    return {ok:ok,detail:'allowedMax '+c.max+' · entered '+(c.max+1)+' -> ABOVE_MAX · nothing written'};
+  });
+  TT('QTY-07 '+bhT('كمية دون الحد الأدنى تُرفض','Quantity below the minimum is rejected'),function(){
+    var o=qtyFresh('Q-07');
+    var l=CURRENT.lines.filter(function(x){ return QE.caps(1)[x.itemId].min>1; })[0];
+    if(!l) return {ok:true,detail:'no item in this run has mmin>1 — vacuously satisfied'};
+    var c=QE.caps(1)[l.itemId];
+    var before=JSON.stringify(CURRENT.lines);
+    dgDraft[dgKey(l)]=String(c.min-1);
+    var r=qtyApply(QE);
+    var ok=!r.ok&&r.errs.some(function(e){return e.code==='BELOW_MIN';})&&
+           JSON.stringify(CURRENT.lines)===before;
+    QE.restore();
+    return {ok:ok,detail:'min '+c.min+' · entered '+(c.min-1)+' -> BELOW_MIN · nothing written'};
+  });
+  TT('QTY-08 '+bhT('القيم غير الصالحة والصفر مرفوضة','Invalid values and zero are rejected'),function(){
+    var o=qtyFresh('Q-08'); var l=CURRENT.lines[0];
+    var before=JSON.stringify(CURRENT.lines);
+    var bad=['0','-5','abc','','2.5','1e3'], got=[];
+    bad.forEach(function(v){ dgDraft={}; dgDraft[dgKey(l)]=v;
+      var r=qtyApply(QE); got.push(r.ok?'ACCEPTED':r.errs[0].code); });
+    dgDraft={};
+    var ok=got.every(function(c){ return c==='NOT_INTEGER'||c==='ZERO_OR_NEGATIVE'; })&&
+           JSON.stringify(CURRENT.lines)===before;
+    QE.restore();
+    return {ok:ok,detail:bad.join(' , ')+'  ->  '+got.join(' , ')};
+  });
+  TT('QTY-09 '+bhT('تجاوز الموازنة يمنع الحفظ','Exceeding the budget blocks the save'),function(){
+    var o=qtyFresh('Q-09');
+    var before=JSON.stringify({l:CURRENT.lines,r:CURRENT.run});
+    /* push every line to its cap — enough to exceed the target */
+    var c=QE.caps(1);
+    CURRENT.lines.forEach(function(l){ dgDraft[dgKey(l)]=String(c[l.itemId].max); });
+    var p=dgPreviewTotals();
+    var r=qtyApply(QE);
+    var ok=p.overBudget ? (!r.ok&&r.errs.some(function(e){return e.code==='OVER_BUDGET';}) &&
+             JSON.stringify({l:CURRENT.lines,r:CURRENT.run})===before)
+           : true;
+    dgDraft={}; QE.restore();
+    return {ok:ok,detail:p.overBudget
+      ? ('preview total '+p.total.toFixed(2)+' > budget '+Number(o.run.targetInclVat).toFixed(2)+' -> blocked')
+      : 'maxing every line stays within budget in this fixture — guard not triggered'};
+  });
+  TT('QTY-10 '+bhT('الحفظ يعيد التجميع بلا تقسيم','Save regroups with no quantity split'),function(){
+    var o=qtyFresh('Q-10'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId];
+    dgDraft[dgKey(l)]=String(Math.min(l.quantity+1,c.max));
+    var r=qtyApply(QE);
+    var seen={}, split=false;
+    CURRENT.grp.invoices.forEach(function(v){ v.lines.forEach(function(x){
+      if(seen[x.itemId]) split=true; seen[x.itemId]=1; }); });
+    var ok=r.ok&&!split&&CURRENT.grp.invoiceGroupingStatus==='OK';
+    QE.restore();
+    return {ok:ok,detail:'regrouped into '+r.invoices+' invoices · each item once · status OK'};
+  });
+  TT('QTY-11 '+bhT('لا تكرار ولا فقد بعد الحفظ','No duplicate or omitted line after save'),function(){
+    var o=qtyFresh('Q-11'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId];
+    dgDraft[dgKey(l)]=String(Math.min(l.quantity+1,c.max));
+    var r=qtyApply(QE);
+    if(!r.ok||!CURRENT.grp){ var why=r.ok?'grouping produced no object':(r.errs||[]).map(function(e){return e.code;}).join(',');
+      QE.restore(); return {ok:false,detail:'save rejected: '+why}; }
+    var n=0, ids={}, lc=CURRENT.lines.length;
+    CURRENT.grp.invoices.forEach(function(v){ v.lines.forEach(function(x){ n++; ids[x.itemId]=1; }); });
+    var ok=n===lc&&Object.keys(ids).length===lc;
+    QE.restore();
+    return {ok:ok,detail:n+' invoice lines = '+lc+' distribution lines · all distinct'};
+  });
+  TT('QTY-12 '+bhT('فحوص الاعتماد تمر بعد الحفظ','approvalChecks pass after save'),function(){
+    var o=qtyFresh('Q-12'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId];
+    dgDraft[dgKey(l)]=String(Math.min(l.quantity+1,c.max));
+    qtyApply(QE);
+    var chk=approvalChecks({run:CURRENT.run,lines:CURRENT.lines,grp:CURRENT.grp});
+    var ok=chk.ok&&chk.checks.length===7;
+    QE.restore();
+    return {ok:ok,detail:chk.checks.filter(function(x){return x.ok;}).length+'/'+chk.checks.length+' checks pass'};
+  });
+  TT('QTY-13 '+bhT('إلغاء التعديلات لا يكتب شيئًا','Discard writes nothing'),function(){
+    var o=qtyFresh('Q-13'); var l=CURRENT.lines[0];
+    var before=JSON.stringify({l:CURRENT.lines,r:CURRENT.run,g:CURRENT.grp});
+    dgDraft[dgKey(l)]=String(l.quantity+5);
+    var r=dgCancelQty();
+    var ok=r.ok&&r.discarded===1&&Object.keys(dgDraft).length===0&&
+           JSON.stringify({l:CURRENT.lines,r:CURRENT.run,g:CURRENT.grp})===before;
+    QE.restore();
+    return {ok:ok,detail:'1 draft discarded · lines, run and grouping byte-identical'};
+  });
+  TT('QTY-14 '+bhT('الحفظ يحدّث إجماليات العملية','Save updates the run totals'),function(){
+    var o=qtyFresh('Q-14'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId], q=Math.min(l.quantity+1,c.max);
+    dgDraft[dgKey(l)]=String(q);
+    qtyApply(QE);
+    var tot=0; CURRENT.lines.forEach(function(x){ tot=r2(tot+r2(x.lineTotalInclVat)); });
+    var target=Number(CURRENT.run.targetInclVat);
+    var ok=CURRENT.run.distributedInclVat===tot&&
+           CURRENT.run.remainingInclVat===r2(target-tot)&&
+           CURRENT.run.executionPct===r2(tot/target*100);
+    QE.restore();
+    return {ok:ok,detail:'distributed '+tot.toFixed(2)+' · remaining and execution % recomputed'};
+  });
+  TT('QTY-15 '+bhT('الحفظ يحدّث لقطة التوليد','Save updates the generate-time snapshot'),function(){
+    var o=qtyFresh('Q-15'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId], q=Math.min(l.quantity+1,c.max);
+    dgDraft[dgKey(l)]=String(q);
+    qtyApply(QE);
+    var s=CURRENT.run.masterSnapshot.filter(function(x){return x.itemCode===l.itemId;})[0];
+    var ok=s.quantity===l.quantity&&s.lineTotalInclVat===l.lineTotalInclVat;
+    QE.restore();
+    return {ok:ok,detail:'masterSnapshot quantity '+s.quantity+' and line total follow the edited line'};
+  });
+  TT('QTY-16 '+bhT('الحالة تعود GENERATED بعد الحفظ','Status returns to GENERATED after save'),function(){
+    var o=qtyFresh('Q-16');
+    CURRENT.run.approvalStatus='REVIEW'; CURRENT.run.reviewAttempted=true;
+    var l=CURRENT.lines[0], c=QE.caps(1)[l.itemId];
+    dgDraft[dgKey(l)]=String(Math.min(l.quantity+1,c.max));
+    qtyApply(QE);
+    var ok=CURRENT.run.approvalStatus==='GENERATED'&&CURRENT.run.reviewAttempted===false;
+    QE.restore();
+    return {ok:ok,detail:'REVIEW -> GENERATED · a fresh review is required before approval'};
+  });
+  TT('QTY-17 '+bhT('اللقطة المعتمدة تحمل الكمية المعدَّلة','Approved snapshot carries the edited quantity'),function(){
+    var o=qtyFresh('Q-17'); var l=CURRENT.lines[0];
+    var orig=l.quantity, c=QE.caps(1)[l.itemId];
+    var q=Math.min(orig+1,c.max);
+    if(q===orig) return {ok:true,detail:'item already at its cap — no headroom in this fixture'};
+    dgDraft[dgKey(l)]=String(q);
+    qtyApply(QE);
+    CURRENT.run.approvalStatus='REVIEW';
+    var chk=approvalChecks({run:CURRENT.run,lines:CURRENT.lines,grp:CURRENT.grp});
+    if(chk.ok){ CURRENT.run.approvalStatus='APPROVED'; CURRENT.run.status='APPROVED';
+      CURRENT.run.invoices=deepFreeze(buildInvoiceSnapshot(CURRENT.grp,VATRATE())); }
+    var snapQ=null;
+    (CURRENT.run.invoices||[]).forEach(function(v){ v.lines.forEach(function(x){
+      if(x.itemId===l.itemId) snapQ=x.quantity; }); });
+    var ok=chk.ok&&snapQ===q&&snapQ!==orig;
+    QE.restore();
+    return {ok:ok,detail:'generator produced '+orig+' · user saved '+q+' · frozen snapshot holds '+snapQ};
+  });
+  TT('QTY-18 '+bhT('بعد الاعتماد لا تعديل ممكن','No edit is possible after approval'),function(){
+    var o=qtyFresh('Q-18');
+    CURRENT.run.approvalStatus='APPROVED';
+    CURRENT.run.invoices=deepFreeze(buildInvoiceSnapshot(CURRENT.grp,VATRATE()));
+    var editable=dgEditable();
+    dgDraft[dgKey(CURRENT.lines[0])]='9999';
+    var r=dgSaveQty();
+    dgDraft={};
+    var ok=editable===false&&r.ok===false&&r.reason==='NOT_EDITABLE'&&Object.isFrozen(CURRENT.run.invoices);
+    QE.restore();
+    return {ok:ok,detail:'dgEditable false · dgSaveQty -> NOT_EDITABLE · invoices frozen'};
+  });
+  TT('QTY-19 '+bhT('محاولة التعديل على معتمدة مرفوضة','Editing an approved run is refused'),function(){
+    var o=qtyFresh('Q-19');
+    CURRENT.run.approvalStatus='APPROVED';
+    CURRENT.run.invoices=deepFreeze(buildInvoiceSnapshot(CURRENT.grp,VATRATE()));
+    var before=JSON.stringify({l:CURRENT.lines,r:CURRENT.run});
+    dgDraft[dgKey(CURRENT.lines[0])]='1';
+    dgSaveQty();
+    dgDraft={};
+    var ok=JSON.stringify({l:CURRENT.lines,r:CURRENT.run})===before;
+    QE.restore();
+    return {ok:ok,detail:'run and lines byte-identical after a rejected save attempt'};
+  });
+  TT('QTY-20 '+bhT('تقرير التنفيذ يعكس الكمية المعدَّلة','Actual report reflects the edited quantity'),function(){
+    var o=qtyFresh('Q-20'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId], q=Math.min(l.quantity+1,c.max);
+    dgDraft[dgKey(l)]=String(q);
+    qtyApply(QE);
+    CURRENT.run.approvalStatus='REVIEW';
+    var chk=approvalChecks({run:CURRENT.run,lines:CURRENT.lines,grp:CURRENT.grp});
+    if(chk.ok){ CURRENT.run.approvalStatus='APPROVED'; CURRENT.run.status='APPROVED';
+      CURRENT.run.invoices=deepFreeze(buildInvoiceSnapshot(CURRENT.grp,VATRATE())); }
+    /* the report reads run.invoices — the same frozen array */
+    var qty2=0; (CURRENT.run.invoices||[]).forEach(function(v){ v.lines.forEach(function(x){
+      if(x.itemId===l.itemId) qty2+=x.quantity; }); });
+    var ok=chk.ok&&qty2===q;
+    QE.restore();
+    return {ok:ok,detail:'the frozen snapshot the actual report reads holds '+qty2+' for '+l.itemId};
+  });
+  TT('QTY-21 '+bhT('الحد السنوي المتبقي من المعتمد فقط','Remaining annual comes from approved runs only'),function(){
+    var used=ENG.annualUsedQty('DM001',FY,
+      [{id:'X',fy:FY,status:'GENERATED'}],[{runId:'X',itemId:'DM001',quantity:999}]);
+    var used2=ENG.annualUsedQty('DM001',FY,
+      [{id:'X',fy:FY,status:'APPROVED'}],[{runId:'X',itemId:'DM001',quantity:7}]);
+    return {ok:used===0&&used2===7,
+            detail:'GENERATED run contributes 0 · APPROVED run contributes 7'};
+  });
+  TT('QTY-22 '+bhT('عملية معتمدة سابقة لا تتأثر','A previously approved run is untouched'),function(){
+    var prev=qtyFresh('Q-22-OLD');
+    prev.run.approvalStatus='REVIEW';
+    var c0=approvalChecks({run:prev.run,lines:prev.lines,grp:prev.grp});
+    if(c0.ok){ prev.run.approvalStatus='APPROVED'; prev.run.status='APPROVED';
+      prev.run.invoices=deepFreeze(buildInvoiceSnapshot(prev.grp,VATRATE())); }
+    var frozen=JSON.stringify({r:prev.run,l:prev.lines,i:prev.run.invoices});
+    var fresh=qtyFresh('Q-22-NEW',902);
+    var l=CURRENT.lines[0], c=QE.caps(1)[l.itemId];
+    dgDraft[dgKey(l)]=String(Math.min(l.quantity+1,c.max));
+    qtyApply(QE);
+    var ok=JSON.stringify({r:prev.run,l:prev.lines,i:prev.run.invoices})===frozen;
+    QE.restore();
+    return {ok:ok,detail:'the earlier approved run is byte-identical after editing a new one'};
+  });
+  TT('QTY-23 '+bhT('عزل بيانات التشغيل عن الاختبار','LIVE / FIXTURE isolation holds'),function(){
+    var L=store(D), F2=store(FX), liveSnap=JSON.stringify(D.items);
+    var o=qtyFresh('Q-23'); var l=CURRENT.lines[0];
+    var c=QE.caps(1)[l.itemId];
+    dgDraft[dgKey(l)]=String(Math.min(l.quantity+1,c.max));
+    qtyApply(QE);
+    var ok=CURRENT.run.dataSource==='FIXTURE'&&
+           JSON.stringify(D.items)===liveSnap&&
+           L.items.length!==F2.items.length;
+    QE.restore();
+    return {ok:ok,detail:'run source FIXTURE · GHS_DATA untouched · LIVE '+L.items.length+
+                         ' vs FIXTURE '+F2.items.length+' items'};
+  });
+  TT('QTY-24 '+bhT('المحرك ودوال الاعتماد بلا تعديل','Engine and approval functions unchanged'),function(){
+    var gsrc=String(buildInvoiceGroups), asrc=String(approvalChecks), ssrc=String(buildInvoiceSnapshot);
+    return {ok:ENG.ALGORITHM_VERSION==='DE-1.2.1'&&typeof ENG.groupInvoices==='undefined'&&
+               /REQUESTED_EXCEEDS_DISTRIBUTION_LINES/.test(gsrc)&&
+               /No quantity splitting|\u0644\u0627 \u064a\u0648\u062c\u062f \u062a\u0642\u0633\u064a\u0645/.test(asrc)&&
+               /subtotalBeforeVat/.test(ssrc),
+            detail:'engine '+ENG.ALGORITHM_VERSION+' · grouping, approvalChecks and snapshot builder intact'};
+  });
 
   return R;
 }
@@ -5304,6 +5762,147 @@ var GROUP_REASON={
   CANNOT_FORM_REQUESTED_INVOICES_WITHOUT_CHANGING_DATA:['لا يمكن تكوين العدد المطلوب دون تغيير البيانات',
     'Cannot form the requested count without changing data']
 };
+
+/* ============================================================================
+   PRE-APPROVAL QUANTITY REVIEW
+   The user edits quantity inside the proposed invoice, before approval only.
+   Typing writes to dgDraft alone — a preview buffer. CURRENT.lines, the run and
+   the grouping are untouched until "save" succeeds, and every quantity is
+   validated first against the SAME constraints the generator used, read back
+   from ENG.buildEligible(engineInput(...)). engine.js, buildInvoiceGroups,
+   approvalChecks, buildInvoiceSnapshot and deepFreeze are never modified.
+   ========================================================================== */
+var dgDraft={};                       /* line key -> raw string typed by the user */
+/* A distribution line carries lineId; the invoice line built from it carries
+   distributionLineId. Both must resolve to the SAME draft key, otherwise the
+   field in the invoice would write to a key nothing else reads. */
+function dgKey(l){ return l.distributionLineId||l.lineId||l.itemId; }
+
+function dgEditable(){
+  return !!CURRENT && CURRENT.run.approvalStatus!=='APPROVED';
+}
+/* the generator's own caps, per item: [max(mmin,1) .. allowedMax] */
+function dgCaps(){
+  var caps={};
+  try{
+    var el=ENG.buildEligible(engineInput(CURRENT.run.randomSeed,CURRENT.run.runId));
+    (el.eligible||[]).forEach(function(e){
+      caps[e.id]={ min:Math.max(Number(e.mmin)||0,1), max:Number(e.allowedMax) };
+    });
+  }catch(err){ /* caps stay empty -> validation reports NO_CAPS and blocks */ }
+  return caps;
+}
+function dgDraftQty(l){
+  var raw=dgDraft[dgKey(l)];
+  if(raw===undefined) return l.quantity;
+  var n=Number(raw);
+  return (/^\d+$/.test(String(raw).trim())&&n>0)?n:null;   /* null => invalid */
+}
+function dgLineTotal(l){
+  var q=dgDraftQty(l);
+  if(q===null) return null;
+  return r2(q*Number(l.unitPriceSnapshotInclVat));          /* qty x snapshot price */
+}
+function dgHasDraft(){ return Object.keys(dgDraft).length>0; }
+function dgPreviewTotals(){
+  var tot=0, bad=false;
+  CURRENT.lines.forEach(function(l){
+    var v=dgLineTotal(l);
+    if(v===null){ bad=true; return; }
+    tot=r2(tot+v);
+  });
+  var target=Number(CURRENT.run.targetInclVat)||0;
+  return { total:bad?null:tot, invalid:bad,
+           remaining:bad?null:r2(target-tot),
+           pct:(bad||target<=0)?null:r2(tot/target*100),
+           overBudget:(!bad&&tot>target) };
+}
+function dgValidateAll(){
+  var caps=dgCaps(), errs=[];
+  if(!Object.keys(caps).length) return {ok:false,errs:[{code:'NO_CAPS'}]};
+  CURRENT.lines.forEach(function(l){
+    var raw=dgDraft[dgKey(l)];
+    if(raw===undefined) return;                    /* untouched line */
+    var s=String(raw).trim();
+    if(s===''||!/^\d+$/.test(s)){ errs.push({id:l.itemId,code:'NOT_INTEGER',v:s}); return; }
+    var q=Number(s);
+    if(!(q>0)){ errs.push({id:l.itemId,code:'ZERO_OR_NEGATIVE',v:s}); return; }
+    var c=caps[l.itemId];
+    if(!c){ errs.push({id:l.itemId,code:'NOT_ELIGIBLE'}); return; }
+    if(q<c.min){ errs.push({id:l.itemId,code:'BELOW_MIN',v:q,lim:c.min}); return; }
+    if(q>c.max){ errs.push({id:l.itemId,code:'ABOVE_MAX',v:q,lim:c.max}); return; }
+  });
+  var p=dgPreviewTotals();
+  if(!p.invalid&&p.overBudget) errs.push({code:'OVER_BUDGET',v:p.total,lim:CURRENT.run.targetInclVat});
+  return {ok:errs.length===0,errs:errs,total:p.total};
+}
+var DG_QTY_MSG={
+  NO_CAPS:['\u062a\u0639\u0630\u0631 \u0642\u0631\u0627\u0621\u0629 \u062d\u062f\u0648\u062f \u0627\u0644\u0623\u0635\u0646\u0627\u0641','Item limits could not be read'],
+  NOT_INTEGER:['\u0627\u0644\u0643\u0645\u064a\u0629 \u064a\u062c\u0628 \u0623\u0646 \u062a\u0643\u0648\u0646 \u0631\u0642\u0645\u064b\u0627 \u0635\u062d\u064a\u062d\u064b\u0627','Quantity must be a whole number'],
+  ZERO_OR_NEGATIVE:['\u0627\u0644\u0643\u0645\u064a\u0629 \u064a\u062c\u0628 \u0623\u0646 \u062a\u0643\u0648\u0646 \u0623\u0643\u0628\u0631 \u0645\u0646 \u0635\u0641\u0631','Quantity must be greater than zero'],
+  NOT_ELIGIBLE:['\u0627\u0644\u0635\u0646\u0641 \u063a\u064a\u0631 \u0645\u0624\u0647\u0644 \u062d\u0627\u0644\u064a\u064b\u0627','Item is not currently eligible'],
+  BELOW_MIN:['\u0623\u0642\u0644 \u0645\u0646 \u0627\u0644\u062d\u062f \u0627\u0644\u0623\u062f\u0646\u0649','Below the minimum'],
+  ABOVE_MAX:['\u0623\u0643\u0628\u0631 \u0645\u0646 \u0627\u0644\u0645\u0633\u0645\u0648\u062d','Above the allowed maximum'],
+  OVER_BUDGET:['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u064a\u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629','Total exceeds the budget']
+};
+function dgErrText(e){
+  var m=DG_QTY_MSG[e.code]||[e.code,e.code];
+  var s=(e.id?(e.id+': '):'')+T(m[0],m[1]);
+  if(e.lim!==undefined) s+=' ('+T('\u0627\u0644\u062d\u062f','limit')+' '+e.lim+(e.v!==undefined?(' \u00b7 '+T('\u0627\u0644\u0645\u062f\u062e\u0644','entered')+' '+e.v):'')+')';
+  return s;
+}
+function dgQtyMsg(kind,text){
+  var e=document.getElementById('dgQtyMsg'); if(!e) return;
+  e.innerHTML=text?('<div class="mi-'+kind+'">'+esc(text)+'</div>'):'';
+}
+/* ---- SAVE: validate everything first, then write atomically ---- */
+function dgSaveQty(){
+  if(!dgEditable()) return {ok:false,reason:'NOT_EDITABLE'};
+  if(!dgHasDraft()) return {ok:false,reason:'NO_CHANGES'};
+  var v=dgValidateAll();
+  if(!v.ok) return {ok:false,reason:'INVALID',errs:v.errs};   /* nothing written */
+
+  var changed=0;
+  CURRENT.lines.forEach(function(l){
+    var raw=dgDraft[dgKey(l)];
+    if(raw===undefined) return;
+    var q=Number(String(raw).trim());
+    if(q===l.quantity) return;
+    l.quantity=q;
+    l.lineTotalInclVat=r2(q*Number(l.unitPriceSnapshotInclVat));
+    changed++;
+  });
+
+  var tot=0; CURRENT.lines.forEach(function(l){ tot=r2(tot+r2(l.lineTotalInclVat)); });
+  var target=Number(CURRENT.run.targetInclVat)||0;
+  CURRENT.run.distributedInclVat=tot;
+  CURRENT.run.remainingInclVat=r2(target-tot);
+  CURRENT.run.executionPct=target>0?r2(tot/target*100):0;
+
+  /* keep the generate-time snapshot consistent with the edited lines */
+  if(CURRENT.run.masterSnapshot){
+    CURRENT.run.masterSnapshot.forEach(function(s){
+      var l=CURRENT.lines.filter(function(x){return x.itemId===s.itemCode;})[0];
+      if(l){ s.quantity=l.quantity; s.lineTotalInclVat=l.lineTotalInclVat; }
+    });
+  }
+  /* regroup with the untouched approved grouping function */
+  CURRENT.grp=buildInvoiceGroups(CURRENT.lines,CURRENT.run.invoiceCount,
+                                 CURRENT.run.runId,CURRENT.run.distributedInclVat);
+  CURRENT.run.invoiceGroupingStatus=CURRENT.grp.invoiceGroupingStatus;
+
+  /* any earlier review is void — the run must be reviewed again */
+  CURRENT.run.approvalStatus='GENERATED';
+  CURRENT.run.reviewAttempted=false;
+  dgDraft={};
+  return {ok:true,changed:changed,total:tot,invoices:CURRENT.grp.invoices.length};
+}
+function dgCancelQty(){
+  var n=Object.keys(dgDraft).length;
+  dgDraft={};                       /* nothing else is touched */
+  return {ok:true,discarded:n};
+}
+
 function renderGrouping(g,run){
   var p=document.getElementById('dgInvPanel'); if(!p) return;
   p.classList.remove('hidden');
@@ -5345,16 +5944,23 @@ function renderGrouping(g,run){
         if(!tr.classList.contains('hidden')){ tr.classList.add('hidden'); tr.firstChild.innerHTML='';
           btn.innerHTML=btn.innerHTML.replace('▴','▾'); return; }
         var vr=VATRATE(), sub=0, vat=0, tot=0;
+        var ed=dgEditable();
         var body=inv.lines.map(function(l){
-          var ti=r2(l.lineTotalInclVat);          /* already VAT-inclusive — never re-add VAT */
+          /* preview: the draft quantity drives the line total until it is saved */
+          var dq=ed?dgDraftQty(l):l.quantity;
+          var ti=(dq===null)?0:r2(dq*Number(l.unitPriceSnapshotInclVat));
           var bv=r2(ti/(1+vr));                   /* Before VAT = Total Incl / 1.14           */
           var vv=r2(ti-bv);                       /* VAT        = Total Incl - Before VAT     */
           sub=r2(sub+bv); vat=r2(vat+vv); tot=r2(tot+ti);
           return '<tr><td style="white-space:normal">'+bdi(l.itemName)+'</td>'+
             '<td><span class="sub-id" style="margin:0">'+esc(l.itemId)+'</span></td>'+
-            '<td class="num">'+qty(l.quantity)+'</td>'+
+            '<td class="num">'+(ed
+                ? ('<input class="dg-qty'+(dgDraft[dgKey(l)]!==undefined?' dirty':'')+
+                   (dq===null?' err':'')+'" data-dgq="'+esc(dgKey(l))+'" inputmode="numeric" value="'+
+                   esc(dgDraft[dgKey(l)]!==undefined?dgDraft[dgKey(l)]:l.quantity)+'">')
+                : qty(l.quantity))+'</td>'+
             '<td class="num">'+money(l.unitPriceSnapshotInclVat)+'</td>'+
-            '<td class="num">'+money(ti)+'</td>'+
+            '<td class="num">'+(dq===null?'\u2014':money(ti))+'</td>'+
             '<td class="num">'+money(bv)+'</td>'+
             '<td class="num">'+money(vv)+'</td>'+
             '<td class="num"><b>'+money(ti)+'</b></td></tr>'; }).join('');
@@ -5378,7 +5984,8 @@ function renderGrouping(g,run){
           (okInv?'':'<div class="rs-sub" style="color:#991b1b;margin-top:8px">'+
             T('تحذير: الإجماليات غير متوازنة في هذه الفاتورة','Warning: totals do not balance for this invoice')+'</div>')+
           '</div>';
-        tr.classList.remove('hidden'); btn.innerHTML=btn.innerHTML.replace('▾','▴');
+        tr.classList.remove('hidden');
+        dgWireQty();                       /* attach the quantity inputs just rendered */ btn.innerHTML=btn.innerHTML.replace('▾','▴');
       };
     });
   }
@@ -5408,6 +6015,7 @@ function renderGrouping(g,run){
     ' · Σ_before_vat='+sSub.toFixed(2)+' · Σ_vat='+sVat.toFixed(2)+' · Σ_total='+sTot.toFixed(2)+
     ' · distributed='+run.distributedInclVat.toFixed(2)+
     ' · match_distribution='+matchDist+' · match_vat='+matchVat;
+  if(typeof dgRenderQtyBar==='function') dgRenderQtyBar();
 }
 
 function audit(action,run){
