@@ -194,6 +194,7 @@ tr.over-row td{background:#fef2f2}
     <div class="dist-f">
       <div class="rep-f" style="min-width:340px"><label class="lbl" id="ivLRun">عملية التوزيع المعتمدة</label>
         <select class="field" id="ivRun"></select></div>
+      <div class="rep-f rowacts"><button class="btn green" id="ivExcel" disabled>📊 تصدير Excel</button></div>
     </div>
     <div class="appr-grid" id="ivMeta"></div>
   </div>
@@ -5297,7 +5298,8 @@ function ivLabels(){
    ['ivTTitle','\u0627\u062e\u062a\u0628\u0627\u0631\u0627\u062a \u0634\u0627\u0634\u0629 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631','Invoice screen tests'],
    ['ivRunTests','\u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631\u0627\u062a','Run tests'],
    ['ivT2','\u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631','Test'],['ivT3','\u0627\u0644\u0646\u062a\u064a\u062c\u0629','Result'],
-   ['ivT4','\u0627\u0644\u062a\u0641\u0635\u064a\u0644','Detail']
+   ['ivT4','\u0627\u0644\u062a\u0641\u0635\u064a\u0644','Detail'],
+   ['ivExcel','\ud83d\udcca \u062a\u0635\u062f\u064a\u0631 Excel','\ud83d\udcca Export Excel']
   ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=ivT(x[1],x[2]); });
   var n=document.getElementById('ivNote');
   if(n) n.textContent=ivT(
@@ -5339,6 +5341,7 @@ function ivRender(){
     pill.textContent=ivT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0645\u0644\u064a\u0627\u062a','no runs');
     meta.innerHTML='';
     panel.classList.add('hidden');
+    var bx0=document.getElementById('ivExcel'); if(bx0) bx0.disabled=true;
     ivMsg('warn',ivT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0645\u0644\u064a\u0627\u062a \u062a\u0648\u0632\u064a\u0639 \u0645\u0639\u062a\u0645\u062f\u0629 \u0644\u0639\u0631\u0636 \u0641\u0648\u0627\u062a\u064a\u0631\u0647\u0627.',
       'There are no approved distribution runs whose invoices can be displayed.'));
     return;
@@ -5362,11 +5365,13 @@ function ivRender(){
   var invoices=ivInvoices(run.runId);
   if(!invoices||!invoices.length){
     panel.classList.add('hidden');
+    var bx1=document.getElementById('ivExcel'); if(bx1) bx1.disabled=true;
     ivMsg('warn',ivT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0644\u0642\u0637\u0629 \u0641\u0648\u0627\u062a\u064a\u0631 \u0645\u062d\u0641\u0648\u0638\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0639\u0645\u0644\u064a\u0629.',
       'No stored invoice snapshot exists for this run.'));
     return;
   }
   panel.classList.remove('hidden');
+  var bx=document.getElementById('ivExcel'); if(bx) bx.disabled=false;   /* APPROVED + snapshot present */
   document.getElementById('ivCount').textContent=invoices.length+' '+ivT('\u0641\u0627\u062a\u0648\u0631\u0629','invoices');
 
   var tb=document.getElementById('ivRows');
@@ -5427,8 +5432,151 @@ function ivRender(){
     ' \u00b7 distributed='+Number(run.distributedInclVat).toFixed(2)+
     ' \u00b7 source=approved snapshot (read-only)';
 }
+
+/* ============================================================================
+   S3.1a — INVOICE SCREEN EXCEL EXPORT  (historical, read-only)
+   Everything comes from the approved export context:
+       GHS_RUNTIME.getExportContext(runId)  ->  buildExportContext(runId)
+   which carries the APPROVED gate and the reconciliation checks. No value is
+   recalculated here: quantity, unit price, line total, before-VAT, VAT and all
+   totals are printed straight from the immutable snapshot.
+   The single existing writer (GHS_RUNTIME.buildXlsx) and the existing download
+   helper (window.GHS_DOWNLOAD) are reused as they are — neither is modified,
+   and S3's own exportRunToExcel is not touched.
+   ========================================================================== */
+function ivExportContext(runId){
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.getExportContext!=='function') return null;
+  return RT.getExportContext(runId);          /* APPROVED gate + reconciliation */
+}
+/* mirrors the existing S3 filename convention exactly — no new convention */
+function ivFileName(m){
+  var raw='GHS_Expense_'+m.financialYear+'_M'+m.month+'_'+m.expenseType+'_'+m.runId;
+  return raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx';
+}
+function ivBuildWorkbookModel(ctx){
+  if(!ctx) return null;
+  var m=ctx.metadata, t=ctx.totals, invs=ctx.invoices.invoices;
+  var lineCount=0; invs.forEach(function(v){ lineCount+=v.lines.length; });
+  var rec=ctx.reconciliation||{};
+  var recOk=rec.invoicesEqualDistributed&&rec.vatBalances&&rec.everyLineOnce&&
+            rec.noDuplicate&&rec.noOmission&&rec.noQuantitySplit;
+  var sheets=[];
+
+  sheets.push({ name:'\u0645\u0644\u062e\u0635', widths:[36,32], rows:[
+    ['\u0627\u0644\u0628\u064a\u0627\u0646','\u0627\u0644\u0642\u064a\u0645\u0629'],
+    ['Run ID',m.runId],
+    ['\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a',m.dataSource],
+    ['\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629',m.financialYear],
+    ['\u0627\u0644\u0634\u0647\u0631',{n:m.month,f:'qty'}],
+    ['\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',m.expenseType],
+    ['\u062d\u0627\u0644\u0629 \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f',m.approvalStatus],
+    ['\u0627\u0639\u062a\u0645\u062f\u0647\u0627',m.approvedBy],
+    ['\u0648\u0642\u062a \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f',String(m.approvedAt||'').replace('T',' ').slice(0,19)],
+    ['\u0639\u062f\u062f \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',{n:ctx.invoices.count,f:'qty'}],
+    ['\u0639\u062f\u062f \u0628\u0646\u0648\u062f \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',{n:lineCount,f:'qty'}],
+    ['\u0627\u0644\u0645\u0628\u0644\u063a \u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629',{n:t.subtotalBeforeVat,f:'money'}],
+    ['\u0627\u0644\u0636\u0631\u064a\u0628\u0629 14%',{n:t.vat,f:'money'}],
+    ['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629',{n:t.totalInclusiveVat,f:'money'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0648\u0632\u064a\u0639',{n:t.distributedTotal,f:'money'}],
+    ['\u062d\u0627\u0644\u0629 \u0627\u0644\u062a\u0633\u0648\u064a\u0629',
+      recOk?'\u0645\u062a\u0637\u0627\u0628\u0642\u0629':'\u063a\u064a\u0631 \u0645\u062a\u0637\u0627\u0628\u0642\u0629']
+  ]});
+
+  var iv=[['#','Invoice ID','\u0627\u0644\u062a\u0633\u0644\u0633\u0644','\u0639\u062f\u062f \u0627\u0644\u0628\u0646\u0648\u062f',
+           '\u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','\u0627\u0644\u0636\u0631\u064a\u0628\u0629 14%',
+           '\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629']];
+  invs.forEach(function(v,i){
+    iv.push([{n:i+1,f:'qty'},v.invoiceId,{n:v.invoiceSeq,f:'qty'},{n:v.lineCount,f:'qty'},
+             {n:v.subtotalBeforeVat,f:'money'},{n:v.vat,f:'money'},{n:v.totalInclVat,f:'money'}]);
+  });
+  iv.push(['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a','','',{n:lineCount,f:'qty'},
+           {n:t.subtotalBeforeVat,f:'money'},{n:t.vat,f:'money'},{n:t.totalInclusiveVat,f:'money'}]);
+  sheets.push({name:'\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',widths:[8,24,12,14,20,18,24],rows:iv});
+
+  var dt=[['\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629','Invoice ID','\u062a\u0633\u0644\u0633\u0644 \u0627\u0644\u0628\u0646\u062f',
+           '\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','\u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641','\u0627\u0644\u0643\u0645\u064a\u0629',
+           '\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629 \u0634\u0627\u0645\u0644','\u0642\u064a\u0645\u0629 \u0627\u0644\u0628\u0646\u062f \u0634\u0627\u0645\u0644',
+           '\u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','\u0627\u0644\u0636\u0631\u064a\u0628\u0629',
+           '\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0634\u0627\u0645\u0644']];
+  invs.forEach(function(v,i){
+    v.lines.forEach(function(l){
+      dt.push([{n:i+1,f:'qty'},v.invoiceId,{n:l.lineSeq,f:'qty'},l.itemId,l.itemName,
+               {n:l.quantity,f:'qty'},{n:l.unitPriceSnapshotInclVat,f:'money'},
+               {n:l.lineTotalInclVat,f:'money'},{n:l.beforeVat,f:'money'},
+               {n:l.vat,f:'money'},{n:l.totalInclVat,f:'money'}]);
+    });
+  });
+  sheets.push({name:'\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',
+               widths:[12,22,12,12,32,10,20,20,18,16,20],rows:dt});
+
+  return {sheets:sheets, fileName:ivFileName(m)};
+}
+function ivExportToExcel(){
+  if(!ivRunId) return {ok:false,reason:'NO_RUN_SELECTED'};
+  var run=ivApprovedRuns().filter(function(r){ return r.runId===ivRunId; })[0];
+  if(!run) return {ok:false,reason:'RUN_NOT_APPROVED'};
+  if(!ivInvoices(ivRunId)) return {ok:false,reason:'NO_INVOICE_SNAPSHOT'};
+
+  var ctx;
+  try{ ctx=ivExportContext(ivRunId); }
+  catch(e){ return {ok:false,reason:'CONTEXT_FAILED: '+e.message}; }
+  if(!ctx) return {ok:false,reason:'NOT_EXPORTABLE'};       /* gate or reconciliation */
+
+  var model;
+  try{ model=ivBuildWorkbookModel(ctx); }
+  catch(e){ return {ok:false,reason:'MODEL_FAILED: '+e.message}; }
+  if(!model||model.sheets.length!==3) return {ok:false,reason:'EMPTY_WORKBOOK_MODEL'};
+
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.buildXlsx!=='function') return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
+  var bytes;
+  try{ bytes=RT.buildXlsx(model); }                          /* the one writer */
+  catch(e){ return {ok:false,reason:'XLSX_BUILD_FAILED: '+e.message}; }
+  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
+  if(!(bytes[0]===0x50&&bytes[1]===0x4B)) return {ok:false,reason:'INVALID_XLSX_SIGNATURE'};
+
+  var dl=window.GHS_DOWNLOAD;                                /* the existing helper */
+  if(typeof dl!=='function') return {ok:false,reason:'DOWNLOAD_HELPER_UNAVAILABLE'};
+  var r=dl(bytes,model.fileName);                            /* inside the user click */
+  if(!r.ok) return {ok:false,reason:r.reason};
+  var lc=0; ctx.invoices.invoices.forEach(function(v){ lc+=v.lines.length; });
+  return {ok:true,fileName:model.fileName,bytes:bytes.length,sheets:model.sheets.length,
+          invoices:ctx.invoices.count,lines:lc,via:r.via};
+}
+var IV_DL_MSG={
+  NO_RUN_SELECTED:['\u0627\u062e\u062a\u0631 \u0639\u0645\u0644\u064a\u0629 \u0645\u0639\u062a\u0645\u062f\u0629 \u0642\u0628\u0644 \u0627\u0644\u062a\u0635\u062f\u064a\u0631','Select an approved run before exporting'],
+  RUN_NOT_APPROVED:['\u0627\u0644\u0639\u0645\u0644\u064a\u0629 \u063a\u064a\u0631 \u0645\u0639\u062a\u0645\u062f\u0629','The run is not approved'],
+  NO_INVOICE_SNAPSHOT:['\u0644\u0627 \u062a\u0648\u062c\u062f \u0644\u0642\u0637\u0629 \u0641\u0648\u0627\u062a\u064a\u0631 \u0645\u062d\u0641\u0648\u0638\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0639\u0645\u0644\u064a\u0629','No stored invoice snapshot for this run'],
+  NOT_EXPORTABLE:['\u062a\u0639\u0630\u0631 \u0628\u0646\u0627\u0621 \u0633\u064a\u0627\u0642 \u0627\u0644\u062a\u0635\u062f\u064a\u0631 \u2014 \u0627\u0644\u0639\u0645\u0644\u064a\u0629 \u0644\u0645 \u062a\u062c\u062a\u0632 \u0641\u062d\u0648\u0635 \u0627\u0644\u062a\u0633\u0648\u064a\u0629','Export context could not be built — the run failed the reconciliation checks'],
+  EMPTY_WORKBOOK_MODEL:['\u0646\u0645\u0648\u0630\u062c \u0627\u0644\u0645\u0635\u0646\u0651\u0641 \u0641\u0627\u0631\u063a','Workbook model is empty'],
+  XLSX_WRITER_UNAVAILABLE:['XLSX writer unavailable','XLSX writer unavailable'],
+  DOWNLOAD_HELPER_UNAVAILABLE:['Browser download helper unavailable','Browser download helper unavailable'],
+  EMPTY_FILE_BYTES:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0641\u0627\u0631\u063a','Generated file is empty'],
+  INVALID_XLSX_SIGNATURE:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0644\u064a\u0633 XLSX \u0635\u0627\u0644\u062d\u064b\u0627','Generated file is not a valid XLSX'],
+  BLOB_API_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  OBJECT_URL_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  DOWNLOAD_ATTRIBUTE_UNSUPPORTED:['\u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0644\u0627 \u064a\u062f\u0639\u0645 \u0627\u0644\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u0645\u0628\u0627\u0634\u0631','Browser does not support direct download']
+};
+
 var ivSel=document.getElementById('ivRun');
 if(ivSel) ivSel.onchange=function(e){ ivRunId=e.target.value; ivRender(); };
+var ivBx=document.getElementById('ivExcel');
+if(ivBx) ivBx.onclick=function(){
+  var r;
+  /* runs synchronously inside the user gesture */
+  try{ r=ivExportToExcel(); }
+  catch(e){ r={ok:false,reason:'UNEXPECTED: '+e.message}; }
+  if(r.ok){
+    ivMsg('ok',ivT('\u062a\u0645 \u062a\u0635\u062f\u064a\u0631 Excel \u2014 ','Excel exported \u2014 ')+r.fileName+
+      ' \u00b7 '+r.invoices+ivT(' \u0641\u0627\u062a\u0648\u0631\u0629 \u00b7 ',' invoices \u00b7 ')+
+      r.lines+ivT(' \u0628\u0646\u062f \u00b7 ',' lines \u00b7 ')+r.bytes+' bytes');
+    return; }
+  var key=String(r.reason||'UNKNOWN').split(':')[0], m=IV_DL_MSG[key];
+  ivMsg('warn',ivT('\u0641\u0634\u0644 \u062a\u0635\u062f\u064a\u0631 Excel: ','Excel export failed: ')+
+    (m?ivT(m[0],m[1]):String(r.reason||'UNKNOWN')));
+  console.error('[EXPORT] Invoice screen Excel failed \u2014',r.reason);
+};
 Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
   if(b.dataset.page==='invoices') b.addEventListener('click',function(){ ivRender(); }); });
 Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
@@ -5436,6 +5584,10 @@ Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),functio
     var p=document.getElementById('invoices');
     if(p&&!p.classList.contains('hidden')) ivRender(); },0); }); });
 window.GHS_INVOICE_VIEW={
+  exportToExcel:ivExportToExcel,
+  workbookModel:function(runId){ return ivBuildWorkbookModel(ivExportContext(runId)); },
+  fileNameOf:function(runId){ var c=ivExportContext(runId); return c?ivFileName(c.metadata):null; },
+  messages:IV_DL_MSG,
   approvedRuns:ivApprovedRuns,
   invoicesOf:ivInvoices,
   render:ivRender,
