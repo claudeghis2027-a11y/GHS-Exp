@@ -1867,11 +1867,20 @@ var aeFy=null, aeFrom=null, aeTo=null, aeThrough='', aeOpenType=null, aeOpenItem
 
 function aeRuntime(){ return window.GHS_RUNTIME||null; }
 function aeSrcData(){ return RSRC(); }                    /* follows the report source */
-function aeLimits(){
-  var src=reportCtx().src;
+/* MASTER = current roster / metadata.  APPROVED SNAPSHOT = actual execution.
+   Both helpers below serve the first role only; neither is ever consulted for
+   a quantity or a value. Falls back to the raw source if the accessor is
+   unavailable, so the report degrades instead of failing. */
+function aeMaster(){
+  var RT=aeRuntime(), src=reportCtx().src;
+  if(RT&&typeof RT.masterRoster==='function'){
+    var m=RT.masterRoster(src);
+    if(m&&m.items) return m;
+  }
   var base=(src==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
-  return base.limits||[];
+  return {items:base.items||[],limits:base.limits||[]};
 }
+function aeLimits(){ return aeMaster().limits||[]; }
 function aeR2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
 function aeEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -1931,13 +1940,19 @@ function aeAnnualMax(itemId){
 /* CORRECTION 2 — Annual Max is a CURRENT policy for the financial year, not a
    historical actual. It therefore covers EVERY item belonging to the expense
    type in that FY, including items that were never distributed. */
-function aeSrcItems(){
-  var src=reportCtx().src;
-  var base=(src==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
-  return base.items||[];
-}
+function aeSrcItems(){ return aeMaster().items||[]; }
 function aeTypeItems(typeId){
   return aeSrcItems().filter(function(x){ return x.t===typeId; });
+}
+/* BUG-1 — the type roster comes from the BUDGET side, not from approved runs.
+   Every expense type that has a monthly budget row inside the selected FY and
+   month window belongs in the report, whether or not anything was executed. */
+function aeBudgetTypes(){
+  var rows=aeSrcData().monthlyBudgets.filter(function(b){
+    return b.fy===aeFy && Number(b.pi)>=Number(aeFrom) && Number(b.pi)<=Number(aeTo); });
+  var seen={}, out=[];
+  rows.forEach(function(b){ if(!seen[b.t]){ seen[b.t]=1; out.push(b.t); } });
+  return out;
 }
 
 /* ---- aggregate: type -> item -> approved run ---- */
@@ -1946,10 +1961,22 @@ function aeBuild(){
   var d=aeSrcData(), tn={}; d.types.forEach(function(t){ tn[t.id]=t.n; });
   var types={};
 
+  /* seed every budgeted type first — zero-execution types must still appear */
+  function ensureType(id){
+    if(!types[id]) types[id]={typeId:id,typeName:tn[id]||id,
+      runBudget:0, actualValue:0, actualQty:0, items:{}, months:{}, runs:[]};
+    return types[id];
+  }
+  aeBudgetTypes().forEach(function(id){
+    var t=ensureType(id);
+    aeSrcData().monthlyBudgets.forEach(function(b){
+      if(b.fy===aeFy&&b.t===id&&Number(b.pi)>=Number(aeFrom)&&Number(b.pi)<=Number(aeTo))
+        t.months[b.pi]=1;                       /* budget months, run or no run */
+    });
+  });
+
   runs.forEach(function(r){
-    var t=types[r.typeId];
-    if(!t){ t=types[r.typeId]={typeId:r.typeId,typeName:tn[r.typeId]||r.typeId,
-      runBudget:0, actualValue:0, actualQty:0, items:{}, months:{}, runs:[]}; }
+    var t=ensureType(r.typeId);                 /* an approved run outside the budget rows still counts */
     t.runBudget=aeR2(t.runBudget+(Number(r.targetInclVat)||0));
     t.months[r.periodIndex]=1;                             /* month set — budget counted once */
     t.runs.push(r);
@@ -2016,7 +2043,8 @@ function aeBuild(){
       monthCount:Object.keys(t.months).length,
       runCount:t.runs.length,
       items:items };
-  }).sort(function(a,b){ return b.actualValue-a.actualValue; });
+  }).sort(function(a,b){                      /* executed first, then a stable name order */
+    return (b.actualValue-a.actualValue)||String(a.typeName).localeCompare(String(b.typeName)); });
 
   var tot={currentBudget:0,runBudget:0,actualValue:0,actualQty:0,runCount:0};
   out.forEach(function(t){
@@ -6676,6 +6704,14 @@ window.GHS_RUNTIME={
      exposes the existing approved resolver rather than duplicating it. */
   currentAllocation:function(src,fy,pi,typeId,original){
     return resolveAlloc(src,fy,pi,typeId,original);
+  },
+  /* Read-only view of the CURRENT master roster for a source. Reports live in
+     another IIFE and cannot call masterFor directly; this exposes the existing
+     approved resolver rather than duplicating it. Used for roster and metadata
+     only — never for an actual execution figure. */
+  masterRoster:function(src){
+    var m=masterFor(src);
+    return {items:m.items,limits:m.limits};
   }
 };
 
