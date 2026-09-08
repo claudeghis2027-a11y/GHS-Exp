@@ -185,7 +185,43 @@ tr.over-row td{background:#fef2f2}
   </div>
 </section>
 <section id="distribution" class="page hidden"><div class="panel"><div class="section-title"><h2>Distribution Engine — V1</h2><button class="btn green" onclick="generateDemo()">Generate Distribution</button></div><div class="notice">النسخة الأولى تعرض تجربة التوزيع فقط. في التنفيذ النهائي سيتم تطبيق Max Annual + Max Monthly + Weight + Exact Match قبل الاعتماد.</div><div id="distResult"></div></div></section>
-<section id="invoices" class="page hidden"><div class="panel"><div class="section-title"><h2>الفواتير</h2><button class="btn secondary" onclick="showInvoiceDemo()">عرض فواتير الشهر</button></div><div id="invoiceResult"></div></div></section>
+<section id="invoices" class="page hidden">
+  <div class="panel">
+    <div class="section-title"><h2 id="ivTitle">الفواتير</h2>
+      <span class="pill neutral" id="ivPill">—</span></div>
+    <div class="mi-note" id="ivNote"></div>
+    <div id="ivMsg"></div>
+    <div class="dist-f">
+      <div class="rep-f" style="min-width:340px"><label class="lbl" id="ivLRun">عملية التوزيع المعتمدة</label>
+        <select class="field" id="ivRun"></select></div>
+    </div>
+    <div class="appr-grid" id="ivMeta"></div>
+  </div>
+  <div class="panel hidden" id="ivListPanel">
+    <div class="section-title"><h2 id="ivListTitle">الفواتير المعتمدة</h2>
+      <span class="pill neutral" id="ivCount"></span></div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th id="ivC1">#</th><th id="ivC2">رقم الفاتورة</th><th id="ivC3">عدد البنود</th>
+        <th id="ivC4">قبل الضريبة</th><th id="ivC5">الضريبة 14%</th>
+        <th id="ivC6">الإجمالي شامل الضريبة</th><th id="ivC7">البنود</th>
+      </tr></thead>
+      <tbody id="ivRows"></tbody>
+    </table></div>
+    <div class="runmeta" id="ivFoot"></div>
+  </div>
+  <div class="panel" id="ivTestPanel">
+    <div class="section-title"><h2 id="ivTTitle">اختبارات شاشة الفواتير</h2>
+      <span class="pill neutral" id="ivTPill">—</span></div>
+    <div class="repnote" id="ivTNote"></div>
+    <div class="rowacts" style="margin-bottom:14px">
+      <button class="btn" id="ivRunTests">تشغيل الاختبارات</button></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th id="ivT2">الاختبار</th><th id="ivT3">النتيجة</th><th id="ivT4">التفصيل</th></tr></thead>
+      <tbody id="ivTRows"></tbody>
+    </table></div>
+  </div>
+</section>
 <section id="itemreview" class="page hidden">
 <div id="irTypes">
   <div class="panel">
@@ -497,7 +533,6 @@ function openType(name){const t=types.find(x=>x[0]===name);const items=sampleIte
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 function saveBudget(){/* replaced by the hierarchical Budget view */}
 function generateDemo(){const total=types.reduce((s,t)=>s+t[3][currentMonth],0);const inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];let left=total;let vals=[];for(let i=0;i<inv-1;i++){let min=total*0.12,max=Math.min(total*0.32,left-(inv-i-1)*min);let v=Math.round((min+Math.random()*(max-min))/50)*50;vals.push(v);left-=v}vals.push(left);document.getElementById('distResult').innerHTML=`<h3>${months[currentMonth]} — توزيع تجريبي</h3><p>Target: <b>${fmt(total)}</b> — عدد الفواتير: <b>${inv}</b></p><div class="table-wrap"><table><thead><tr><th>الفاتورة</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${vals.map((v,i)=>`<tr><td>INV-${String(i+1).padStart(3,'0')}</td><td>${fmt(v)}</td><td><span class="pill ok">Valid</span></td></tr>`).join('')}</tbody><tfoot><tr><th>الإجمالي</th><th>${fmt(vals.reduce((a,b)=>a+b,0))}</th><th><span class="pill ok">مطابق</span></th></tr></tfoot></table></div>`}
-function showInvoiceDemo(){const t=types[3],budget=t[3][currentMonth],inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];document.getElementById('invoiceResult').innerHTML=`<div class="notice">هذه قائمة فواتير تجريبية لنوع <b>منظفات</b>. بعد اعتماد الـDistribution ستُنشأ الفواتير تلقائيًا.</div><table><thead><tr><th>رقم الفاتورة</th><th>نوع المصروف</th><th>الشهر</th><th>الإجمالي</th><th>التفاصيل</th></tr></thead><tbody>${Array.from({length:inv},(_,i)=>{let v=Math.round((budget/inv*(.75+Math.random()*.5))/50)*50;return `<tr><td>CLN-${currentMonth+1}-${String(i+1).padStart(3,'0')}</td><td>منظفات</td><td>${months[currentMonth]}</td><td>${fmt(v)}</td><td><button class="btn secondary" onclick="openType('منظفات')">فتح</button></td></tr>`}).join('')}</tbody></table>`}
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],distgen:['توليد التوزيع','توليد توزيع الموازنة الشهرية على الأصناف المؤهلة.'],master:['إدارة البنود والأسعار','تعديل أسعار البنود وحدودها الكمية — يسري على عمليات التوزيع المستقبلية فقط.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
 renderAll();
 
@@ -5194,6 +5229,220 @@ window.GHS_PWA={
         console.info('[PWA] service worker not registered:',window.GHS_PWA.lastError);
       });
   });
+})();
+
+/* ============================================================================
+   INVOICE SCREEN — read-only viewer over APPROVED distribution run snapshots.
+   Its ONLY data sources are GHS_RUNTIME.getRuns() and GHS_RUNTIME.getInvoices().
+   It never reads MASTER / BAL / MOP / dSrc / bhSource / miSrc / currentMonth /
+   current budget, never calls buildInvoiceGroups() or buildInvoiceSnapshot(),
+   never recalculates VAT or totals, and never mutates anything it is shown.
+   ========================================================================== */
+(function(){
+'use strict';
+var D=window.GHS_DATA;
+var ivRunId=null;
+
+function ivT(ar,en){ return (document.documentElement.getAttribute('dir')==='ltr')?en:ar; }
+function ivEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function ivMoney(n){ if(n==null||isNaN(n)) return '\u2014';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+
+    (((D&&D.labels&&D.labels['currency.egp'])||{}).ar||'\u062c.\u0645'); }
+function ivQty(n){ return new Intl.NumberFormat('en-US').format(n); }
+var IV_MON=['\u064a\u0646\u0627\u064a\u0631','\u0641\u0628\u0631\u0627\u064a\u0631','\u0645\u0627\u0631\u0633','\u0623\u0628\u0631\u064a\u0644','\u0645\u0627\u064a\u0648','\u064a\u0648\u0646\u064a\u0648','\u064a\u0648\u0644\u064a\u0648','\u0623\u063a\u0633\u0637\u0633','\u0633\u0628\u062a\u0645\u0628\u0631','\u0623\u0643\u062a\u0648\u0628\u0631','\u0646\u0648\u0641\u0645\u0628\u0631','\u062f\u064a\u0633\u0645\u0628\u0631'];
+
+/* ---- the ONLY two entry points into the approved runtime ---- */
+function ivApprovedRuns(){
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.getRuns!=='function') return [];
+  return RT.getRuns().filter(function(r){ return r.approvalStatus==='APPROVED'; });
+}
+function ivInvoices(runId){
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.getInvoices!=='function') return null;
+  return RT.getInvoices(runId);                     /* authoritative snapshot */
+}
+/* month label taken from the RUN, never from a screen selector */
+function ivMonthLabel(run){
+  var src=(run.dataSource==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
+  var b=(src.monthlyBudgets||[]).filter(function(x){
+    return x.fy===run.fyId&&x.t===run.typeId&&x.pi===run.periodIndex; })[0];
+  return b?IV_MON[b.pm-1]:('\u0641\u062a\u0631\u0629 '+run.periodIndex);
+}
+function ivTypeName(run){
+  var src=(run.dataSource==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
+  var t=(src.types||[]).filter(function(x){ return x.id===run.typeId; })[0];
+  return t?t.n:run.typeId;
+}
+function ivFyLabel(run){
+  var src=(run.dataSource==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
+  var f=(src.fyears||[]).filter(function(x){ return x.id===run.fyId; })[0];
+  return f?f.label:run.fyId;
+}
+function ivMsg(kind,text){
+  var e=document.getElementById('ivMsg'); if(!e) return;
+  e.innerHTML='<div class="mi-'+kind+'">'+ivEsc(text)+'</div>';
+}
+function ivLabels(){
+  [['ivTitle','\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631','Invoices'],
+   ['ivLRun','\u0639\u0645\u0644\u064a\u0629 \u0627\u0644\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629','Approved distribution run'],
+   ['ivListTitle','\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629','Approved invoices'],
+   ['ivC1','#','#'],['ivC2','\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629','Invoice ID'],
+   ['ivC3','\u0639\u062f\u062f \u0627\u0644\u0628\u0646\u0648\u062f','Lines'],
+   ['ivC4','\u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','Before VAT'],
+   ['ivC5','\u0627\u0644\u0636\u0631\u064a\u0628\u0629 14%','VAT 14%'],
+   ['ivC6','\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','Total Incl. VAT'],
+   ['ivC7','\u0627\u0644\u0628\u0646\u0648\u062f','Details'],
+   ['ivTTitle','\u0627\u062e\u062a\u0628\u0627\u0631\u0627\u062a \u0634\u0627\u0634\u0629 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631','Invoice screen tests'],
+   ['ivRunTests','\u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631\u0627\u062a','Run tests'],
+   ['ivT2','\u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631','Test'],['ivT3','\u0627\u0644\u0646\u062a\u064a\u062c\u0629','Result'],
+   ['ivT4','\u0627\u0644\u062a\u0641\u0635\u064a\u0644','Detail']
+  ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=ivT(x[1],x[2]); });
+  var n=document.getElementById('ivNote');
+  if(n) n.textContent=ivT(
+    '\u0639\u0631\u0636 \u0644\u0644\u0642\u0631\u0627\u0621\u0629 \u0641\u0642\u0637. \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u062a\u064f\u0642\u0631\u0623 \u0645\u0646 \u0644\u0642\u0637\u0629 \u0627\u0644\u0639\u0645\u0644\u064a\u0629 \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629 \u0643\u0645\u0627 \u0647\u064a \u2014 \u0628\u0644\u0627 \u0625\u0639\u0627\u062f\u0629 \u062d\u0633\u0627\u0628 \u0644\u0644\u0636\u0631\u064a\u0628\u0629 \u0623\u0648 \u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a\u0627\u062a\u060c \u0648\u0628\u0644\u0627 \u0623\u064a \u062a\u0639\u062f\u064a\u0644.',
+    'Read-only. Invoices are rendered exactly as stored in the approved run snapshot — no VAT or total is recalculated and nothing is modified.');
+  var t=document.getElementById('ivTNote');
+  if(t) t.textContent=ivT(
+    '\u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631\u0627\u062a \u062a\u0642\u0631\u0623 \u0641\u0642\u0637 \u0648\u0644\u0627 \u062a\u0645\u0633 \u0623\u064a \u0639\u0645\u0644\u064a\u0629 \u0623\u0648 \u0644\u0642\u0637\u0629.',
+    'The tests are read-only and never touch a run or a snapshot.');
+}
+function ivFillRuns(){
+  var sel=document.getElementById('ivRun'); if(!sel) return [];
+  var runs=ivApprovedRuns();
+  if(!runs.length){
+    sel.innerHTML='<option value="">\u2014</option>'; sel.disabled=true; ivRunId=null;
+    return runs;
+  }
+  sel.disabled=false;
+  sel.innerHTML=runs.map(function(r){
+    return '<option value="'+ivEsc(r.runId)+'">'+ivEsc(r.runId)+' \u00b7 '+ivEsc(r.dataSource||'\u2014')+
+           ' \u00b7 '+ivEsc(ivFyLabel(r))+' \u00b7 '+ivEsc(ivMonthLabel(r))+
+           ' \u00b7 '+ivEsc(ivTypeName(r))+'</option>'; }).join('');
+  if(!runs.some(function(r){ return r.runId===ivRunId; })) ivRunId=runs[0].runId;
+  sel.value=ivRunId;
+  return runs;
+}
+function ivCard(l,v){ return '<div class="appr-kv">'+ivEsc(l)+'<b>'+v+'</b></div>'; }
+function ivRender(){
+  if(!document.getElementById('ivRun')) return;
+  ivLabels();
+  var runs=ivFillRuns();
+  var meta=document.getElementById('ivMeta');
+  var panel=document.getElementById('ivListPanel');
+  var pill=document.getElementById('ivPill');
+  var msg=document.getElementById('ivMsg');
+  if(msg) msg.innerHTML='';
+
+  if(!runs.length){
+    pill.textContent=ivT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0645\u0644\u064a\u0627\u062a','no runs');
+    meta.innerHTML='';
+    panel.classList.add('hidden');
+    ivMsg('warn',ivT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0645\u0644\u064a\u0627\u062a \u062a\u0648\u0632\u064a\u0639 \u0645\u0639\u062a\u0645\u062f\u0629 \u0644\u0639\u0631\u0636 \u0641\u0648\u0627\u062a\u064a\u0631\u0647\u0627.',
+      'There are no approved distribution runs whose invoices can be displayed.'));
+    return;
+  }
+  var run=runs.filter(function(r){ return r.runId===ivRunId; })[0];
+  if(!run){ panel.classList.add('hidden'); return; }
+
+  pill.textContent=runs.length+' '+ivT('\u0639\u0645\u0644\u064a\u0629 \u0645\u0639\u062a\u0645\u062f\u0629','approved runs');
+  meta.innerHTML=
+    ivCard('Run ID',ivEsc(run.runId))+
+    ivCard(ivT('\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a','Data source'),ivEsc(run.dataSource||'\u2014'))+
+    ivCard(ivT('\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629','Financial year'),ivEsc(ivFyLabel(run)))+
+    ivCard(ivT('\u0627\u0644\u0634\u0647\u0631','Month'),ivEsc(ivMonthLabel(run)))+
+    ivCard(ivT('\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641','Expense type'),ivEsc(ivTypeName(run)))+
+    ivCard(ivT('\u062d\u0627\u0644\u0629 \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f','Approval status'),ivEsc(run.approvalStatus))+
+    ivCard(ivT('\u0627\u0639\u062a\u0645\u062f\u0647\u0627','Approved by'),ivEsc(run.approvedBy||'\u2014'))+
+    ivCard(ivT('\u0648\u0642\u062a \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f','Approved at'),
+      ivEsc(String(run.approvedAt||'\u2014').replace('T',' ').slice(0,19)))+
+    ivCard(ivT('\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0648\u0632\u064a\u0639','Distributed total'),ivMoney(run.distributedInclVat));
+
+  var invoices=ivInvoices(run.runId);
+  if(!invoices||!invoices.length){
+    panel.classList.add('hidden');
+    ivMsg('warn',ivT('\u0644\u0627 \u062a\u0648\u062c\u062f \u0644\u0642\u0637\u0629 \u0641\u0648\u0627\u062a\u064a\u0631 \u0645\u062d\u0641\u0648\u0638\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0639\u0645\u0644\u064a\u0629.',
+      'No stored invoice snapshot exists for this run.'));
+    return;
+  }
+  panel.classList.remove('hidden');
+  document.getElementById('ivCount').textContent=invoices.length+' '+ivT('\u0641\u0627\u062a\u0648\u0631\u0629','invoices');
+
+  var tb=document.getElementById('ivRows');
+  tb.innerHTML=invoices.map(function(v){
+    return '<tr><td>'+v.invoiceSeq+'</td>'+
+      '<td><span class="sub-id" style="margin:0">'+ivEsc(v.invoiceId||'\u2014')+'</span></td>'+
+      '<td class="num">'+v.lineCount+'</td>'+
+      '<td class="num">'+ivMoney(v.subtotalBeforeVat)+'</td>'+
+      '<td class="num">'+ivMoney(v.vat)+'</td>'+
+      '<td class="num"><b>'+ivMoney(v.totalInclVat)+'</b></td>'+
+      '<td><button class="srcbtn" data-iv="'+v.invoiceSeq+'">'+ivT('\u0639\u0631\u0636','Show')+' \u25be</button></td></tr>'+
+      '<tr class="invrow hidden" data-ivrow="'+v.invoiceSeq+'"><td colspan="7"></td></tr>';
+  }).join('');
+
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-iv]'),function(btn){
+    btn.onclick=function(){
+      var n=btn.getAttribute('data-iv');
+      var tr=tb.querySelector('[data-ivrow="'+n+'"]');
+      var inv=invoices.filter(function(x){ return String(x.invoiceSeq)===String(n); })[0];
+      if(!tr.classList.contains('hidden')){
+        tr.classList.add('hidden'); tr.firstChild.innerHTML='';
+        btn.innerHTML=btn.innerHTML.replace('\u25b4','\u25be'); return; }
+      /* every value below is printed straight from the snapshot */
+      tr.firstChild.innerHTML='<div class="srcinner"><table class="srctable"><thead><tr>'+
+        '<th>'+ivT('\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','Item code')+'</th>'+
+        '<th>'+ivT('\u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641','Item name')+'</th>'+
+        '<th>'+ivT('\u0627\u0644\u0643\u0645\u064a\u0629','Qty')+'</th>'+
+        '<th>'+ivT('\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629 \u0634\u0627\u0645\u0644','Unit price incl.')+'</th>'+
+        '<th>'+ivT('\u0642\u064a\u0645\u0629 \u0627\u0644\u0628\u0646\u062f \u0634\u0627\u0645\u0644','Line total incl.')+'</th>'+
+        '<th>'+ivT('\u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','Before VAT')+'</th>'+
+        '<th>'+ivT('\u0627\u0644\u0636\u0631\u064a\u0628\u0629','VAT')+'</th>'+
+        '<th>'+ivT('\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a','Total')+'</th></tr></thead><tbody>'+
+        inv.lines.map(function(l){
+          return '<tr><td><span class="sub-id" style="margin:0">'+ivEsc(l.itemId)+'</span></td>'+
+            '<td style="white-space:normal">'+ivEsc(l.itemName)+'</td>'+
+            '<td class="num">'+ivQty(l.quantity)+'</td>'+
+            '<td class="num">'+ivMoney(l.unitPriceSnapshotInclVat)+'</td>'+
+            '<td class="num">'+ivMoney(l.lineTotalInclVat)+'</td>'+
+            '<td class="num">'+ivMoney(l.beforeVat)+'</td>'+
+            '<td class="num">'+ivMoney(l.vat)+'</td>'+
+            '<td class="num"><b>'+ivMoney(l.totalInclVat)+'</b></td></tr>'; }).join('')+
+        '<tr class="total-row"><td colspan="5">'+ivT('\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629','Invoice total')+'</td>'+
+          '<td class="num">'+ivMoney(inv.subtotalBeforeVat)+'</td>'+
+          '<td class="num">'+ivMoney(inv.vat)+'</td>'+
+          '<td class="num"><b>'+ivMoney(inv.totalInclVat)+'</b></td></tr>'+
+        '</tbody></table></div>';
+      tr.classList.remove('hidden');
+      btn.innerHTML=btn.innerHTML.replace('\u25be','\u25b4');
+    };
+  });
+
+  var sT=0,sS=0,sV=0,n=0;
+  invoices.forEach(function(v){ sT+=v.totalInclVat; sS+=v.subtotalBeforeVat; sV+=v.vat; n+=v.lineCount; });
+  document.getElementById('ivFoot').textContent=
+    'run_id='+run.runId+' \u00b7 source='+(run.dataSource||'null')+
+    ' \u00b7 invoices='+invoices.length+' \u00b7 invoice_lines='+n+
+    ' \u00b7 subtotal='+sS.toFixed(2)+' \u00b7 vat='+sV.toFixed(2)+' \u00b7 total='+sT.toFixed(2)+
+    ' \u00b7 distributed='+Number(run.distributedInclVat).toFixed(2)+
+    ' \u00b7 source=approved snapshot (read-only)';
+}
+var ivSel=document.getElementById('ivRun');
+if(ivSel) ivSel.onchange=function(e){ ivRunId=e.target.value; ivRender(); };
+Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
+  if(b.dataset.page==='invoices') b.addEventListener('click',function(){ ivRender(); }); });
+Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+  b.addEventListener('click',function(){ setTimeout(function(){
+    var p=document.getElementById('invoices');
+    if(p&&!p.classList.contains('hidden')) ivRender(); },0); }); });
+window.GHS_INVOICE_VIEW={
+  approvedRuns:ivApprovedRuns,
+  invoicesOf:ivInvoices,
+  render:ivRender,
+  select:function(id){ ivRunId=id; },
+  selected:function(){ return ivRunId; }
+};
+ivRender();
 })();
 
 </script></body></html>
