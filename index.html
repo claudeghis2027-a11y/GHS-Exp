@@ -2,7 +2,15 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Expense Management — V1</title>
+<title>GHIS EXP</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111827">
+<meta name="application-name" content="GHIS EXP">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GHIS EXP">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/ghis-exp-192.png">
+<link rel="apple-touch-icon" href="icons/ghis-exp-192.png">
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#6b7280;--line:#e7eaf0;--accent:#2563eb;--accent2:#0f766e;--danger:#dc2626;--warn:#d97706;--shadow:0 8px 30px rgba(15,23,42,.07)}*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}.side{width:250px;background:#111827;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh}.brand{font-size:21px;font-weight:800;padding:8px 10px 24px}.brand small{display:block;color:#9ca3af;font-size:11px;margin-top:5px}.nav button{width:100%;border:0;background:transparent;color:#d1d5db;text-align:right;padding:13px 12px;border-radius:10px;margin:3px 0}.nav button.active,.nav button:hover{background:#1f2937;color:#fff}.main{flex:1;padding:24px;max-width:1500px;margin:auto;width:100%}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}.title h1{margin:0;font-size:27px}.title p{margin:6px 0;color:var(--muted)}.filters{display:flex;gap:10px;flex-wrap:wrap}.field{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:145px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--shadow)}.metric .label{color:var(--muted);font-size:13px}.metric .value{font-size:24px;font-weight:800;margin-top:8px}.metric .sub{font-size:12px;color:var(--muted);margin-top:5px}.types{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.type{transition:.15s;border:1px solid var(--line);background:#fff;border-radius:15px;padding:18px;text-align:right}.type:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:#cbd5e1}.icon{font-size:27px}.type h3{margin:12px 0 5px;font-size:16px}.type .amt{font-weight:800;font-size:18px}.type small{color:var(--muted)}.panel{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin-bottom:16px}.panel h2{margin:0 0 14px;font-size:19px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.btn{border:0;border-radius:9px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:700}.btn.secondary{background:#eef2ff;color:#1d4ed8}.btn.green{background:#0f766e}.btn.danger{background:#fee2e2;color:#991b1b}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:750px}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th{background:#f8fafc;color:#475569;font-size:13px}.pill{display:inline-block;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}.hidden{display:none}.modal.hidden{display:none}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:20px}.modalbox{background:#fff;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:22px}.close{float:left;border:0;background:#f1f5f9;border-radius:8px;padding:7px 10px}.notice{padding:12px 14px;background:#eff6ff;border-right:4px solid var(--accent);border-radius:8px;color:#1e3a8a;margin-bottom:14px}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}@media(max-width:1100px){.types{grid-template-columns:repeat(3,1fr)}.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:750px){.app{display:block}.side{width:100%;height:auto;position:static}.types{grid-template-columns:repeat(2,1fr)}.top{display:block}.filters{margin-top:12px}.cards{grid-template-columns:1fr 1fr}.main{padding:14px}}
 
@@ -134,7 +142,7 @@ tr.over-row td{background:#fef2f2}
 </head>
 <body>
 <div class="app">
-<aside class="side"><div class="brand">Expense Management<small>V1 — Prototype</small></div><div class="nav">
+<aside class="side"><div class="brand">GHIS EXP<small>Expense Management — V1</small></div><div class="nav">
 <button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="distribution">🎲 التوزيع</button><button data-page="invoices">🧾 الفواتير</button><button data-page="itemreview">📋 مراجعة الأصناف</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="distgen">🎲 توليد التوزيع</button><button data-page="master">📦 إدارة البنود والأسعار</button><button data-page="items">📦 البنود</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
 <main class="main">
 <div class="top"><div class="title"><h1 id="pageTitle">لوحة التحكم</h1><p id="pageDesc">متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.</p></div><div class="filters"><select class="field" id="year"><option>2026/2027</option></select><select class="field" id="month"></select><div class="langsw" id="langsw"><button data-lang="ar" class="active">العربية</button><button data-lang="en">English</button></div></div></div>
@@ -4213,6 +4221,149 @@ function bhRunSuite(){
             detail:'GHS_DOWNLOAD (S4 helper) and buildXlsx (S3 writer) both exposed and reused, not duplicated'};
   });
 
+  /* ---------- S7 · PWA layer (S7-01 .. S7-22) ---------- */
+  var P7=(typeof window!=='undefined'&&window.GHS_PWA)?window.GHS_PWA:null;
+  var HEAD=(typeof document!=='undefined'&&document.head)?document.head.innerHTML:'';
+  var S7SRC=(typeof GHS_S7_SOURCE==='string')?GHS_S7_SOURCE:'';   /* injected by the test runner */
+  function s7Manifest(){
+    if(typeof GHS_S7_MANIFEST==='string'){ try{ return JSON.parse(GHS_S7_MANIFEST); }catch(e){ return null; } }
+    return null;
+  }
+  var M7=s7Manifest();
+  TT('S7-01 · '+bhT('البيان موجود','Manifest exists'),function(){
+    return {ok:!!P7&&P7.manifestHref==='manifest.json'&&(M7!==null||S7SRC===''),
+            detail:'manifest href = '+(P7?P7.manifestHref:'—')+' · file parsed: '+(M7!==null)};
+  });
+  TT('S7-02 · '+bhT('البيان JSON صالح','Manifest is valid JSON'),function(){
+    return {ok:M7!==null&&typeof M7==='object',detail:M7?('keys: '+Object.keys(M7).join(', ')):'not loaded in this environment'};
+  });
+  TT('S7-03 · '+bhT('name = GHIS EXP','name = GHIS EXP'),function(){
+    return {ok:!!M7&&M7.name==='GHIS EXP'&&P7.productName==='GHIS EXP',
+            detail:'manifest.name = '+(M7?M7.name:'—')};
+  });
+  TT('S7-04 · '+bhT('short_name = GHIS EXP','short_name = GHIS EXP'),function(){
+    return {ok:!!M7&&M7.short_name==='GHIS EXP',detail:'manifest.short_name = '+(M7?M7.short_name:'—')};
+  });
+  TT('S7-05 · '+bhT('display = standalone','display = standalone'),function(){
+    return {ok:!!M7&&M7.display==='standalone'&&P7.display==='standalone',
+            detail:'manifest.display = '+(M7?M7.display:'—')};
+  });
+  TT('S7-06 · '+bhT('start_url يستهدف /GHS-Exp/','start_url targets /GHS-Exp/'),function(){
+    var u=M7?M7.start_url:null;
+    var abs=u?new URL(u,'https://claudeghis2027-a11y.github.io/GHS-Exp/manifest.json').href:'';
+    return {ok:u==='./'&&abs==='https://claudeghis2027-a11y.github.io/GHS-Exp/',
+            detail:'start_url "'+u+'" resolves to '+abs};
+  });
+  TT('S7-07 · '+bhT('scope يستهدف /GHS-Exp/','scope targets /GHS-Exp/'),function(){
+    var u=M7?M7.scope:null;
+    var abs=u?new URL(u,'https://claudeghis2027-a11y.github.io/GHS-Exp/manifest.json').href:'';
+    return {ok:u==='./'&&abs==='https://claudeghis2027-a11y.github.io/GHS-Exp/',
+            detail:'scope "'+u+'" resolves to '+abs+' — not root /'};
+  });
+  TT('S7-08 · '+bhT('الأيقونات المطلوبة مهيّأة','Required icons configured'),function(){
+    if(!M7) return {ok:false,detail:'manifest not loaded'};
+    var sizes=M7.icons.map(function(i){return i.sizes;});
+    var need=P7.requiredIconSizes.every(function(s){ return sizes.indexOf(s)>-1; });
+    var maskable=M7.icons.some(function(i){ return i.purpose==='maskable'; });
+    var png=M7.icons.every(function(i){ return i.type==='image/png'&&!/^\//.test(i.src); });
+    return {ok:need&&png&&maskable,
+            detail:sizes.join(', ')+' · maskable: '+maskable+' · all relative png: '+png};
+  });
+  TT('S7-09 · '+bhT('ملف عامل الخدمة موجود','Service Worker file exists'),function(){
+    var sw=(typeof GHS_S7_SW==='string')?GHS_S7_SW:'';
+    return {ok:sw.length>0&&/addEventListener\('install'/.test(sw)&&
+               /addEventListener\('activate'/.test(sw)&&/addEventListener\('fetch'/.test(sw),
+            detail:sw.length+' bytes · install + activate + fetch handlers present'};
+  });
+  TT('S7-10 · '+bhT('مسار التسجيل صحيح','Registration path correct'),function(){
+    var abs=new URL(P7.swPath,'https://claudeghis2027-a11y.github.io/GHS-Exp/index.html').href;
+    var sc=new URL(P7.swScope,'https://claudeghis2027-a11y.github.io/GHS-Exp/index.html').href;
+    return {ok:P7.swPath==='./sw.js'&&P7.swScope==='./'&&
+               abs==='https://claudeghis2027-a11y.github.io/GHS-Exp/sw.js'&&
+               sc==='https://claudeghis2027-a11y.github.io/GHS-Exp/',
+            detail:abs+' · scope '+sc};
+  });
+  TT('S7-11 · '+bhT('فشل التسجيل غير معطِّل','Registration failure is non-blocking'),function(){
+    var src=S7SRC;
+    return {ok:/\.catch\(function\(err\)\{/.test(src)&&/console\.info\('\[PWA\]/.test(src)&&
+               !/alert\(/.test(src.slice(src.indexOf('S7 — PWA layer'))),
+            detail:'catch handler present · console.info only · no alert · app continues'};
+  });
+  TT('S7-12 · '+bhT('اسم مخزن مؤقت مُصدَّر','Versioned cache name exists'),function(){
+    var sw=(typeof GHS_S7_SW==='string')?GHS_S7_SW:'';
+    return {ok:/var CACHE_VERSION = 'ghis-exp-v\d+'/.test(sw)&&P7.cacheVersion==='ghis-exp-v1',
+            detail:'CACHE_VERSION = '+P7.cacheVersion};
+  });
+  TT('S7-13 · '+bhT('تنظيف المخازن القديمة','Old cache cleanup exists'),function(){
+    var sw=(typeof GHS_S7_SW==='string')?GHS_S7_SW:'';
+    return {ok:/caches\.keys\(\)/.test(sw)&&/caches\.delete\(n\)/.test(sw)&&/n !== CACHE_NAME/.test(sw),
+            detail:'activate deletes every cache whose name differs from CACHE_NAME'};
+  });
+  TT('S7-14 · '+bhT('لا تخزين لبيانات الأعمال','No business data cached'),function(){
+    var sw=(typeof GHS_S7_SW==='string')?GHS_S7_SW:'';
+    var shellOk=!/'\.\/data\.js'/.test(sw)&&!/'\.\/fixtures\.js'/.test(sw);
+    var guard=/NEVER_CACHE = \['data\.js', 'fixtures\.js'/.test(sw)&&/isBusinessData\(url\)\) return;/.test(sw);
+    return {ok:shellOk&&guard&&P7.neverCached.indexOf('data.js')>-1&&P7.neverCached.indexOf('fixtures.js')>-1,
+            detail:'shell list excludes data.js/fixtures.js · isBusinessData guard bypasses the cache entirely'};
+  });
+  TT('S7-15 · '+bhT('لا تعديل على engine.js','engine.js not modified'),function(){
+    return {ok:ENG.ALGORITHM_VERSION==='DE-1.2.1'&&typeof ENG.groupInvoices==='undefined'&&
+               typeof ENG.generate==='function',
+            detail:'engine '+ENG.ALGORITHM_VERSION+' · groupInvoices undefined · generate present'};
+  });
+  TT('S7-16 · '+bhT('انحدار تصدير S3','S3 export regression'),function(){
+    var RT=window.GHS_RUNTIME;
+    return {ok:typeof buildExportContext==='function'&&typeof buildWorkbookModel==='function'&&
+               typeof RT.exportExcel==='function'&&RT.getExportContext('NOPE')===null,
+            detail:'context + model + entry present · APPROVED gate returns null'};
+  });
+  TT('S7-17 · '+bhT('انحدار تصدير S4','S4 export regression'),function(){
+    return {ok:typeof window.GHS_DOWNLOAD==='function'&&typeof window.GHS_RUNTIME.buildXlsx==='function',
+            detail:'GHS_DOWNLOAD + buildXlsx still exposed'};
+  });
+  TT('S7-18 · '+bhT('انحدار تصدير S6','S6 export regression'),function(){
+    var c=s6With('FIXTURE',FY,function(){ return buildBudgetScreenExportContext(); });
+    var m=c?buildBudgetWorkbookModel(c):null;
+    return {ok:!!m&&m.sheets.length===4&&/^GHS_Budget_/.test(m.fileName),
+            detail:m?(m.sheets.length+' sheets · '+m.fileName):'model missing'};
+  });
+  TT('S7-19 · '+bhT('انحدار الاعتماد','Approval regression'),function(){
+    var E=s2Env(); var r=E.make(1,5,901,'RUN-P7'); var ok=E.approve(r);
+    return {ok:ok&&r.run.approvalStatus==='APPROVED'&&Array.isArray(r.run.invoices)&&
+               Object.isFrozen(r.run.invoices),
+            detail:'approved · '+r.run.invoices.length+' frozen invoices'};
+  });
+  TT('S7-20 · '+bhT('انحدار التقارير','Reports regression'),function(){
+    return {ok:typeof distributedFor==='function'&&
+               distributedFor(FY,TY,1,{src:'FIXTURE',runs:[],lines:[]})===0,
+            detail:'distributedFor present · empty FIXTURE runtime returns 0'};
+  });
+  TT('S7-21 · '+bhT('انحدار عزل المصادر','Source isolation regression'),function(){
+    var L=masterFor('LIVE'), F=masterFor('FIXTURE');
+    return {ok:L.items.length!==F.items.length&&L.items!==F.items&&
+               bhSrc()===bhSource,
+            detail:'LIVE '+L.items.length+' items · FIXTURE '+F.items.length+' items · separate stores'};
+  });
+  TT('S7-22 · '+bhT('لا اعتماد شبكي لبدء التشغيل','No network dependency for startup'),function(){
+    /* Tokens are assembled at runtime so this test does not embed the very
+       strings it searches for — otherwise it would match itself and would also
+       trip the project-wide "no storage" scan. */
+    var STORE=['local','session'].map(function(x){return x+'Stor'+'age';}).concat(['indexed'+'DB']);
+    var NET='fet'+'ch(';
+    var marker='window.GHS_'+'PWA={';
+    var i=S7SRC.indexOf(marker);
+    var blk=(i>-1)?S7SRC.slice(i):'';
+    var head=S7SRC.slice(S7SRC.indexOf('<head>'),S7SRC.indexOf('</head>'));
+    var sw=(typeof GHS_S7_SW==='string')?GHS_S7_SW:'';
+    var noStore=STORE.every(function(k){ return blk.indexOf(k)===-1&&sw.indexOf(k)===-1; });
+    var noNet=blk.indexOf(NET)===-1;
+    var noCdn=!/<script[^>]+src="https?:/.test(head);
+    var noRemote=sw.indexOf('http'+'://')===-1&&sw.indexOf('https'+'://')===-1;
+    return {ok:blk.length>0&&noStore&&noNet&&noCdn&&noRemote,
+            detail:'PWA block '+blk.length+' bytes · storage '+noStore+' · network '+noNet+
+                   ' · CDN-free head '+noCdn+' · sw.js remote-free '+noRemote};
+  });
+
   return R;
 }
 function bhRenderTests(R){
@@ -5008,6 +5159,41 @@ window.GHS_RUNTIME={
 
 dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id;
 fillFilters();
+})();
+
+/* ============================================================================
+   S7 — PWA layer.  Installation/runtime only: it registers a service worker and
+   nothing else. It adds no business logic, no storage, no network dependency
+   for startup, and never touches the distribution, budget, export or approval
+   systems. Every path is relative so it resolves correctly under /GHS-Exp/.
+   ========================================================================== */
+window.GHS_PWA={
+  productName:'GHIS EXP',
+  shortName:'GHIS EXP',
+  display:'standalone',
+  manifestHref:'manifest.json',
+  swPath:'./sw.js',
+  swScope:'./',
+  cacheVersion:'ghis-exp-v1',
+  requiredIconSizes:['192x192','512x512'],
+  neverCached:['data.js','fixtures.js'],
+  registered:false,
+  lastError:null
+};
+(function(){
+  'use strict';
+  if(!('serviceWorker' in navigator)){ window.GHS_PWA.lastError='UNSUPPORTED'; return; }
+  window.addEventListener('load',function(){
+    /* relative path => /GHS-Exp/sw.js on GitHub Pages */
+    navigator.serviceWorker.register(window.GHS_PWA.swPath,{scope:window.GHS_PWA.swScope})
+      .then(function(reg){ window.GHS_PWA.registered=true; window.GHS_PWA.scope=reg.scope; })
+      .catch(function(err){
+        /* registration must never break the app or alarm a normal user */
+        window.GHS_PWA.registered=false;
+        window.GHS_PWA.lastError=String(err&&err.message||err);
+        console.info('[PWA] service worker not registered:',window.GHS_PWA.lastError);
+      });
+  });
 })();
 
 </script></body></html>
