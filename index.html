@@ -1463,6 +1463,101 @@ function brRunSuite(){
             detail:'S3-shaped sheet uses only styles 2 and 3 · no percent style applied · values intact'};
   });
 
+  /* ---------- S4 download-path fix (S4-26 .. S4-33) ---------- */
+  /* No real download is triggered: the helper is exercised against stubbed
+     browser APIs so every failure branch can be asserted. */
+  function dlStub(opts){
+    opts=opts||{};
+    var saved={Blob:window.Blob,URL:window.URL,nav:window.navigator};
+    var clicked=null, revoked=[], appended=0, removed=0;
+    var fake={
+      Blob: opts.noBlob?undefined:function(parts,o){ this.size=(parts[0]&&parts[0].length)||0; this.type=o&&o.type; },
+      URL: opts.noURL?{}:{ createObjectURL:function(){ return opts.emptyUrl?'':'blob:stub/1'; },
+                           revokeObjectURL:function(u){ revoked.push(u); } }
+    };
+    return {saved:saved,fake:fake,
+            info:function(){ return {clicked:clicked,revoked:revoked}; },
+            setClicked:function(a){ clicked=a; }};
+  }
+  T2('S4-26 · '+T('الخطأ الجذري: VATRATE خارج نطاق التقرير','Root cause: VATRATE was out of scope'),function(){
+    var ok=typeof reportVatRate==='function'&&reportVatRate()===0.14;
+    return {ok:ok,detail:'reportVatRate() = '+(typeof reportVatRate==='function'?reportVatRate():'undefined')+
+                         ' — the report IIFE no longer calls VATRATE()'};
+  });
+  T2('S4-27 · '+T('بناء السياق لا يرمي استثناءً','Context builds without throwing'),function(){
+    var threw=null;
+    var c=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){
+      try{ return buildScreenExportContext('budgetreport'); }
+      catch(e){ threw=e.message; return null; } });
+    return {ok:threw===null&&c!==null&&c.metadata.vatRate===0.14,
+            detail:threw?('threw: '+threw):('vatRate '+c.metadata.vatRate+' · months '+c.months.length)};
+  });
+  T2('S4-28 · '+T('المسار الكامل يُرجع نجاحًا','Full export path reports success'),function(){
+    var st=dlStub(), sv=st.saved, clicked=null;
+    window.Blob=st.fake.Blob; window.URL=st.fake.URL;
+    var origCreate=document.createElement;
+    document.createElement=function(t){ var a={style:{},setAttribute:function(){},
+      click:function(){ clicked=a; }, parentNode:null};
+      Object.defineProperty(a,'download',{value:'',writable:true});
+      return a; };
+    var origAppend=document.body.appendChild, origRemove=document.body.removeChild;
+    document.body.appendChild=function(n){ n.parentNode=document.body; return n; };
+    document.body.removeChild=function(n){ n.parentNode=null; return n; };
+    var r=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return exportBudgetReportToExcel(); });
+    document.createElement=origCreate; document.body.appendChild=origAppend; document.body.removeChild=origRemove;
+    window.Blob=sv.Blob; window.URL=sv.URL;
+    return {ok:r.ok===true&&r.via==='anchor'&&r.bytes>0&&r.sheets===2&&clicked!==null,
+            detail:r.ok?('via '+r.via+' · '+r.bytes+' bytes · '+r.sheets+' sheets · anchor clicked: '+(clicked!==null)):('reason '+r.reason)};
+  });
+  T2('S4-29 · '+T('اسم الملف صحيح على الرابط','Anchor carries the correct filename'),function(){
+    var name=null, sv={Blob:window.Blob,URL:window.URL};
+    window.Blob=function(p,o){ this.size=p[0].length; };
+    window.URL={createObjectURL:function(){return 'blob:stub';},revokeObjectURL:function(){}};
+    var oc=document.createElement;
+    document.createElement=function(){ var a={style:{},click:function(){},parentNode:null,download:''};
+      Object.defineProperty(a,'download',{get:function(){return name;},set:function(v){name=v;}});
+      return a; };
+    var oa=document.body.appendChild, orm=document.body.removeChild;
+    document.body.appendChild=function(n){n.parentNode=document.body;return n;};
+    document.body.removeChild=function(n){n.parentNode=null;return n;};
+    var r=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return exportBudgetReportToExcel(); });
+    document.createElement=oc; document.body.appendChild=oa; document.body.removeChild=orm;
+    window.Blob=sv.Blob; window.URL=sv.URL;
+    return {ok:name===r.fileName&&/\.xlsx$/.test(name)&&/^GHS_BudgetExecution_/.test(name),
+            detail:'anchor download = '+name};
+  });
+  T2('S4-30 · '+T('غياب كاتب XLSX يُبلَّغ عنه','Missing XLSX writer is reported'),function(){
+    var RT=window.GHS_RUNTIME, keep=RT.buildXlsx;
+    delete RT.buildXlsx;
+    var r=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return exportBudgetReportToExcel(); });
+    RT.buildXlsx=keep;
+    return {ok:r.ok===false&&r.reason==='XLSX_WRITER_UNAVAILABLE',
+            detail:'reason = '+r.reason+' (surfaced, not swallowed)'};
+  });
+  T2('S4-31 · '+T('غياب Blob يُبلَّغ عنه','Missing Blob API is reported'),function(){
+    var sv=window.Blob; window.Blob=undefined;
+    var r=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return exportBudgetReportToExcel(); });
+    window.Blob=sv;
+    return {ok:r.ok===false&&r.reason==='BLOB_API_UNAVAILABLE',detail:'reason = '+r.reason};
+  });
+  T2('S4-32 · '+T('غياب createObjectURL يُبلَّغ عنه','Missing createObjectURL is reported'),function(){
+    var sv={B:window.Blob,U:window.URL};
+    window.Blob=function(p){ this.size=p[0].length; };
+    window.URL={};
+    var r=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return exportBudgetReportToExcel(); });
+    window.Blob=sv.B; window.URL=sv.U;
+    return {ok:r.ok===false&&r.reason==='OBJECT_URL_UNAVAILABLE',detail:'reason = '+r.reason};
+  });
+  T2('S4-33 · '+T('كل الأسباب لها رسالة مرئية','Every reason maps to a visible message'),function(){
+    var keys=['NO_MONTHS_SELECTED','XLSX_WRITER_UNAVAILABLE','EMPTY_FILE_BYTES','INVALID_XLSX_SIGNATURE',
+              'EMPTY_WORKBOOK_MODEL','BLOB_API_UNAVAILABLE','OBJECT_URL_UNAVAILABLE','DOWNLOAD_ATTRIBUTE_UNSUPPORTED'];
+    var missing=keys.filter(function(k){ return !BR_DL_MSG[k]; });
+    var empty=s4With('FIXTURE',S4fy,S4ty,{},function(){ return exportBudgetReportToExcel(); });
+    return {ok:missing.length===0&&empty.ok===false&&empty.reason==='NO_MONTHS_SELECTED',
+            detail:keys.length+' reasons mapped · unmapped '+missing.length+
+                   ' · unknown reasons fall through to the raw string'};
+  });
+
   return R;
 }
 function brRenderSourceText(){ return brSourceText; }
@@ -1486,6 +1581,10 @@ function brRenderTests(R){
    and distributedFor() — so the workbook can never diverge from the display.
    Reuses the S3 XLSX writer unchanged. Reads only; mutates nothing.
    ========================================================================== */
+/* The report IIFE has no VATRATE of its own — reading it here is what silently
+   threw a ReferenceError and killed the click handler before any download code
+   could run. Read the same SETTINGS value directly. */
+function reportVatRate(){ return Number(D.settings.VAT_RATE||0.14); }
 function buildScreenExportContext(screenId){
   if(screenId!=='budgetreport') return null;
   var RS=RSRC(), src=RS.src;
@@ -1493,7 +1592,7 @@ function buildScreenExportContext(screenId){
   var selRows=rows.filter(function(b){ return brSel[b.pi]; });
   if(!selRows.length) return null;                     /* nothing displayed */
 
-  var vr=VATRATE();
+  var vr=reportVatRate();
   var months=selRows.map(function(b){
     var bud=Number(b.inc)||0;
     var dis=distributedFor(brFy,brType,b.pi);          /* the screen's own function */
@@ -1552,30 +1651,98 @@ function buildScreenWorkbookModel(sc){
   var raw='GHS_BudgetExecution_'+m.fyLabel+'_'+m.typeId;
   return {sheets:sheets, fileName:raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx'};
 }
-function exportBudgetReportToExcel(){
-  var sc=buildScreenExportContext('budgetreport');
-  if(!sc) return {ok:false,reason:'NO_MONTHS_SELECTED'};
-  var model=buildScreenWorkbookModel(sc);
-  var RT=window.GHS_RUNTIME;
-  if(!RT||!RT.buildXlsx) return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
-  var bytes=RT.buildXlsx(model);                       /* the S3 writer, unchanged */
-  var blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  var url=URL.createObjectURL(blob);
+/* Native download helper. Each step is checked and reported by name so a failure
+   is never silent. Must be called synchronously inside the user's click event. */
+function downloadBlobFile(bytes,fileName){
+  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
+  /* check and construct through the same reference so the guard cannot be
+     bypassed by a differing global/window binding */
+  var BlobCtor=(typeof window!=='undefined')?window.Blob:(typeof Blob==='function'?Blob:undefined);
+  if(typeof BlobCtor!=='function') return {ok:false,reason:'BLOB_API_UNAVAILABLE'};
+  var blob;
+  try{ blob=new BlobCtor([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); }
+  catch(e){ return {ok:false,reason:'BLOB_CREATE_FAILED: '+e.message}; }
+
+  /* legacy Edge / IE path */
+  if(window.navigator&&typeof window.navigator.msSaveOrOpenBlob==='function'){
+    try{ window.navigator.msSaveOrOpenBlob(blob,fileName); return {ok:true,via:'msSaveOrOpenBlob'}; }
+    catch(e){ return {ok:false,reason:'MS_SAVE_FAILED: '+e.message}; }
+  }
+  if(!window.URL||typeof window.URL.createObjectURL!=='function')
+    return {ok:false,reason:'OBJECT_URL_UNAVAILABLE'};
+
+  var url;
+  try{ url=window.URL.createObjectURL(blob); }
+  catch(e){ return {ok:false,reason:'OBJECT_URL_FAILED: '+e.message}; }
+  if(!url) return {ok:false,reason:'OBJECT_URL_EMPTY'};
+
   var a=document.createElement('a');
-  a.href=url; a.download=model.fileName;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(function(){ URL.revokeObjectURL(url); },1500);
+  if(!('download' in a)){ window.URL.revokeObjectURL(url);
+    return {ok:false,reason:'DOWNLOAD_ATTRIBUTE_UNSUPPORTED'}; }
+  a.href=url; a.download=fileName; a.rel='noopener';
+  a.style.position='fixed'; a.style.left='-9999px';
+  document.body.appendChild(a);
+  try{ a.click(); }
+  catch(e){ document.body.removeChild(a); window.URL.revokeObjectURL(url);
+    return {ok:false,reason:'ANCHOR_CLICK_FAILED: '+e.message}; }
+  /* detach the node immediately but keep the object URL alive long enough
+     for Chrome to start writing the file */
+  setTimeout(function(){ if(a.parentNode) a.parentNode.removeChild(a); },0);
+  setTimeout(function(){ window.URL.revokeObjectURL(url); },60000);
+  return {ok:true,via:'anchor'};
+}
+function exportBudgetReportToExcel(){
+  var sc;
+  try{ sc=buildScreenExportContext('budgetreport'); }
+  catch(e){ return {ok:false,reason:'CONTEXT_FAILED: '+e.message}; }
+  if(!sc) return {ok:false,reason:'NO_MONTHS_SELECTED'};
+
+  var model;
+  try{ model=buildScreenWorkbookModel(sc); }
+  catch(e){ return {ok:false,reason:'MODEL_FAILED: '+e.message}; }
+  if(!model||!model.sheets||!model.sheets.length) return {ok:false,reason:'EMPTY_WORKBOOK_MODEL'};
+
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.buildXlsx!=='function') return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
+
+  var bytes;
+  try{ bytes=RT.buildXlsx(model); }                    /* the S3 writer, unchanged */
+  catch(e){ return {ok:false,reason:'XLSX_BUILD_FAILED: '+e.message}; }
+  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
+  if(!(bytes[0]===0x50&&bytes[1]===0x4B)) return {ok:false,reason:'INVALID_XLSX_SIGNATURE'};
+
+  var dl=downloadBlobFile(bytes,model.fileName);       /* synchronous, inside the click */
+  if(!dl.ok) return {ok:false,reason:dl.reason};
   return {ok:true,fileName:model.fileName,bytes:bytes.length,
-          sheets:model.sheets.length,months:sc.months.length};
+          sheets:model.sheets.length,months:sc.months.length,via:dl.via};
 }
 
 /* ---- wiring ---- */
+var BR_DL_MSG={
+  NO_MONTHS_SELECTED:['اختر شهرًا واحدًا على الأقل قبل التحميل','Select at least one month before downloading'],
+  XLSX_WRITER_UNAVAILABLE:['XLSX writer unavailable','XLSX writer unavailable'],
+  EMPTY_FILE_BYTES:['الملف الناتج فارغ','Generated file is empty'],
+  INVALID_XLSX_SIGNATURE:['الملف الناتج ليس XLSX صالحًا','Generated file is not a valid XLSX'],
+  EMPTY_WORKBOOK_MODEL:['نموذج المصنَّف فارغ','Workbook model is empty'],
+  BLOB_API_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  OBJECT_URL_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  DOWNLOAD_ATTRIBUTE_UNSUPPORTED:['المتصفح لا يدعم التنزيل المباشر','Browser does not support direct download']
+};
 document.getElementById('brExcel').onclick=function(){
-  var r=exportBudgetReportToExcel();
-  document.getElementById('brNote').textContent = r.ok
-    ? T('تم تحميل ملف Excel — ','Excel downloaded — ')+r.fileName+' · '+r.months+
-      T(' شهرًا · ',' months · ')+r.bytes+' bytes'
-    : T('اختر شهرًا واحدًا على الأقل قبل التحميل','Select at least one month before downloading');
+  var note=document.getElementById('brNote'), r;
+  /* runs synchronously inside the user gesture — no await, no timeout before the click */
+  try{ r=exportBudgetReportToExcel(); }
+  catch(e){ r={ok:false,reason:'UNEXPECTED: '+e.message}; }
+  if(r.ok){
+    note.textContent=T('تم تحميل ملف Excel — ','Excel downloaded — ')+r.fileName+' · '+r.months+
+      T(' شهرًا · ',' months · ')+r.bytes+' bytes';
+    return;
+  }
+  var key=String(r.reason||'UNKNOWN').split(':')[0];
+  var m=BR_DL_MSG[key];
+  note.textContent=T('فشل تحميل Excel: ','Excel download failed: ')+
+    (m?(lang()==='en'?m[1]:m[0]):String(r.reason||'UNKNOWN'));
+  console.error('[EXPORT] Budget Execution Excel failed —',r.reason);
 };
 document.getElementById('brRunTests').onclick=function(){ brRenderTests(brRunSuite()); };
 document.getElementById('brTNote').textContent=T(
