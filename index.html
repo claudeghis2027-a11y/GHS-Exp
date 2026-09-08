@@ -329,6 +329,44 @@ tr.over-row td{background:#fef2f2}
     <div class="sum-grid" id="brAnnCards"></div>
   </div>
 
+  <div class="panel">
+    <div class="section-title"><h2 id="aeTitle">تقرير التنفيذ الفعلي للمصروفات والكميات</h2>
+      <span class="pill neutral" id="aePill">—</span></div>
+    <div class="repnote" id="aeNote"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="aeLFy">السنة المالية</label>
+        <select class="field" id="aeFy"></select></div>
+      <div class="rep-f"><label class="lbl" id="aeLFrom">من شهر</label>
+        <select class="field" id="aeFrom"></select></div>
+      <div class="rep-f"><label class="lbl" id="aeLTo">إلى شهر</label>
+        <select class="field" id="aeTo"></select></div>
+      <div class="rep-f"><label class="lbl" id="aeLThrough">حتى تاريخ اعتماد (اختياري)</label>
+        <input class="field" id="aeThrough" type="date"></div>
+      <div class="rep-f rowacts"><button class="btn secondary sm" id="aeClear">مسح التاريخ</button></div>
+    </div>
+    <div class="mi-warn hidden" id="aeWarn"></div>
+    <div class="appr-grid" id="aeCards"></div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th id="aeC1">نوع المصروف</th><th id="aeC2">الموازنة الحالية</th><th id="aeC3">موازنة التشغيل</th>
+        <th id="aeC4">المنفَّذ فعليًا</th><th id="aeC5">المتبقي</th><th id="aeC6">التنفيذ %</th>
+        <th id="aeC7">الكمية الموزعة</th><th id="aeC8">الحد الأقصى السنوي</th>
+        <th id="aeC9">الكمية المتبقية</th><th id="aeC10">الأصناف</th>
+      </tr></thead>
+      <tbody id="aeRows"></tbody>
+    </table></div>
+  </div>
+  <div class="panel" id="aeTestPanel">
+    <div class="section-title"><h2 id="aeTTitle">اختبارات التنفيذ الفعلي</h2>
+      <span class="pill neutral" id="aeTPill">—</span></div>
+    <div class="rowacts" style="margin-bottom:14px">
+      <button class="btn" id="aeRunTests">تشغيل الاختبارات</button></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th id="aeT2">الاختبار</th><th id="aeT3">النتيجة</th><th id="aeT4">التفصيل</th></tr></thead>
+      <tbody id="aeTRows"></tbody>
+    </table></div>
+  </div>
+
   <div class="panel" id="brTestPanel">
     <div class="section-title"><h2 id="brTTitle">اختبارات التقرير</h2>
       <span class="pill neutral" id="brTPill">—</span></div>
@@ -1794,6 +1832,377 @@ document.getElementById('brExcel').onclick=function(){
   console.error('[EXPORT] Budget Execution Excel failed —',r.reason);
 };
 document.getElementById('brRunTests').onclick=function(){ brRenderTests(brRunSuite()); };
+
+/* ============================================================================
+   ACTUAL EXPENSE & QUANTITY EXECUTION REPORT — Phase 1  (read-only)
+
+   ACTUAL comes exclusively from APPROVED runs and their immutable snapshot:
+       GHS_RUNTIME.getRuns()   filtered to approvalStatus === 'APPROVED'
+       run.invoices            deep-frozen at approval  ->  invoice.lines
+   Quantities, unit prices and values are printed from that frozen snapshot.
+   LINES is never used for an actual figure: it stays mutable after approval.
+   The current MASTER, MOP and item prices are never read for an actual figure.
+
+   BUDGET is shown twice, deliberately:
+       Current Budget = GHS_RUNTIME.currentAllocation(...)  — today's allocation
+       Run Budget     = Σ run.targetInclVat                 — the budget each run saw
+   They are never reconciled into one number; a divergence raises a warning and
+   changes nothing.
+
+   Current Budget is summed ONCE per (FY + month + expense type). Several
+   approved runs for the same month never multiply the budget.
+   ========================================================================== */
+var aeFy=null, aeFrom=null, aeTo=null, aeThrough='', aeOpenType=null, aeOpenItem=null;
+
+function aeRuntime(){ return window.GHS_RUNTIME||null; }
+function aeSrcData(){ return RSRC(); }                    /* follows the report source */
+function aeLimits(){
+  var src=reportCtx().src;
+  var base=(src==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
+  return base.limits||[];
+}
+function aeR2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
+function aeEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function aeMoney(n){ if(n==null||isNaN(n)) return '\u2014';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' '+
+    (((D.labels&&D.labels['currency.egp'])||{}).ar||'\u062c.\u0645'); }
+function aeQty(n){ return (n==null)?'\u2014':new Intl.NumberFormat('en-US').format(n); }
+function aePct(v){ return (v==null)?'\u2014':(v.toFixed(2)+'%'); }
+
+/* ---- the ONLY actual source: approved runs inside the selected window ---- */
+function aeApprovedRuns(){
+  var RT=aeRuntime(); if(!RT) return [];
+  var src=reportCtx().src;
+  var through=aeThrough?String(aeThrough):'';
+  return RT.getRuns().filter(function(r){
+    if(r.approvalStatus!=='APPROVED') return false;       /* draft/generated/review excluded */
+    if(r.status!=='APPROVED') return false;
+    if(r.dataSource!==src) return false;                  /* LIVE / FIXTURE isolation */
+    if(r.fyId!==aeFy) return false;
+    var pi=Number(r.periodIndex);
+    if(pi<Number(aeFrom)||pi>Number(aeTo)) return false;   /* period window */
+    if(through){
+      var at=String(r.approvedAt||'').slice(0,10);
+      if(!at||at>through) return false;                    /* approval-date cutoff */
+    }
+    return true;
+  });
+}
+/* CORRECTION 1 — the immutable approved snapshot is the ONLY actual source.
+   run.invoices is deep-frozen at approval and already carries quantity,
+   unitPriceSnapshotInclVat, lineTotalInclVat, beforeVat, vat and totalInclVat.
+   LINES is deliberately NOT used: it stays mutable after approval. */
+function aeSnapshotLines(run){
+  if(!run||!run.invoices||!run.invoices.length) return [];
+  var out=[];
+  run.invoices.forEach(function(v){
+    (v.lines||[]).forEach(function(l){ out.push(l); });   /* values copied verbatim */
+  });
+  return out;
+}
+/* Current budget for one (fy, month, type) — counted once, never per run */
+function aeCurrentBudgetCell(fy,pi,typeId){
+  var row=aeSrcData().monthlyBudgets.filter(function(b){
+    return b.fy===fy&&b.pi===pi&&b.t===typeId; })[0];
+  var orig=row?Number(row.inc)||0:0;
+  var RT=aeRuntime();
+  if(RT&&typeof RT.currentAllocation==='function'){
+    var r=RT.currentAllocation(reportCtx().src,fy,pi,typeId,orig);
+    return {amount:r.amount,origin:r.origin,hasRow:!!row};
+  }
+  return {amount:orig,origin:'ORIGINAL',hasRow:!!row};
+}
+function aeAnnualMax(itemId){
+  var l=aeLimits().filter(function(x){ return x.item===itemId&&x.fy===aeFy; })[0];
+  return (l&&l.amax!=null)?Number(l.amax):null;
+}
+/* CORRECTION 2 — Annual Max is a CURRENT policy for the financial year, not a
+   historical actual. It therefore covers EVERY item belonging to the expense
+   type in that FY, including items that were never distributed. */
+function aeSrcItems(){
+  var src=reportCtx().src;
+  var base=(src==='FIXTURE'&&window.GHS_FIXTURE)?window.GHS_FIXTURE:D;
+  return base.items||[];
+}
+function aeTypeItems(typeId){
+  return aeSrcItems().filter(function(x){ return x.t===typeId; });
+}
+
+/* ---- aggregate: type -> item -> approved run ---- */
+function aeBuild(){
+  var runs=aeApprovedRuns();
+  var d=aeSrcData(), tn={}; d.types.forEach(function(t){ tn[t.id]=t.n; });
+  var types={};
+
+  runs.forEach(function(r){
+    var t=types[r.typeId];
+    if(!t){ t=types[r.typeId]={typeId:r.typeId,typeName:tn[r.typeId]||r.typeId,
+      runBudget:0, actualValue:0, actualQty:0, items:{}, months:{}, runs:[]}; }
+    t.runBudget=aeR2(t.runBudget+(Number(r.targetInclVat)||0));
+    t.months[r.periodIndex]=1;                             /* month set — budget counted once */
+    t.runs.push(r);
+
+    aeSnapshotLines(r).forEach(function(l){
+      var q=Number(l.quantity)||0, v=aeR2(Number(l.lineTotalInclVat)||0);
+      t.actualValue=aeR2(t.actualValue+v);
+      t.actualQty+=q;
+      var it=t.items[l.itemId];
+      if(!it){ it=t.items[l.itemId]={itemId:l.itemId,itemName:l.itemName,
+        qty:0, value:0, prices:{}, runs:[]}; }
+      it.qty+=q; it.value=aeR2(it.value+v);
+      it.prices[Number(l.unitPriceSnapshotInclVat)]=1;      /* historical price only */
+      it.runs.push({runId:r.runId, periodIndex:r.periodIndex,
+        approvedAt:r.approvedAt||null, approvedBy:r.approvedBy||null,
+        quantity:q, unitPrice:Number(l.unitPriceSnapshotInclVat), value:v});
+    });
+  });
+
+  var out=Object.keys(types).map(function(k){
+    var t=types[k];
+    /* current budget: one cell per (fy, month, type) — never multiplied by runs */
+    var cur=0, overridden=false;
+    Object.keys(t.months).forEach(function(pi){
+      var c=aeCurrentBudgetCell(aeFy,Number(pi),t.typeId);
+      cur=aeR2(cur+c.amount);
+      if(c.origin==='OVERRIDE') overridden=true;
+    });
+    /* every item of the type in this FY — distributed or not */
+    var roster={};
+    aeTypeItems(t.typeId).forEach(function(x){ roster[x.i]={itemId:x.i,itemName:x.n}; });
+    Object.keys(t.items).forEach(function(i){
+      if(!roster[i]) roster[i]={itemId:i,itemName:t.items[i].itemName}; });
+
+    var items=Object.keys(roster).map(function(i){
+      var it=t.items[i]||{qty:0,value:0,prices:{},runs:[],itemName:roster[i].itemName};
+      var ps=Object.keys(it.prices).map(Number);
+      var amax=aeAnnualMax(i);
+      return { itemId:i, itemName:roster[i].itemName||it.itemName,
+        annualMax:amax, qty:it.qty,
+        remainingQty:(amax==null?null:amax-it.qty),   /* no actual => remaining = annual max */
+        value:it.value,
+        hasActual:it.runs.length>0,
+        priceVaries:ps.length>1,
+        unitPrice:(ps.length===1?ps[0]:null),
+        weightedAvg:(it.qty>0?aeR2(it.value/it.qty):null),
+        runs:it.runs.slice().sort(function(a,b){return a.periodIndex-b.periodIndex;}) };
+    }).sort(function(a,b){ return (b.value-a.value)||String(a.itemId).localeCompare(String(b.itemId)); });
+
+    /* type-level annual max: every item of the type, counted once — never per run */
+    var annMax=0, annKnown=false;
+    items.forEach(function(x){ if(x.annualMax!=null){ annMax+=x.annualMax; annKnown=true; } });
+
+    return { typeId:t.typeId, typeName:t.typeName,
+      currentBudget:cur, runBudget:t.runBudget,
+      budgetOverridden:overridden,
+      budgetVariance:aeR2(cur-t.runBudget),
+      actualValue:t.actualValue,
+      remainingBudget:aeR2(cur-t.actualValue),
+      executionPct:(cur>0?aeR2(t.actualValue/cur*100):null),
+      actualQty:t.actualQty,
+      annualMaxQty:(annKnown?annMax:null),
+      remainingQty:(annKnown?annMax-t.actualQty:null),
+      monthCount:Object.keys(t.months).length,
+      runCount:t.runs.length,
+      items:items };
+  }).sort(function(a,b){ return b.actualValue-a.actualValue; });
+
+  var tot={currentBudget:0,runBudget:0,actualValue:0,actualQty:0,runCount:0};
+  out.forEach(function(t){
+    tot.currentBudget=aeR2(tot.currentBudget+t.currentBudget);
+    tot.runBudget=aeR2(tot.runBudget+t.runBudget);
+    tot.actualValue=aeR2(tot.actualValue+t.actualValue);
+    tot.actualQty+=t.actualQty; tot.runCount+=t.runCount;
+  });
+  tot.remainingBudget=aeR2(tot.currentBudget-tot.actualValue);
+  tot.executionPct=(tot.currentBudget>0?aeR2(tot.actualValue/tot.currentBudget*100):null);
+  tot.variance=aeR2(tot.currentBudget-tot.runBudget);
+  return {types:out, totals:tot, runCount:runs.length, source:reportCtx().src};
+}
+
+/* ---- rendering: reuses the existing report page, panels and CSS ---- */
+function aeMonthsOf(fy){
+  var rows=aeSrcData().monthlyBudgets.filter(function(b){ return b.fy===fy; });
+  var seen={}, out=[];
+  rows.forEach(function(b){ if(!seen[b.pi]){ seen[b.pi]=1; out.push({pi:b.pi,pm:b.pm}); } });
+  return out.sort(function(a,b){ return a.pi-b.pi; });
+}
+function aeSyncFilters(){
+  var d=aeSrcData();
+  var fs=document.getElementById('aeFy');
+  fs.innerHTML=d.fyears.map(function(f){return '<option value="'+f.id+'">'+aeEsc(f.label)+'</option>';}).join('');
+  if(!d.fyears.some(function(f){return f.id===aeFy;})){ aeFy=(d.fyears[0]||{}).id; aeFrom=null; aeTo=null; }
+  fs.value=aeFy;
+  var ms=aeMonthsOf(aeFy);
+  var opts=ms.map(function(m){return '<option value="'+m.pi+'">'+aeEsc(monthName(m.pm)+' '+calYear(aeFy,m.pm))+'</option>';}).join('');
+  var a=document.getElementById('aeFrom'), b=document.getElementById('aeTo');
+  a.innerHTML=opts; b.innerHTML=opts;
+  if(!ms.some(function(m){return m.pi===Number(aeFrom);})) aeFrom=ms.length?ms[0].pi:null;
+  if(!ms.some(function(m){return m.pi===Number(aeTo);}))   aeTo=ms.length?ms[ms.length-1].pi:null;
+  if(Number(aeFrom)>Number(aeTo)) aeTo=aeFrom;
+  a.value=aeFrom; b.value=aeTo;
+  document.getElementById('aeThrough').value=aeThrough||'';
+}
+function aeCard(l,v,cls){ return '<div class="appr-kv'+(cls?' '+cls:'')+'">'+aeEsc(l)+'<b>'+v+'</b></div>'; }
+function aeRender(){
+  if(!document.getElementById('aeRows')) return;
+  [['aeTitle','\u062a\u0642\u0631\u064a\u0631 \u0627\u0644\u062a\u0646\u0641\u064a\u0630 \u0627\u0644\u0641\u0639\u0644\u064a \u0644\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a \u0648\u0627\u0644\u0643\u0645\u064a\u0627\u062a','Actual Expense & Quantity Execution'],
+   ['aeLFy','\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629','Financial Year'],
+   ['aeLFrom','\u0645\u0646 \u0634\u0647\u0631','From month'],
+   ['aeLTo','\u0625\u0644\u0649 \u0634\u0647\u0631','To month'],
+   ['aeLThrough','\u062d\u062a\u0649 \u062a\u0627\u0631\u064a\u062e \u0627\u0639\u062a\u0645\u0627\u062f (\u0627\u062e\u062a\u064a\u0627\u0631\u064a)','Through approval date (optional)'],
+   ['aeClear','\u0645\u0633\u062d \u0627\u0644\u062a\u0627\u0631\u064a\u062e','Clear date'],
+   ['aeC1','\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641','Expense type'],
+   ['aeC2','\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629','Current budget'],
+   ['aeC3','\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u062a\u0634\u063a\u064a\u0644','Run budget'],
+   ['aeC4','\u0627\u0644\u0645\u0646\u0641\u0651\u0630 \u0641\u0639\u0644\u064a\u064b\u0627','Actual executed'],
+   ['aeC5','\u0627\u0644\u0645\u062a\u0628\u0642\u064a','Remaining'],
+   ['aeC6','\u0627\u0644\u062a\u0646\u0641\u064a\u0630 %','Execution %'],
+   ['aeC7','\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u0648\u0632\u0639\u0629','Distributed qty'],
+   ['aeC8','\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a','Annual max'],
+   ['aeC9','\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u062a\u0628\u0642\u064a\u0629','Remaining qty'],
+   ['aeC10','\u0627\u0644\u0623\u0635\u0646\u0627\u0641','Items'],
+   ['aeTTitle','\u0627\u062e\u062a\u0628\u0627\u0631\u0627\u062a \u0627\u0644\u062a\u0646\u0641\u064a\u0630 \u0627\u0644\u0641\u0639\u0644\u064a','Actual execution tests'],
+   ['aeRunTests','\u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631\u0627\u062a','Run tests'],
+   ['aeT2','\u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631','Test'],['aeT3','\u0627\u0644\u0646\u062a\u064a\u062c\u0629','Result'],
+   ['aeT4','\u0627\u0644\u062a\u0641\u0635\u064a\u0644','Detail']
+  ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=T(x[1],x[2]); });
+  document.getElementById('aeNote').textContent=T(
+    '\u0627\u0644\u0645\u0646\u0641\u0651\u0630 \u064a\u064f\u0642\u0631\u0623 \u0645\u0646 \u0627\u0644\u062a\u0648\u0632\u064a\u0639\u0627\u062a \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629 \u0641\u0642\u0637 \u0648\u0645\u0646 \u0644\u0642\u0637\u0627\u062a\u0647\u0627 \u0627\u0644\u0645\u062c\u0645\u0651\u062f\u0629 \u2014 \u0644\u0627 \u064a\u064f\u0642\u0631\u0623 \u0645\u0646 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0628\u0646\u0648\u062f \u0623\u0648 \u0627\u0644\u0623\u0633\u0639\u0627\u0631 \u0627\u0644\u062d\u0627\u0644\u064a\u0629. \u0627\u0644\u0639\u0645\u0644\u064a\u0627\u062a \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629 \u062a\u0639\u064a\u0634 \u0641\u064a \u0630\u0627\u0643\u0631\u0629 \u0627\u0644\u062c\u0644\u0633\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629 \u0648\u062a\u0632\u0648\u0644 \u0639\u0646\u062f \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0635\u0641\u062d\u0629.',
+    'Actual is read only from approved runs and their frozen snapshots — never from current item data or current prices. Approved runs live in this browser session and are lost on refresh.');
+  aeSyncFilters();
+
+  var R=aeBuild();
+  document.getElementById('aePill').textContent=R.runCount+' '+T('\u0639\u0645\u0644\u064a\u0629 \u0645\u0639\u062a\u0645\u062f\u0629','approved runs')+' \u00b7 '+R.source;
+
+  var warn=document.getElementById('aeWarn');
+  var diverging=R.types.filter(function(t){ return t.budgetVariance!==0; });
+  if(diverging.length){ warn.classList.remove('hidden');
+    warn.innerHTML='\u26a0\ufe0f '+T('\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629 \u062a\u062e\u062a\u0644\u0641 \u0639\u0646 \u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u062a\u0634\u063a\u064a\u0644 \u0641\u064a ',
+      'Current budget differs from the run budget in ')+diverging.length+' '+T('\u0646\u0648\u0639\u064b\u0627','types')+': '+
+      diverging.slice(0,4).map(function(t){return aeEsc(t.typeName)+' ('+aeMoney(t.budgetVariance)+')';}).join(' \u00b7 ')+
+      (diverging.length>4?' \u2026':'')+'<br>'+
+      T('\u0644\u0645 \u064a\u064f\u0639\u062f\u064e\u0651\u0644 \u0623\u064a \u0631\u0642\u0645 \u0641\u0639\u0644\u064a \u0648\u0644\u0645 \u062a\u064f\u0639\u062f \u0623\u064a \u0639\u0645\u0644\u064a\u0629 \u062d\u0633\u0627\u0628\u064b\u0627.',
+        'No actual figure was altered and no run was recalculated.');
+  } else warn.classList.add('hidden');
+
+  var t=R.totals;
+  document.getElementById('aeCards').innerHTML=
+    aeCard(T('\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629','Current budget'),aeMoney(t.currentBudget))+
+    aeCard(T('\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u062a\u0634\u063a\u064a\u0644','Run budget'),aeMoney(t.runBudget))+
+    aeCard(T('\u0627\u0644\u0645\u0646\u0641\u0651\u0630 \u0641\u0639\u0644\u064a\u064b\u0627','Actual executed'),aeMoney(t.actualValue))+
+    aeCard(T('\u0627\u0644\u0645\u062a\u0628\u0642\u064a','Remaining'),aeMoney(t.remainingBudget),t.remainingBudget<0?'bad':'')+
+    aeCard(T('\u0627\u0644\u062a\u0646\u0641\u064a\u0630','Execution'),aePct(t.executionPct))+
+    aeCard(T('\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u0648\u0632\u0639\u0629','Distributed qty'),aeQty(t.actualQty))+
+    aeCard(T('\u0639\u062f\u062f \u0627\u0644\u062a\u0634\u063a\u064a\u0644\u0627\u062a','Runs'),aeQty(t.runCount));
+
+  var tb=document.getElementById('aeRows');
+  if(!R.types.length){
+    tb.innerHTML='<tr><td colspan="10" class="unconstrained" style="text-align:center;padding:24px">'+
+      T('\u0644\u0627 \u062a\u0648\u062c\u062f \u062a\u0648\u0632\u064a\u0639\u0627\u062a \u0645\u0639\u062a\u0645\u062f\u0629 \u0636\u0645\u0646 \u0647\u0630\u0647 \u0627\u0644\u0641\u062a\u0631\u0629.',
+        'No approved distribution runs fall inside this period.')+'</td></tr>';
+    return;
+  }
+  tb.innerHTML=R.types.map(function(x){
+    var open=aeOpenType===x.typeId;
+    return '<tr><td><b>'+aeEsc(x.typeName)+'</b>'+
+        (x.budgetVariance!==0?' <span class="pill warn">'+T('\u0641\u0631\u0642 \u0645\u0648\u0627\u0632\u0646\u0629','budget variance')+'</span>':'')+'</td>'+
+      '<td class="num">'+aeMoney(x.currentBudget)+'</td>'+
+      '<td class="num">'+aeMoney(x.runBudget)+'</td>'+
+      '<td class="num"><b>'+aeMoney(x.actualValue)+'</b></td>'+
+      '<td class="num'+(x.remainingBudget<0?' neg':'')+'">'+aeMoney(x.remainingBudget)+'</td>'+
+      '<td class="num">'+aePct(x.executionPct)+'</td>'+
+      '<td class="num">'+aeQty(x.actualQty)+'</td>'+
+      '<td class="num">'+aeQty(x.annualMaxQty)+'</td>'+
+      '<td class="num">'+aeQty(x.remainingQty)+'</td>'+
+      '<td><button class="srcbtn" data-aet="'+aeEsc(x.typeId)+'">'+
+        (open?T('\u0625\u062e\u0641\u0627\u0621','Hide'):T('\u0627\u0644\u0623\u0635\u0646\u0627\u0641','Items'))+(open?' \u25b4':' \u25be')+'</button></td></tr>'+
+      (open?'<tr><td colspan="10" style="padding:0">'+aeItemsTable(x)+'</td></tr>':'');
+  }).join('')+
+  '<tr class="total-row"><td>'+T('\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a','TOTAL')+'</td>'+
+    '<td class="num">'+aeMoney(t.currentBudget)+'</td><td class="num">'+aeMoney(t.runBudget)+'</td>'+
+    '<td class="num">'+aeMoney(t.actualValue)+'</td><td class="num">'+aeMoney(t.remainingBudget)+'</td>'+
+    '<td class="num">'+aePct(t.executionPct)+'</td><td class="num">'+aeQty(t.actualQty)+'</td>'+
+    '<td></td><td></td><td></td></tr>';
+
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-aet]'),function(b){
+    b.onclick=function(){ var k=b.getAttribute('data-aet');
+      aeOpenType=(aeOpenType===k)?null:k; aeOpenItem=null; aeRender(); }; });
+  aeWireItems();
+}
+function aeItemsTable(x){
+  return '<div class="srcinner"><table class="srctable"><thead><tr>'+
+    '<th>'+T('\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','Item code')+'</th>'+
+    '<th>'+T('\u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641','Item name')+'</th>'+
+    '<th>'+T('\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a','Annual max')+'</th>'+
+    '<th>'+T('\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u0648\u0632\u0639\u0629','Distributed qty')+'</th>'+
+    '<th>'+T('\u0627\u0644\u0645\u062a\u0628\u0642\u064a','Remaining')+'</th>'+
+    '<th>'+T('\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629','Unit price')+'</th>'+
+    '<th>'+T('\u0627\u0644\u0642\u064a\u0645\u0629 \u0627\u0644\u0645\u0646\u0641\u0651\u0630\u0629','Actual value')+'</th>'+
+    '<th></th></tr></thead><tbody>'+
+    x.items.map(function(i){
+      var k=x.typeId+'|'+i.itemId, open=aeOpenItem===k;
+      var price=i.priceVaries
+        ? '<span class="pill warn">'+T('\u0645\u062a\u063a\u064a\u0651\u0631','varies')+'</span> '+aeMoney(i.weightedAvg)
+        : aeMoney(i.unitPrice);
+      return '<tr'+(i.hasActual?'':' class="unconstrained"')+'><td><span class="sub-id" style="margin:0">'+aeEsc(i.itemId)+'</span></td>'+
+        '<td style="white-space:normal">'+aeEsc(i.itemName)+'</td>'+
+        '<td class="num">'+aeQty(i.annualMax)+'</td>'+
+        '<td class="num">'+aeQty(i.qty)+'</td>'+
+        '<td class="num">'+aeQty(i.remainingQty)+'</td>'+
+        '<td class="num">'+price+'</td>'+
+        '<td class="num"><b>'+aeMoney(i.value)+'</b></td>'+
+        '<td>'+(i.hasActual?('<button class="srcbtn" data-aei="'+aeEsc(k)+'">'+
+          (open?T('\u0625\u062e\u0641\u0627\u0621','Hide'):T('\u0627\u0644\u062a\u0634\u063a\u064a\u0644\u0627\u062a','Runs'))+(open?' \u25b4':' \u25be')+'</button>'):'')+'</td></tr>'+
+        (open?'<tr><td colspan="8" style="padding:0">'+aeRunsTable(i)+'</td></tr>':'');
+    }).join('')+'</tbody></table></div>';
+}
+function aeRunsTable(i){
+  return '<div class="srcinner"><table class="srctable"><thead><tr>'+
+    '<th>Run ID</th><th>'+T('\u0627\u0644\u0634\u0647\u0631','Month')+'</th>'+
+    '<th>'+T('\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f','Approval date')+'</th>'+
+    '<th>'+T('\u0627\u0644\u0645\u0639\u062a\u0645\u062f','Approver')+'</th>'+
+    '<th>'+T('\u0627\u0644\u0643\u0645\u064a\u0629','Qty')+'</th>'+
+    '<th>'+T('\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629 (\u0644\u0642\u0637\u0629)','Unit price (snapshot)')+'</th>'+
+    '<th>'+T('\u0627\u0644\u0642\u064a\u0645\u0629','Value')+'</th></tr></thead><tbody>'+
+    i.runs.map(function(r){
+      var b=aeSrcData().monthlyBudgets.filter(function(x){return x.fy===aeFy&&x.pi===r.periodIndex;})[0];
+      return '<tr><td><span class="sub-id" style="margin:0">'+aeEsc(r.runId)+'</span></td>'+
+        '<td>'+aeEsc(b?monthName(b.pm):('#'+r.periodIndex))+'</td>'+
+        '<td>'+aeEsc(String(r.approvedAt||'\u2014').replace('T',' ').slice(0,19))+'</td>'+
+        '<td>'+aeEsc(r.approvedBy||'\u2014')+'</td>'+
+        '<td class="num">'+aeQty(r.quantity)+'</td>'+
+        '<td class="num">'+aeMoney(r.unitPrice)+'</td>'+
+        '<td class="num"><b>'+aeMoney(r.value)+'</b></td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+function aeWireItems(){
+  var tb=document.getElementById('aeRows');
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-aei]'),function(b){
+    b.onclick=function(){ var k=b.getAttribute('data-aei');
+      aeOpenItem=(aeOpenItem===k)?null:k; aeRender(); }; });
+}
+document.getElementById('aeFy').onchange=function(e){ aeFy=e.target.value; aeFrom=null; aeTo=null;
+  aeOpenType=null; aeOpenItem=null; aeRender(); };
+document.getElementById('aeFrom').onchange=function(e){ aeFrom=Number(e.target.value);
+  if(Number(aeFrom)>Number(aeTo)) aeTo=aeFrom; aeOpenType=null; aeOpenItem=null; aeRender(); };
+document.getElementById('aeTo').onchange=function(e){ aeTo=Number(e.target.value);
+  if(Number(aeTo)<Number(aeFrom)) aeFrom=aeTo; aeOpenType=null; aeOpenItem=null; aeRender(); };
+document.getElementById('aeThrough').onchange=function(e){ aeThrough=e.target.value||''; aeRender(); };
+document.getElementById('aeClear').onclick=function(){ aeThrough=''; aeRender(); };
+Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
+  if(b.dataset.page==='budgetreport') b.addEventListener('click',function(){ aeRender(); }); });
+window.GHS_ACTUAL_REPORT={
+  build:aeBuild, render:aeRender, approvedRuns:aeApprovedRuns,
+  setFilters:function(fy,from,to,through){ aeFy=fy; aeFrom=from; aeTo=to; aeThrough=through||''; },
+  filters:function(){ return {fy:aeFy,from:aeFrom,to:aeTo,through:aeThrough}; },
+  currentBudgetCell:aeCurrentBudgetCell, annualMax:aeAnnualMax,
+  snapshotLines:aeSnapshotLines, typeItems:aeTypeItems
+};
+aeFy=(aeSrcData().fyears[0]||{}).id;
+(function(){ var ms=aeMonthsOf(aeFy); aeFrom=ms.length?ms[0].pi:null; aeTo=ms.length?ms[ms.length-1].pi:null; })();
+aeRender();
+
 document.getElementById('brTNote').textContent=T(
   'الاختبارات تقرأ فقط ولا تكتب أي موازنة أو عملية أو اعتماد.',
   'The tests read only; they never write a budget, a run or an approval.');
@@ -5190,7 +5599,13 @@ window.GHS_RUNTIME={
   exportExcel:function(runId){ return exportRunToExcel(runId); },
   /* S4 — expose the existing S3 XLSX writer so screen exports reuse it
      instead of creating a second generator. S3 itself is untouched. */
-  buildXlsx:function(model){ return xlsxBytes(model); }
+  buildXlsx:function(model){ return xlsxBytes(model); },
+  /* Read-only view of the CURRENT allocation for a (source, FY, month, type).
+     Reports live in another IIFE and cannot call resolveAlloc directly; this
+     exposes the existing approved resolver rather than duplicating it. */
+  currentAllocation:function(src,fy,pi,typeId,original){
+    return resolveAlloc(src,fy,pi,typeId,original);
+  }
 };
 
 dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id;
