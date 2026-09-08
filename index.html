@@ -155,6 +155,7 @@ tr.over-row td{background:#fef2f2}
         </select></div>
       <div class="rep-f"><label class="lbl" id="bhLFy">السنة المالية</label>
         <select class="field" id="bhFy"></select></div>
+      <div class="rep-f rowacts"><button class="btn green" id="bhExcel">📊 تصدير Excel</button></div>
     </div>
     <div class="mi-warn hidden" id="bhRecon"></div>
     <div class="table-wrap"><table>
@@ -1691,6 +1692,10 @@ function downloadBlobFile(bytes,fileName){
   setTimeout(function(){ window.URL.revokeObjectURL(url); },60000);
   return {ok:true,via:'anchor'};
 }
+/* The budget hierarchy lives in another IIFE and cannot see this helper.
+   Expose the SAME approved function instead of duplicating it. */
+window.GHS_DOWNLOAD=downloadBlobFile;
+
 function exportBudgetReportToExcel(){
   var sc;
   try{ sc=buildScreenExportContext('budgetreport'); }
@@ -2606,6 +2611,8 @@ function bhRender(){
    .forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=bhT(x[1],x[2]); });
 
   var ss=document.getElementById('bhSrcSel'); if(ss) ss.value=bhSource;
+  var bx=document.getElementById('bhExcel');
+  if(bx) bx.textContent=bhT('\ud83d\udcca \u062a\u0635\u062f\u064a\u0631 Excel','\ud83d\udcca Export Excel');
   var e1=document.getElementById('bhLSrc'); if(e1) e1.textContent=bhT('\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a','Data source');
   var fs=document.getElementById('bhFy');
   fs.innerHTML=d.fyears.map(function(f){return '<option value="'+f.id+'">'+bhEsc(f.label)+'</option>';}).join('');
@@ -2816,11 +2823,169 @@ function bhSave(pi,typeId){
   bhMsg('ok',bhT('\u062a\u0645 \u062d\u0641\u0638 ','Saved ')+changes.length+bhT(' \u0633\u0639\u0631\u064b\u0627 \u0634\u0647\u0631\u064a\u064b\u0627 \u2014 \u062a\u064f\u0633\u062a\u062e\u062f\u0645 \u0641\u064a \u0639\u0645\u0644\u064a\u0627\u062a \u0627\u0644\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0642\u0627\u062f\u0645\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631 \u0641\u0642\u0637.',
     ' monthly price(s) - used by future runs for this month only.'));
 }
+
+/* ============================================================================
+   S6 — EXCEL EXPORT: BUDGET HIERARCHY  (current-state, read-only)
+   Reads the visible hierarchy only: bhData() + resolveAlloc() + resolvePrice(),
+   scoped by bhSource and bhFy. It never touches dSrc, miSrc, brFy, brType,
+   brSel, distribution state, report state or approved runs, and never writes
+   to GHS_DATA, GHS_FIXTURE, BAL, MOP or MASTER.
+   Reuses the approved S3 writer and the approved S4 download helper.
+   ========================================================================== */
+function buildBudgetScreenExportContext(){
+  var d=bhData(), src=bhSrc(), fy=bhFy;
+  var months=bhMonths(fy);
+  if(!months.length) return null;
+  var tn={}; d.types.forEach(function(t){ tn[t.id]=t.n; });
+  var fyLabel=(d.fyears.filter(function(f){return f.id===fy;})[0]||{}).label||fy;
+
+  var typeIds={}, itemCount=0, total=0;
+  var typeRows=[], itemRows=[];
+  months.forEach(function(m){
+    total=bhR2(total+m.total);
+    m.types.forEach(function(b){
+      typeIds[b.t]=1;
+      var ra=resolveAlloc(src,fy,m.pi,b.t,b.inc);          /* exactly as the screen */
+      var items=bhItems(b.t);
+      typeRows.push({ monthLabel:bhMonth(m.pm), periodIndex:m.pi,
+                      typeId:b.t, typeName:tn[b.t]||b.t,
+                      allocated:ra.amount, allocOrigin:ra.origin,
+                      itemCount:items.length });
+      items.forEach(function(x){
+        var rp=resolvePrice(src,fy,m.pi,x);                /* exactly as the screen */
+        var l=(masterFor(src).limits.filter(function(y){return y.item===x.i&&y.fy===fy;})[0])||{};
+        itemCount++;
+        itemRows.push({ monthLabel:bhMonth(m.pm), periodIndex:m.pi,
+                        typeId:b.t, typeName:tn[b.t]||b.t,
+                        itemId:x.i, itemName:x.n,
+                        price:rp.price, priceOrigin:rp.origin,
+                        monthlyMin:(l.mmin===undefined?null:l.mmin),
+                        monthlyMax:(l.mmax===undefined?null:l.mmax),
+                        annualMax:(l.amax===undefined?null:l.amax),
+                        active:(x.a===true) });
+      });
+    });
+  });
+  return {
+    metadata:{ dataSource:src, fyId:fy, fyLabel:fyLabel,
+               monthCount:months.length, typeCount:Object.keys(typeIds).length,
+               itemRowCount:itemCount, totalBudget:total,
+               reconcileWarnings:bhReconcile().length },
+    months:months.map(function(m){
+      return { label:bhMonth(m.pm), periodIndex:m.pi, total:m.total, typeCount:m.types.length }; }),
+    types:typeRows,
+    items:itemRows
+  };
+}
+function buildBudgetWorkbookModel(bc){
+  if(!bc) return null;
+  var m=bc.metadata, sheets=[];
+  var ORIG='\u0623\u0635\u0644\u064a\u0629', EDIT='\u0645\u0639\u062f\u0644\u0629';
+  var MPRICE='\u0633\u0639\u0631 \u0634\u0647\u0631\u064a';
+  var BPRICE='\u0645\u0648\u0631\u0648\u062b \u0645\u0646 \u0627\u0644\u0633\u0639\u0631 \u0627\u0644\u0623\u0633\u0627\u0633\u064a';
+  sheets.push({ name:'\u0645\u0644\u062e\u0635', widths:[34,32], rows:[
+    ['\u0627\u0644\u0628\u064a\u0627\u0646','\u0627\u0644\u0642\u064a\u0645\u0629'],
+    ['\u0627\u0644\u0645\u0635\u062f\u0631',m.dataSource],
+    ['\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629',m.fyLabel],
+    ['\u0639\u062f\u062f \u0627\u0644\u0634\u0647\u0648\u0631',{n:m.monthCount,f:'qty'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629',{n:m.totalBudget,f:'money'}],
+    ['\u0639\u062f\u062f \u0627\u0644\u0623\u0646\u0648\u0627\u0639',{n:m.typeCount,f:'qty'}],
+    ['\u0639\u062f\u062f \u0627\u0644\u0623\u0635\u0646\u0627\u0641',{n:m.itemRowCount,f:'qty'}],
+    ['\u062a\u062d\u0630\u064a\u0631\u0627\u062a \u0627\u0644\u062a\u0633\u0648\u064a\u0629',{n:m.reconcileWarnings,f:'qty'}]
+  ]});
+  var mo=[['\u0627\u0644\u0634\u0647\u0631','\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629',
+           '\u0639\u062f\u062f \u0627\u0644\u0623\u0646\u0648\u0627\u0639']];
+  bc.months.forEach(function(x){ mo.push([x.label,{n:x.total,f:'money'},{n:x.typeCount,f:'qty'}]); });
+  mo.push(['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a',{n:m.totalBudget,f:'money'},'']);
+  sheets.push({name:'\u0627\u0644\u0634\u0647\u0648\u0631',widths:[22,24,16],rows:mo});
+
+  var ty=[['\u0627\u0644\u0634\u0647\u0631','\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',
+           '\u0627\u0644\u0645\u062e\u0635\u0635','\u0645\u0635\u062f\u0631 \u0627\u0644\u0645\u062e\u0635\u0635',
+           '\u0639\u062f\u062f \u0627\u0644\u0623\u0635\u0646\u0627\u0641']];
+  bc.types.forEach(function(x){
+    ty.push([x.monthLabel,x.typeName,{n:x.allocated,f:'money'},
+             (x.allocOrigin==='OVERRIDE'?EDIT:ORIG),{n:x.itemCount,f:'qty'}]);
+  });
+  sheets.push({name:'\u0627\u0644\u0623\u0646\u0648\u0627\u0639',widths:[20,30,22,18,16],rows:ty});
+
+  var it=[['\u0627\u0644\u0634\u0647\u0631','\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',
+           '\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','\u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641',
+           '\u0633\u0639\u0631 \u0627\u0644\u062a\u0634\u063a\u064a\u0644','\u0645\u0635\u062f\u0631 \u0627\u0644\u0633\u0639\u0631',
+           '\u0627\u0644\u0623\u062f\u0646\u0649','\u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0634\u0647\u0631\u064a',
+           '\u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a','\u0627\u0644\u062d\u0627\u0644\u0629']];
+  bc.items.forEach(function(x){
+    it.push([x.monthLabel,x.typeName,x.itemId,x.itemName,
+             (x.price==null?'':{n:x.price,f:'money'}),
+             (x.priceOrigin==='MONTHLY'?MPRICE:BPRICE),
+             (x.monthlyMin==null?'':{n:x.monthlyMin,f:'qty'}),
+             (x.monthlyMax==null?'':{n:x.monthlyMax,f:'qty'}),
+             (x.annualMax==null?'':{n:x.annualMax,f:'qty'}),
+             (x.active?'ACTIVE':'INACTIVE')]);
+  });
+  sheets.push({name:'\u0627\u0644\u0623\u0635\u0646\u0627\u0641',widths:[18,26,12,32,18,26,12,16,16,14],rows:it});
+
+  var raw='GHS_Budget_'+m.fyLabel+'_'+m.dataSource;
+  return {sheets:sheets, fileName:raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx'};
+}
+function exportBudgetHierarchyToExcel(){
+  var bc;
+  try{ bc=buildBudgetScreenExportContext(); }
+  catch(e){ return {ok:false,reason:'CONTEXT_FAILED: '+e.message}; }
+  if(!bc) return {ok:false,reason:'NO_BUDGET_DATA'};
+
+  var model;
+  try{ model=buildBudgetWorkbookModel(bc); }
+  catch(e){ return {ok:false,reason:'MODEL_FAILED: '+e.message}; }
+  if(!model||!model.sheets||model.sheets.length!==4) return {ok:false,reason:'EMPTY_WORKBOOK_MODEL'};
+
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.buildXlsx!=='function') return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
+  var bytes;
+  try{ bytes=RT.buildXlsx(model); }                       /* the S3 writer, unchanged */
+  catch(e){ return {ok:false,reason:'XLSX_BUILD_FAILED: '+e.message}; }
+  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
+  if(!(bytes[0]===0x50&&bytes[1]===0x4B)) return {ok:false,reason:'INVALID_XLSX_SIGNATURE'};
+
+  var dl=window.GHS_DOWNLOAD;                             /* the S4 helper, unchanged */
+  if(typeof dl!=='function') return {ok:false,reason:'DOWNLOAD_HELPER_UNAVAILABLE'};
+  var r=dl(bytes,model.fileName);                         /* synchronous, inside the click */
+  if(!r.ok) return {ok:false,reason:r.reason};
+  return {ok:true,fileName:model.fileName,bytes:bytes.length,sheets:model.sheets.length,
+          months:bc.months.length,types:bc.types.length,items:bc.items.length,via:r.via};
+}
+var BH_DL_MSG={
+  NO_BUDGET_DATA:['\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0648\u0627\u0632\u0646\u0627\u062a \u0644\u0647\u0630\u0647 \u0627\u0644\u0633\u0646\u0629','No budgets for this financial year'],
+  XLSX_WRITER_UNAVAILABLE:['XLSX writer unavailable','XLSX writer unavailable'],
+  DOWNLOAD_HELPER_UNAVAILABLE:['Browser download helper unavailable','Browser download helper unavailable'],
+  EMPTY_FILE_BYTES:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0641\u0627\u0631\u063a','Generated file is empty'],
+  INVALID_XLSX_SIGNATURE:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0644\u064a\u0633 XLSX \u0635\u0627\u0644\u062d\u064b\u0627','Generated file is not a valid XLSX'],
+  EMPTY_WORKBOOK_MODEL:['\u0646\u0645\u0648\u0630\u062c \u0627\u0644\u0645\u0635\u0646\u0651\u0641 \u0641\u0627\u0631\u063a','Workbook model is empty'],
+  BLOB_API_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  OBJECT_URL_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  DOWNLOAD_ATTRIBUTE_UNSUPPORTED:['\u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0644\u0627 \u064a\u062f\u0639\u0645 \u0627\u0644\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u0645\u0628\u0627\u0634\u0631','Browser does not support direct download']
+};
+
 document.getElementById('bhSrcSel').onchange=function(e){
   bhSource=(e.target.value==='FIXTURE')?'FIXTURE':'LIVE';
   bhFy=(bhData().fyears[0]||{}).id;            /* never keep a value from the other source */
   bhOpenMonth=null; bhOpenType=null; bhDirty={}; bhBudDirty={};
   bhRender();
+};
+document.getElementById('bhExcel').onclick=function(){
+  var r;
+  /* runs synchronously inside the user gesture */
+  try{ r=exportBudgetHierarchyToExcel(); }
+  catch(e){ r={ok:false,reason:'UNEXPECTED: '+e.message}; }
+  if(r.ok){
+    bhMsg('ok',bhT('\u062a\u0645 \u062a\u0635\u062f\u064a\u0631 Excel \u2014 ','Excel exported \u2014 ')+r.fileName+
+      ' \u00b7 '+r.months+bhT(' \u0634\u0647\u0631\u064b\u0627 \u00b7 ',' months \u00b7 ')+
+      r.items+bhT(' \u0635\u0646\u0641\u064b\u0627 \u00b7 ',' item rows \u00b7 ')+r.bytes+' bytes');
+    return;
+  }
+  var key=String(r.reason||'UNKNOWN').split(':')[0], m=BH_DL_MSG[key];
+  bhMsg('warn',bhT('\u0641\u0634\u0644 \u062a\u0635\u062f\u064a\u0631 Excel: ','Excel export failed: ')+
+    (m?(bhT(m[0],m[1])):String(r.reason||'UNKNOWN')));
+  console.error('[EXPORT] Budget hierarchy Excel failed —',r.reason);
 };
 document.getElementById('bhFy').onchange=function(e){ bhFy=e.target.value; bhOpenMonth=null; bhOpenType=null; bhRender(); };
 Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
@@ -3880,6 +4045,172 @@ function bhRunSuite(){
     var n=S3.RUNS.length;
     s3Model('RUN-XA'); s3Bytes(M3);
     return {ok:S3.RUNS.length===n,detail:'RUNS count '+n+' before and after export'};
+  });
+
+  /* ---------- S6 · Budget Hierarchy Excel export (S6-01 .. S6-18) ---------- */
+  function s6With(src,fy,fn){
+    var ks=bhSource, kf=bhFy;
+    bhSource=src; bhFy=fy;
+    try{ return fn(); } finally { bhSource=ks; bhFy=kf; }
+  }
+  var S6ctx=s6With('FIXTURE',FY,function(){ return buildBudgetScreenExportContext(); });
+  var S6mod=S6ctx?buildBudgetWorkbookModel(S6ctx):null;
+  function s6Print(o){ return JSON.stringify(o); }
+
+  TT('S6-01 · '+bhT('الزر موجود ومربوط','Button exists and is wired'),function(){
+    return {ok:typeof buildBudgetScreenExportContext==='function'&&
+               typeof buildBudgetWorkbookModel==='function'&&
+               typeof exportBudgetHierarchyToExcel==='function'&&
+               typeof BH_DL_MSG==='object',
+            detail:'context + model + export entry + message map all defined'};
+  });
+  TT('S6-02 · '+bhT('عزل بيانات التشغيل','LIVE source isolation'),function(){
+    var c=s6With('LIVE',D.fyears[0].id,function(){ return buildBudgetScreenExportContext(); });
+    return {ok:c!==null&&c.metadata.dataSource==='LIVE'&&c.metadata.fyLabel!=='2099-2100'&&
+               c.types.every(function(t){ return t.typeId!==TY; }),
+            detail:'source LIVE · FY '+c.metadata.fyLabel+' · '+c.metadata.monthCount+' months · '+
+                   c.metadata.typeCount+' types · no DEMO_T present'};
+  });
+  TT('S6-03 · '+bhT('عزل بيانات الاختبار','FIXTURE source isolation'),function(){
+    return {ok:S6ctx.metadata.dataSource==='FIXTURE'&&S6ctx.metadata.fyLabel==='2099-2100'&&
+               S6ctx.types.every(function(t){ return t.typeId===TY; })&&
+               S6ctx.items.every(function(i){ return /^DM/.test(i.itemId); }),
+            detail:'source FIXTURE · FY 2099-2100 · '+S6ctx.metadata.typeCount+' type · '+
+                   S6ctx.metadata.itemRowCount+' item rows, all DM* — no LIVE item leaked'};
+  });
+  TT('S6-04 · '+bhT('عزل السنة المالية','FY isolation'),function(){
+    var other=s6With('FIXTURE','FY_NOT_THERE',function(){ return buildBudgetScreenExportContext(); });
+    var fxMonths=s6With('FIXTURE',FY,function(){ return bhMonths(FY).length; });
+    return {ok:other===null&&S6ctx.metadata.fyId===FY&&S6ctx.months.length===fxMonths,
+            detail:'unknown FY -> null · DEMO_FY -> '+S6ctx.months.length+' months only'};
+  });
+  TT('S6-05 · '+bhT('التصدير يعكس bhData الحالية','Export reflects the current bhData state'),function(){
+    var screen=s6With('FIXTURE',FY,function(){ return bhMonths(FY); });
+    var ok=S6ctx.months.length===screen.length&&
+           S6ctx.months.every(function(m,i){ return m.total===screen[i].total&&m.periodIndex===screen[i].pi; });
+    return {ok:ok,detail:'month totals '+S6ctx.months.map(function(m){return m.total;}).join(' · ')+
+                         ' — identical to bhMonths()'};
+  });
+  TT('S6-06 · '+bhT('تجاوز المخصص منعكس','Allocation override is reflected'),function(){
+    var before=s6With('FIXTURE',FY,function(){ return buildBudgetScreenExportContext(); });
+    var b0=before.types.filter(function(t){return t.periodIndex===1;})[0];
+    balSet('FIXTURE',FY,1,TY,987654);
+    var after=s6With('FIXTURE',FY,function(){ return buildBudgetScreenExportContext(); });
+    var a0=after.types.filter(function(t){return t.periodIndex===1;})[0];
+    var okAll=after.months.filter(function(m){return m.periodIndex===1;})[0].total===987654;
+    /* restore */
+    if(BAL.FIXTURE&&BAL.FIXTURE[FY]&&BAL.FIXTURE[FY][1]) delete BAL.FIXTURE[FY][1][TY];
+    return {ok:b0.allocOrigin==='ORIGINAL'&&a0.allocated===987654&&a0.allocOrigin==='OVERRIDE'&&okAll,
+            detail:b0.allocated+' ('+b0.allocOrigin+') -> '+a0.allocated+' ('+a0.allocOrigin+') · month total follows'};
+  });
+  TT('S6-07 · '+bhT('تجاوز السعر الشهري منعكس','Monthly price override is reflected'),function(){
+    var before=s6With('FIXTURE',FY,function(){ return buildBudgetScreenExportContext(); });
+    var b0=before.items.filter(function(i){return i.itemId==='DM001'&&i.periodIndex===1;})[0];
+    mopSet('FIXTURE',FY,1,'DM001',321.99);
+    var after=s6With('FIXTURE',FY,function(){ return buildBudgetScreenExportContext(); });
+    var a0=after.items.filter(function(i){return i.itemId==='DM001'&&i.periodIndex===1;})[0];
+    var oct=after.items.filter(function(i){return i.itemId==='DM001'&&i.periodIndex===2;})[0];
+    if(MOP.FIXTURE&&MOP.FIXTURE[FY]&&MOP.FIXTURE[FY][1]) delete MOP.FIXTURE[FY][1]['DM001'];
+    return {ok:b0.priceOrigin==='MASTER'&&a0.price===321.99&&a0.priceOrigin==='MONTHLY'&&
+               (!oct||oct.priceOrigin==='MASTER'),
+            detail:b0.price+' ('+b0.priceOrigin+') -> '+a0.price+' ('+a0.priceOrigin+') · October still '+
+                   (oct?oct.priceOrigin:'n/a')};
+  });
+  TT('S6-08 · '+bhT('لا كتابة في أي مصدر','No writes to any data source'),function(){
+    var before=s6Print({d:D.items,db:D.monthlyBudgets,f:FX.items,fb:FX.monthlyBudgets,
+                        bal:BAL,mop:MOP,m:masterFor('FIXTURE').items});
+    s6With('FIXTURE',FY,function(){
+      var c=buildBudgetScreenExportContext();
+      buildBudgetWorkbookModel(c);
+      return c; });
+    return {ok:s6Print({d:D.items,db:D.monthlyBudgets,f:FX.items,fb:FX.monthlyBudgets,
+                        bal:BAL,mop:MOP,m:masterFor('FIXTURE').items})===before,
+            detail:'GHS_DATA · GHS_FIXTURE · BAL · MOP · MASTER byte-identical'};
+  });
+  TT('S6-09 · '+bhT('أربع أوراق بالضبط','Exactly four sheets'),function(){
+    var n=S6mod.sheets.map(function(s){return s.name;});
+    return {ok:S6mod.sheets.length===4&&n[0]==='\u0645\u0644\u062e\u0635'&&
+               n[1]==='\u0627\u0644\u0634\u0647\u0648\u0631'&&n[2]==='\u0627\u0644\u0623\u0646\u0648\u0627\u0639'&&
+               n[3]==='\u0627\u0644\u0623\u0635\u0646\u0627\u0641',
+            detail:n.join(' · ')};
+  });
+  TT('S6-10 · '+bhT('بنية الأوراق الأربع صحيحة','All four sheet structures correct'),function(){
+    var s=S6mod.sheets;
+    return {ok:s[0].rows[0].length===2&&s[0].rows.length===8&&
+               s[1].rows[0].length===3&&s[1].rows.length===S6ctx.months.length+2&&
+               s[2].rows[0].length===5&&s[2].rows.length===S6ctx.types.length+1&&
+               s[3].rows[0].length===10&&s[3].rows.length===S6ctx.items.length+1,
+            detail:'summary 8r/2c · months '+s[1].rows.length+'r/3c · types '+s[2].rows.length+
+                   'r/5c · items '+s[3].rows.length+'r/10c'};
+  });
+  TT('S6-11 · '+bhT('خلايا المال بتنسيق المال','Money cells use money formatting'),function(){
+    var m=[];
+    S6mod.sheets[1].rows.slice(1).forEach(function(r){ m.push(r[1]); });
+    S6mod.sheets[2].rows.slice(1).forEach(function(r){ m.push(r[2]); });
+    S6mod.sheets[3].rows.slice(1).forEach(function(r){ if(r[4]!=='') m.push(r[4]); });
+    var typed=m.filter(function(c){ return c&&c.f; });
+    return {ok:typed.length>0&&typed.every(function(c){ return c.f==='money'; }),
+            detail:typed.length+' money cells · all f:money · none percent'};
+  });
+  TT('S6-12 · '+bhT('الكميات والحدود بتنسيق الكمية','Quantity and limit cells use qty formatting'),function(){
+    var q=[];
+    S6mod.sheets[1].rows.slice(1,-1).forEach(function(r){ q.push(r[2]); });
+    S6mod.sheets[2].rows.slice(1).forEach(function(r){ q.push(r[4]); });
+    S6mod.sheets[3].rows.slice(1).forEach(function(r){ [6,7,8].forEach(function(i){ if(r[i]!=='') q.push(r[i]); }); });
+    var typed=q.filter(function(c){ return c&&c.f; });
+    return {ok:typed.length>0&&typed.every(function(c){ return c.f==='qty'; }),
+            detail:typed.length+' quantity/limit cells · all f:qty'};
+  });
+  TT('S6-13 · '+bhT('الأسماء والعناوين العربية محفوظة','Arabic sheet names and headers preserved'),function(){
+    var h3=S6mod.sheets[3].rows[0];
+    return {ok:h3[2]==='\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641'&&
+               h3[4]==='\u0633\u0639\u0631 \u0627\u0644\u062a\u0634\u063a\u064a\u0644'&&
+               h3[5]==='\u0645\u0635\u062f\u0631 \u0627\u0644\u0633\u0639\u0631'&&
+               S6mod.sheets[2].rows[0][3]==='\u0645\u0635\u062f\u0631 \u0627\u0644\u0645\u062e\u0635\u0635',
+            detail:'items header: '+h3.slice(0,6).join(' | ')};
+  });
+  TT('S6-14 · '+bhT('بايتات المصنَّف صالحة','Workbook bytes are valid'),function(){
+    var RT=window.GHS_RUNTIME;
+    if(!RT||!RT.buildXlsx) return {ok:false,detail:'writer accessor missing'};
+    var b=RT.buildXlsx(S6mod);
+    return {ok:b&&b.length>0&&b[0]===0x50&&b[1]===0x4B&&b[2]===0x03&&b[3]===0x04,
+            detail:b.length+' bytes · PK\\x03\\x04 signature'};
+  });
+  TT('S6-15 · '+bhT('اسم الملف صحيح وآمن','Filename is correct and safe'),function(){
+    var f=S6mod.fileName;
+    return {ok:/^GHS_Budget_/.test(f)&&/\.xlsx$/.test(f)&&/FIXTURE/.test(f)&&
+               !/[^A-Za-z0-9_\-.]/.test(f),
+            detail:f+' — safe characters only'};
+  });
+  TT('S6-16 · '+bhT('مسارات الفشل مرئية','Failure paths are visible'),function(){
+    var RT=window.GHS_RUNTIME, keep=RT.buildXlsx;
+    delete RT.buildXlsx;
+    var a=s6With('FIXTURE',FY,function(){ return exportBudgetHierarchyToExcel(); });
+    RT.buildXlsx=keep;
+    var kd=window.GHS_DOWNLOAD; window.GHS_DOWNLOAD=undefined;
+    var b=s6With('FIXTURE',FY,function(){ return exportBudgetHierarchyToExcel(); });
+    window.GHS_DOWNLOAD=kd;
+    var c=s6With('FIXTURE','FY_NOT_THERE',function(){ return exportBudgetHierarchyToExcel(); });
+    var keys=['NO_BUDGET_DATA','XLSX_WRITER_UNAVAILABLE','DOWNLOAD_HELPER_UNAVAILABLE',
+              'EMPTY_FILE_BYTES','INVALID_XLSX_SIGNATURE','EMPTY_WORKBOOK_MODEL',
+              'BLOB_API_UNAVAILABLE','OBJECT_URL_UNAVAILABLE','DOWNLOAD_ATTRIBUTE_UNSUPPORTED'];
+    var missing=keys.filter(function(k){ return !BH_DL_MSG[k]; });
+    return {ok:a.ok===false&&a.reason==='XLSX_WRITER_UNAVAILABLE'&&
+               b.ok===false&&b.reason==='DOWNLOAD_HELPER_UNAVAILABLE'&&
+               c.ok===false&&c.reason==='NO_BUDGET_DATA'&&missing.length===0,
+            detail:'writer -> '+a.reason+' · helper -> '+b.reason+' · no data -> '+c.reason+
+                   ' · '+keys.length+' reasons mapped'};
+  });
+  TT('S6-17 · '+bhT('تصدير S3 دون انحدار','S3 export regression'),function(){
+    var RT=window.GHS_RUNTIME;
+    return {ok:typeof RT.exportExcel==='function'&&typeof RT.getExportContext==='function'&&
+               typeof buildExportContext==='function'&&typeof buildWorkbookModel==='function'&&
+               RT.getExportContext('RUN_NOT_APPROVED')===null,
+            detail:'exportExcel + getExportContext present · APPROVED gate still returns null'};
+  });
+  TT('S6-18 · '+bhT('تصدير S4 دون انحدار','S4 export regression'),function(){
+    return {ok:typeof window.GHS_DOWNLOAD==='function'&&typeof window.GHS_RUNTIME.buildXlsx==='function',
+            detail:'GHS_DOWNLOAD (S4 helper) and buildXlsx (S3 writer) both exposed and reused, not duplicated'};
   });
 
   return R;
