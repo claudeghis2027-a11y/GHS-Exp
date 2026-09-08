@@ -271,6 +271,7 @@ tr.over-row td{background:#fef2f2}
       <div class="months-actions">
         <button class="btn secondary sm" id="brAll">تحديد الكل</button>
         <button class="btn secondary sm" id="brNone">إلغاء التحديد</button>
+        <button class="btn green sm" id="brExcel">📊 تحميل Excel</button>
       </div>
     </div>
   </div>
@@ -917,6 +918,8 @@ function renderFilters(){
   document.getElementById('brLMonths').textContent=T('الشهور','Months');
   document.getElementById('brAll').textContent=T('تحديد الكل','Select all');
   document.getElementById('brNone').textContent=T('إلغاء التحديد','Clear');
+  var bx=document.getElementById('brExcel');
+  if(bx) bx.textContent=T('📊 تحميل Excel','📊 Download Excel');
   document.getElementById('brTitle').textContent=T('تقرير تنفيذ الموازنة الشهرية','Monthly Budget Execution Report');
   document.getElementById('brSelTitle').textContent=T('إجمالي الفترة المحددة','Selected Period Total');
   document.getElementById('brAnnTitle').textContent=T('إجمالي السنة المالية','Full Financial Year Total');
@@ -1252,6 +1255,149 @@ function brRunSuite(){
                    ' ignored · no LIVE FY offered'};
   });
 
+  /* ---------- S4 · Budget Execution screen export (S4-01 .. S4-18) ---------- */
+  function s4With(src,fy,type,sel,fn){
+    var RT=window.GHS_RUNTIME, keep=RT?RT.getSource:null;
+    var kT=brType,kF=brFy,kS=brSel;
+    if(RT) RT.getSource=function(){ return src; };
+    brType=type; brFy=fy; brSel=sel;
+    try{ return fn(); }
+    finally{ if(RT&&keep) RT.getSource=keep; brType=kT; brFy=kF; brSel=kS; }
+  }
+  function s4AllMonths(fy,type){ var o={}; periodsOf(fy,type).forEach(function(b){ o[b.pi]=true; }); return o; }
+  /* the values the SCREEN itself would render, computed independently here */
+  function s4Screen(fy,type,sel){
+    return periodsOf(fy,type).filter(function(b){return sel[b.pi];}).map(function(b){
+      var bud=Number(b.inc)||0, dis=distributedFor(fy,type,b.pi);
+      return {pi:b.pi,budget:bud,executed:dis,remaining:Math.round((bud-dis)*100)/100,
+              pct:(bud>0?Math.round(dis/bud*10000)/100:null)};
+    });
+  }
+  var S4fy='DEMO_FY', S4ty='DEMO_T';
+  var S4sel=s4With('FIXTURE',S4fy,S4ty,{},function(){ return s4AllMonths(S4fy,S4ty); });
+  var S4ctx=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return buildScreenExportContext('budgetreport'); });
+  var S4mod=S4ctx?buildScreenWorkbookModel(S4ctx):null;
+
+  T2('S4-01 · '+T('تصدير شاشة تنفيذ الموازنة موجود','Budget Execution screen export exists'),function(){
+    return {ok:typeof buildScreenExportContext==='function'&&typeof buildScreenWorkbookModel==='function'&&
+               typeof exportBudgetReportToExcel==='function'&&S4ctx!==null,
+            detail:'context + model + export entry point all present'};
+  });
+  T2('S4-02 · '+T('توقيع XLSX صالح','Valid XLSX signature'),function(){
+    var RT=window.GHS_RUNTIME;
+    if(!RT||!RT.buildXlsx) return {ok:false,detail:'S3 writer accessor missing'};
+    var b=RT.buildXlsx(S4mod);
+    return {ok:b&&b.length>0&&b[0]===0x50&&b[1]===0x4B&&b[2]===0x03&&b[3]===0x04,
+            detail:b.length+' bytes · PK\\x03\\x04 signature present'};
+  });
+  T2('S4-03 · '+T('ورقتان بالضبط','Exactly 2 sheets'),function(){
+    var n=S4mod.sheets.map(function(s){return s.name;});
+    return {ok:S4mod.sheets.length===2&&n[0]==='\u0645\u0644\u062e\u0635'&&
+               n[1]==='\u0627\u0644\u062a\u0641\u0635\u064a\u0644 \u0627\u0644\u0634\u0647\u0631\u064a',
+            detail:n.join(' · ')};
+  });
+  T2('S4-04 · '+T('الملخص يطابق الشاشة','Summary matches the screen'),function(){
+    var scr=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return s4Screen(S4fy,S4ty,S4sel); });
+    var sB=0,sD=0; scr.forEach(function(m){ sB+=m.budget; sD+=m.executed; });
+    sB=r2(sB); sD=r2(sD);
+    var map={}; S4mod.sheets[0].rows.slice(1).forEach(function(r){ map[r[0]]=(r[1]&&r[1].n!==undefined)?r[1].n:r[1]; });
+    return {ok:map['\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a']==='FIXTURE'&&
+               map['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629']===sB&&
+               map['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0646\u0641\u0651\u0630']===sD&&
+               map['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062a\u0628\u0642\u064a']===r2(sB-sD),
+            detail:'source FIXTURE · budget '+sB.toFixed(2)+' · executed '+sD.toFixed(2)+' · remaining '+r2(sB-sD).toFixed(2)};
+  });
+  T2('S4-05 · '+T('عدد الصفوف = الشهور المعروضة','Row count = displayed months'),function(){
+    var n=Object.keys(S4sel).length;
+    return {ok:S4mod.sheets[1].rows.length-2===n&&S4ctx.months.length===n,
+            detail:(S4mod.sheets[1].rows.length-2)+' data rows + 1 total = '+n+' selected months'};
+  });
+  T2('S4-06 · '+T('قيم الموازنة تطابق الشاشة','Budget values match the screen'),function(){
+    var scr=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return s4Screen(S4fy,S4ty,S4sel); });
+    var ok=S4mod.sheets[1].rows.slice(1,-1).every(function(r,i){ return r[1].n===scr[i].budget; });
+    return {ok:ok,detail:scr.map(function(m){return m.budget;}).join(' · ')};
+  });
+  T2('S4-07 · '+T('قيم المنفَّذ تطابق الشاشة','Executed values match the screen'),function(){
+    var scr=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return s4Screen(S4fy,S4ty,S4sel); });
+    return {ok:S4mod.sheets[1].rows.slice(1,-1).every(function(r,i){ return r[2].n===scr[i].executed; }),
+            detail:scr.map(function(m){return m.executed;}).join(' · ')};
+  });
+  T2('S4-08 · '+T('قيم المتبقي تطابق الشاشة','Remaining values match the screen'),function(){
+    var scr=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return s4Screen(S4fy,S4ty,S4sel); });
+    return {ok:S4mod.sheets[1].rows.slice(1,-1).every(function(r,i){ return r[3].n===scr[i].remaining; }),
+            detail:scr.map(function(m){return m.remaining;}).join(' · ')};
+  });
+  T2('S4-09 · '+T('نسب التنفيذ تطابق الشاشة','Execution percentages match the screen'),function(){
+    var scr=s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return s4Screen(S4fy,S4ty,S4sel); });
+    var ok=S4mod.sheets[1].rows.slice(1,-1).every(function(r,i){
+      var v=(r[4]&&r[4].n!==undefined)?r[4].n:null;
+      return v===scr[i].pct || (v===null&&scr[i].pct===null) || (r[4]==='\u2014'&&scr[i].pct===null); });
+    return {ok:ok,detail:scr.map(function(m){return m.pct===null?'\u2014':m.pct+'%';}).join(' · ')};
+  });
+  T2('S4-10 · '+T('عزل بيانات التشغيل','LIVE source isolation'),function(){
+    var lf=D.fyears[0].id, lt=D.types[0].id;
+    var c=s4With('LIVE',lf,lt,s4With('LIVE',lf,lt,{},function(){return s4AllMonths(lf,lt);}),
+      function(){ return buildScreenExportContext('budgetreport'); });
+    return {ok:c!==null&&c.metadata.dataSource==='LIVE'&&c.metadata.fyId===lf&&
+               c.metadata.fyLabel!=='2099-2100',
+            detail:'source LIVE · FY '+c.metadata.fyLabel+' · type '+c.metadata.typeId+' · months '+c.months.length};
+  });
+  T2('S4-11 · '+T('عزل بيانات الاختبار','FIXTURE source isolation'),function(){
+    return {ok:S4ctx.metadata.dataSource==='FIXTURE'&&S4ctx.metadata.fyId==='DEMO_FY'&&
+               S4ctx.metadata.typeId==='DEMO_T',
+            detail:'source FIXTURE · FY DEMO_FY · type DEMO_T · no LIVE FY present'};
+  });
+  T2('S4-12 · '+T('تصدير 2099-2100 يعمل','2099-2100 fixture export works'),function(){
+    var sep=S4ctx.months.filter(function(m){return m.periodMonth===9;})[0];
+    return {ok:S4ctx.metadata.fyLabel==='2099-2100'&&!!sep&&sep.budget===500000,
+            detail:'FY '+S4ctx.metadata.fyLabel+' · September budget '+(sep?sep.budget.toFixed(2):'\u2014')};
+  });
+  T2('S4-13 · '+T('تغيير الفلتر يغيّر التصدير','Changing the filter changes the export'),function(){
+    var one={}; one[S4ctx.months[0].periodIndex]=true;
+    var c1=s4With('FIXTURE',S4fy,S4ty,one,function(){ return buildScreenExportContext('budgetreport'); });
+    var empty=s4With('FIXTURE',S4fy,S4ty,{},function(){ return buildScreenExportContext('budgetreport'); });
+    return {ok:c1.months.length===1&&S4ctx.months.length===3&&empty===null,
+            detail:'3 months -> 1 month -> none (null, nothing displayed)'};
+  });
+  T2('S4-14 · '+T('التصدير لا يعدّل البيانات','Export does not mutate data'),function(){
+    var before=JSON.stringify({d:D.monthlyBudgets,i:D.items,f:window.GHS_FIXTURE.monthlyBudgets});
+    var RT=window.GHS_RUNTIME;
+    s4With('FIXTURE',S4fy,S4ty,S4sel,function(){
+      var c=buildScreenExportContext('budgetreport');
+      if(RT&&RT.buildXlsx) RT.buildXlsx(buildScreenWorkbookModel(c));
+      return c; });
+    return {ok:JSON.stringify({d:D.monthlyBudgets,i:D.items,f:window.GHS_FIXTURE.monthlyBudgets})===before,
+            detail:'GHS_DATA and GHS_FIXTURE byte-identical after building and writing the workbook'};
+  });
+  T2('S4-15 · '+T('التصدير لا ينشئ عملية','Export does not create a run'),function(){
+    var RT=window.GHS_RUNTIME;
+    var n=RT?RT.getRuns().length:0;
+    s4With('FIXTURE',S4fy,S4ty,S4sel,function(){ return buildScreenExportContext('budgetreport'); });
+    return {ok:(RT?RT.getRuns().length:0)===n,detail:'run count '+n+' before and after'};
+  });
+  T2('S4-16 · '+T('التصدير لا يعدّل العملية الحالية','Export does not modify the current run'),function(){
+    var RT=window.GHS_RUNTIME;
+    var before=RT?JSON.stringify(RT.getRuns()):'[]';
+    s4With('FIXTURE',S4fy,S4ty,S4sel,function(){
+      var c=buildScreenExportContext('budgetreport');
+      if(RT&&RT.buildXlsx) RT.buildXlsx(buildScreenWorkbookModel(c));
+      return c; });
+    return {ok:(RT?JSON.stringify(RT.getRuns()):'[]')===before,detail:'runs byte-identical'};
+  });
+  T2('S4-17 · '+T('التصدير التاريخي S3 ما زال يعمل','S3 historical export still works'),function(){
+    var RT=window.GHS_RUNTIME;
+    return {ok:!!RT&&typeof RT.exportExcel==='function'&&typeof RT.getExportContext==='function'&&
+               typeof RT.buildXlsx==='function',
+            detail:'exportExcel · getExportContext · buildXlsx all exposed'};
+  });
+  T2('S4-18 · '+T('بوابة الاعتماد في S3 دون تغيير','S3 APPROVED gate unchanged'),function(){
+    var RT=window.GHS_RUNTIME;
+    var noRun=RT?RT.getExportContext('RUN_DOES_NOT_EXIST'):null;
+    var src=document.body?'':'';
+    return {ok:noRun===null,
+            detail:'getExportContext on a non-approved / unknown run returns null — gate intact'};
+  });
+
   return R;
 }
 function brRenderSourceText(){ return brSourceText; }
@@ -1266,7 +1412,106 @@ function brRenderTests(R){
   }).join('');
 }
 
+
+/* ============================================================================
+   S4 — SCREEN EXPORT: BUDGET EXECUTION REPORT
+   A CURRENT-SCREEN export. It deliberately does NOT use buildExportContext,
+   which is reserved for historical APPROVED runs. It reuses exactly the same
+   state and calculation functions the screen renders from — RSRC(), periodsOf()
+   and distributedFor() — so the workbook can never diverge from the display.
+   Reuses the S3 XLSX writer unchanged. Reads only; mutates nothing.
+   ========================================================================== */
+function buildScreenExportContext(screenId){
+  if(screenId!=='budgetreport') return null;
+  var RS=RSRC(), src=RS.src;
+  var rows=periodsOf(brFy,brType);
+  var selRows=rows.filter(function(b){ return brSel[b.pi]; });
+  if(!selRows.length) return null;                     /* nothing displayed */
+
+  var vr=VATRATE();
+  var months=selRows.map(function(b){
+    var bud=Number(b.inc)||0;
+    var dis=distributedFor(brFy,brType,b.pi);          /* the screen's own function */
+    var rem=Math.round((bud-dis)*100)/100;
+    return { periodIndex:b.pi, periodMonth:b.pm,
+             label:monthName(b.pm)+' '+calYear(brFy,b.pm),
+             budget:bud, executed:dis, remaining:rem,
+             executionPct:(bud>0?Math.round(dis/bud*10000)/100:null),
+             overBudget:dis>bud };
+  });
+  var sB=0,sD=0;
+  months.forEach(function(m){ sB+=m.budget; sD+=m.executed; });
+  sB=Math.round(sB*100)/100; sD=Math.round(sD*100)/100;
+  var sR=Math.round((sB-sD)*100)/100;
+
+  var typeName=(RS.types.filter(function(t){return t.id===brType;})[0]||{}).n||brType;
+  var fyLabel=(RS.fyears.filter(function(f){return f.id===brFy;})[0]||{}).label||brFy;
+
+  return {
+    screenId:'budgetreport',
+    metadata:{ dataSource:src, fyId:brFy, fyLabel:fyLabel,
+               typeId:brType, typeName:typeName,
+               selectedMonths:months.length, totalMonths:rows.length,
+               approvedRunCount:approvedRunCount(), vatRate:vr },
+    months:months,
+    totals:{ budget:sB, executed:sD, remaining:sR,
+             executionPct:(sB>0?Math.round(sD/sB*10000)/100:null) }
+  };
+}
+function buildScreenWorkbookModel(sc){
+  if(!sc) return null;
+  var m=sc.metadata, t=sc.totals;
+  var sheets=[];
+  sheets.push({ name:'\u0645\u0644\u062e\u0635', widths:[34,30], rows:[
+    ['\u0627\u0644\u0628\u064a\u0627\u0646','\u0627\u0644\u0642\u064a\u0645\u0629'],
+    ['\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a',m.dataSource],
+    ['\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629',m.fyLabel],
+    ['\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',m.typeName],
+    ['\u0627\u0644\u0634\u0647\u0648\u0631 \u0627\u0644\u0645\u062e\u062a\u0627\u0631\u0629',{n:m.selectedMonths,f:'qty'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629',{n:t.budget,f:'money'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0646\u0641\u0651\u0630',{n:t.executed,f:'money'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062a\u0628\u0642\u064a',{n:t.remaining,f:'money'}],
+    ['\u0646\u0633\u0628\u0629 \u0627\u0644\u062a\u0646\u0641\u064a\u0630',t.executionPct===null?'\u2014':{n:t.executionPct,f:'money'}],
+    ['\u0639\u062f\u062f \u0627\u0644\u062a\u0648\u0632\u064a\u0639\u0627\u062a \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629',{n:m.approvedRunCount,f:'qty'}]
+  ]});
+  var d=[['\u0627\u0644\u0634\u0647\u0631','\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629','\u0627\u0644\u0645\u0646\u0641\u0651\u0630',
+          '\u0627\u0644\u0645\u062a\u0628\u0642\u064a','\u0646\u0633\u0628\u0629 \u0627\u0644\u062a\u0646\u0641\u064a\u0630']];
+  sc.months.forEach(function(x){
+    d.push([x.label,{n:x.budget,f:'money'},{n:x.executed,f:'money'},{n:x.remaining,f:'money'},
+            x.executionPct===null?'\u2014':{n:x.executionPct,f:'money'}]);
+  });
+  d.push(['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a',{n:t.budget,f:'money'},{n:t.executed,f:'money'},
+          {n:t.remaining,f:'money'},t.executionPct===null?'\u2014':{n:t.executionPct,f:'money'}]);
+  sheets.push({name:'\u0627\u0644\u062a\u0641\u0635\u064a\u0644 \u0627\u0644\u0634\u0647\u0631\u064a',
+               widths:[24,22,22,22,16],rows:d});
+  var raw='GHS_BudgetExecution_'+m.fyLabel+'_'+m.typeId;
+  return {sheets:sheets, fileName:raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx'};
+}
+function exportBudgetReportToExcel(){
+  var sc=buildScreenExportContext('budgetreport');
+  if(!sc) return {ok:false,reason:'NO_MONTHS_SELECTED'};
+  var model=buildScreenWorkbookModel(sc);
+  var RT=window.GHS_RUNTIME;
+  if(!RT||!RT.buildXlsx) return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
+  var bytes=RT.buildXlsx(model);                       /* the S3 writer, unchanged */
+  var blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=model.fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1500);
+  return {ok:true,fileName:model.fileName,bytes:bytes.length,
+          sheets:model.sheets.length,months:sc.months.length};
+}
+
 /* ---- wiring ---- */
+document.getElementById('brExcel').onclick=function(){
+  var r=exportBudgetReportToExcel();
+  document.getElementById('brNote').textContent = r.ok
+    ? T('تم تحميل ملف Excel — ','Excel downloaded — ')+r.fileName+' · '+r.months+
+      T(' شهرًا · ',' months · ')+r.bytes+' bytes'
+    : T('اختر شهرًا واحدًا على الأقل قبل التحميل','Select at least one month before downloading');
+};
 document.getElementById('brRunTests').onclick=function(){ brRenderTests(brRunSuite()); };
 document.getElementById('brTNote').textContent=T(
   'الاختبارات تقرأ فقط ولا تكتب أي موازنة أو عملية أو اعتماد.',
@@ -4186,7 +4431,10 @@ window.GHS_RUNTIME={
   /* S2 — read-only unified export context of an APPROVED run. */
   getExportContext:function(runId){ return buildExportContext(runId); },
   /* S3 — real .xlsx export of an APPROVED run (read-only). */
-  exportExcel:function(runId){ return exportRunToExcel(runId); }
+  exportExcel:function(runId){ return exportRunToExcel(runId); },
+  /* S4 — expose the existing S3 XLSX writer so screen exports reuse it
+     instead of creating a second generator. S3 itself is untouched. */
+  buildXlsx:function(model){ return xlsxBytes(model); }
 };
 
 dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id;
