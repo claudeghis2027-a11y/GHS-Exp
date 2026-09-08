@@ -1398,6 +1398,71 @@ function brRunSuite(){
             detail:'getExportContext on a non-approved / unknown run returns null — gate intact'};
   });
 
+  /* ---------- S4 correction · percentage number format ---------- */
+  T2('S4-19 · '+T('نسبة التنفيذ تُصدَّر كقيمة رقمية','Execution % exported as a numeric value'),function(){
+    var cells=[];
+    S4mod.sheets[0].rows.slice(1).forEach(function(r){
+      if(r[0]==='\u0646\u0633\u0628\u0629 \u0627\u0644\u062a\u0646\u0641\u064a\u0630') cells.push(r[1]); });
+    S4mod.sheets[1].rows.slice(1).forEach(function(r){ cells.push(r[4]); });
+    var nums=cells.filter(function(c){ return c&&typeof c.n==='number'; });
+    return {ok:nums.length>0&&nums.every(function(c){ return typeof c.n==='number'&&isFinite(c.n); }),
+            detail:nums.length+' numeric percent cells · values '+nums.map(function(c){return c.n;}).join(', ')};
+  });
+  T2('S4-20 · '+T('الخلية تستخدم تنسيق النسبة','Cell uses the percentage format'),function(){
+    var all=[];
+    S4mod.sheets[0].rows.slice(1).forEach(function(r){
+      if(r[0]==='\u0646\u0633\u0628\u0629 \u0627\u0644\u062a\u0646\u0641\u064a\u0630') all.push(r[1]); });
+    S4mod.sheets[1].rows.slice(1).forEach(function(r){ all.push(r[4]); });
+    var typed=all.filter(function(c){ return c&&c.f; });
+    return {ok:typed.length>0&&typed.every(function(c){ return c.f==='percent'; }),
+            detail:typed.length+' percent-formatted cells · none left as money'};
+  });
+  T2('S4-21 · '+T('القيمة 25 تُعرض 25.00%','25 displays as 25.00%'),function(){
+    var RT=window.GHS_RUNTIME;
+    if(!RT||!RT.buildXlsx) return {ok:false,detail:'writer accessor missing'};
+    var m={sheets:[{name:'t',widths:[10],rows:[['h'],[{n:25,f:'percent'}]]}],fileName:'t.xlsx'};
+    var b=RT.buildXlsx(m);
+    var txt=''; for(var i=0;i<b.length;i++) txt+=String.fromCharCode(b[i]);
+    return {ok:txt.indexOf('#,##0.00&quot;%&quot;')>-1&&txt.indexOf('<v>25</v>')>-1&&
+               txt.indexOf('s="4"')>-1,
+            detail:'stored value 25 (not 0.25) · numFmt #,##0.00"%" · style index 4'};
+  });
+  T2('S4-22 · '+T('القيمة 0 تُعرض 0.00%','0 displays as 0.00%'),function(){
+    var zero=S4mod.sheets[1].rows.slice(1,-1).filter(function(r){
+      return r[4]&&r[4].n===0; });
+    return {ok:zero.length>0&&zero.every(function(r){ return r[4].f==='percent'; }),
+            detail:zero.length+' zero-percent cells, all percent-formatted (value 0, not blank)'};
+  });
+  T2('S4-23 · '+T('القيمة الفارغة تبقى —','null stays as an em dash'),function(){
+    var dash=S4mod.sheets[1].rows.slice(1,-1).filter(function(r){ return r[4]==='\u2014'; });
+    var ctxNull=S4ctx.months.filter(function(m){ return m.executionPct===null; });
+    return {ok:dash.length===ctxNull.length,
+            detail:ctxNull.length+' months with null pct -> '+dash.length+' em-dash cells (text, no number format)'};
+  });
+  T2('S4-24 · '+T('تنسيق المبالغ لم يتغيّر','Money formatting unchanged'),function(){
+    var money=[];
+    S4mod.sheets[1].rows.slice(1).forEach(function(r){ money.push(r[1],r[2],r[3]); });
+    var ok=money.filter(function(c){return c&&c.f;}).every(function(c){ return c.f==='money'; });
+    var RT=window.GHS_RUNTIME;
+    var b=RT.buildXlsx({sheets:[{name:'t',widths:[10,10],rows:[['h','h2'],[{n:1,f:'money'},{n:2,f:'qty'}]]}],fileName:'t.xlsx'});
+    var txt=''; for(var i=0;i<b.length;i++) txt+=String.fromCharCode(b[i]);
+    return {ok:ok&&txt.indexOf('s="2"')>-1&&txt.indexOf('s="3"')>-1&&
+               txt.indexOf('numFmtId="164" formatCode="#,##0.00"')>-1&&
+               txt.indexOf('numFmtId="165" formatCode="#,##0"')>-1,
+            detail:'money still style 2 / #,##0.00 · qty still style 3 / #,##0 — indices unshifted'};
+  });
+  T2('S4-25 · '+T('بيانات S3 لم تتغيّر','S3 workbook data unchanged'),function(){
+    var RT=window.GHS_RUNTIME;
+    /* an S3-shaped model uses money + qty only — every cell keeps its original style */
+    var m={sheets:[{name:'s',widths:[20,20],rows:[['a','b'],['Run','RUN-A'],
+            [{n:500000,f:'money'},{n:8,f:'qty'}]]}],fileName:'s.xlsx'};
+    var b=RT.buildXlsx(m);
+    var txt=''; for(var i=0;i<b.length;i++) txt+=String.fromCharCode(b[i]);
+    return {ok:txt.indexOf('s="2"')>-1&&txt.indexOf('s="3"')>-1&&txt.indexOf('s="4"')===-1&&
+               txt.indexOf('<v>500000</v>')>-1&&txt.indexOf('<v>8</v>')>-1,
+            detail:'S3-shaped sheet uses only styles 2 and 3 · no percent style applied · values intact'};
+  });
+
   return R;
 }
 function brRenderSourceText(){ return brSourceText; }
@@ -1471,17 +1536,17 @@ function buildScreenWorkbookModel(sc){
     ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629',{n:t.budget,f:'money'}],
     ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0646\u0641\u0651\u0630',{n:t.executed,f:'money'}],
     ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062a\u0628\u0642\u064a',{n:t.remaining,f:'money'}],
-    ['\u0646\u0633\u0628\u0629 \u0627\u0644\u062a\u0646\u0641\u064a\u0630',t.executionPct===null?'\u2014':{n:t.executionPct,f:'money'}],
+    ['\u0646\u0633\u0628\u0629 \u0627\u0644\u062a\u0646\u0641\u064a\u0630',t.executionPct===null?'\u2014':{n:t.executionPct,f:'percent'}],
     ['\u0639\u062f\u062f \u0627\u0644\u062a\u0648\u0632\u064a\u0639\u0627\u062a \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629',{n:m.approvedRunCount,f:'qty'}]
   ]});
   var d=[['\u0627\u0644\u0634\u0647\u0631','\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629','\u0627\u0644\u0645\u0646\u0641\u0651\u0630',
           '\u0627\u0644\u0645\u062a\u0628\u0642\u064a','\u0646\u0633\u0628\u0629 \u0627\u0644\u062a\u0646\u0641\u064a\u0630']];
   sc.months.forEach(function(x){
     d.push([x.label,{n:x.budget,f:'money'},{n:x.executed,f:'money'},{n:x.remaining,f:'money'},
-            x.executionPct===null?'\u2014':{n:x.executionPct,f:'money'}]);
+            x.executionPct===null?'\u2014':{n:x.executionPct,f:'percent'}]);
   });
   d.push(['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a',{n:t.budget,f:'money'},{n:t.executed,f:'money'},
-          {n:t.remaining,f:'money'},t.executionPct===null?'\u2014':{n:t.executionPct,f:'money'}]);
+          {n:t.remaining,f:'money'},t.executionPct===null?'\u2014':{n:t.executionPct,f:'percent'}]);
   sheets.push({name:'\u0627\u0644\u062a\u0641\u0635\u064a\u0644 \u0627\u0644\u0634\u0647\u0631\u064a',
                widths:[24,22,22,22,16],rows:d});
   var raw='GHS_BudgetExecution_'+m.fyLabel+'_'+m.typeId;
@@ -4336,8 +4401,12 @@ function sheetXml(sh){
     var cells=row.map(function(v,ci){
       var ref=colRef(ci)+(ri+1);
       if(ri===0) return '<c r="'+ref+'" s="1" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>';
-      if(v&&typeof v==='object'&&typeof v.n==='number')
-        return '<c r="'+ref+'" s="'+(v.f==='money'?2:3)+'"><v>'+v.n+'</v></c>';
+      if(v&&typeof v==='object'&&typeof v.n==='number'){
+        /* 2 = money (#,##0.00) · 3 = qty (#,##0) · 4 = percent (#,##0.00"%")
+           The percent format appends a literal % sign, so the stored value stays
+           25 (not 0.25) and Excel displays 25.00%. */
+        var st=(v.f==='money')?2:((v.f==='percent')?4:3);
+        return '<c r="'+ref+'" s="'+st+'"><v>'+v.n+'</v></c>'; }
       if(typeof v==='number') return '<c r="'+ref+'"><v>'+v+'</v></c>';
       if(v==='') return '';
       return '<c r="'+ref+'" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>';
@@ -4380,18 +4449,20 @@ function xlsxBytes(model){
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+wbRels+'</Relationships>';
   var styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-    '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="#,##0"/></numFmts>'+
+    '<numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="#,##0"/>'+
+    '<numFmt numFmtId="166" formatCode="#,##0.00&quot;%&quot;"/></numFmts>'+
     '<fonts count="2"><font><sz val="11"/><name val="Arial"/></font>'+
     '<font><b/><sz val="11"/><name val="Arial"/></font></fonts>'+
     '<fills count="2"><fill><patternFill patternType="none"/></fill>'+
     '<fill><patternFill patternType="gray125"/></fill></fills>'+
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-    '<cellXfs count="4">'+
+    '<cellXfs count="5">'+
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
     '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+
     '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
     '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
+    '<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
     '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
   var files=[
     {name:'[Content_Types].xml',data:utf8Bytes(ct)},
