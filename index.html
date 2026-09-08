@@ -2199,6 +2199,282 @@ window.GHS_ACTUAL_REPORT={
   currentBudgetCell:aeCurrentBudgetCell, annualMax:aeAnnualMax,
   snapshotLines:aeSnapshotLines, typeItems:aeTypeItems
 };
+
+/* ============================================================================
+   ACTUAL EXECUTION REPORT — in-page test runner (Phase 1)
+   Builds its own synthetic approved runs and swaps a throwaway GHS_RUNTIME for
+   the duration of the suite, then restores the real one. It never writes to
+   GHS_DATA, GHS_FIXTURE, LINES, MASTER, BAL, MOP or any approved run, and it
+   restores the report filters it borrowed.
+   ========================================================================== */
+function aeFreeze(o){
+  if(o&&typeof o==='object'&&!Object.isFrozen(o)){
+    Object.getOwnPropertyNames(o).forEach(function(k){ aeFreeze(o[k]); });
+    Object.freeze(o);
+  }
+  return o;
+}
+/* one invoice line, VAT split exactly as buildInvoiceSnapshot stores it */
+function aeMkLine(seq,itemId,itemName,qty,price){
+  var ti=aeR2(qty*price), bv=aeR2(ti/1.14), vv=aeR2(ti-bv);
+  return { invoiceLineId:'T-INV-L'+seq, distributionLineId:'T-L'+seq,
+           itemId:itemId, itemName:itemName, quantity:qty,
+           unitPriceSnapshotInclVat:price, lineTotalInclVat:ti,
+           beforeVat:bv, vat:vv, totalInclVat:ti, lineSeq:seq };
+}
+function aeMkRun(o){
+  var lines=o.lines.map(function(l,i){ return aeMkLine(i+1,l[0],l[1],l[2],l[3]); });
+  var sub=0,vat=0,tot=0;
+  lines.forEach(function(l){ sub=aeR2(sub+l.beforeVat); vat=aeR2(vat+l.vat); tot=aeR2(tot+l.totalInclVat); });
+  var run={ runId:o.id, fyId:o.fy, typeId:o.type, periodIndex:o.pi,
+    targetInclVat:o.target, distributedInclVat:tot,
+    approvalStatus:o.approval, status:o.status||o.approval,
+    approvedBy:o.approval==='APPROVED'?'U-TEST':null,
+    approvedAt:o.approvedAt||null, dataSource:o.src, invoiceCount:1 };
+  if(o.approval==='APPROVED'){
+    run.invoices=aeFreeze([{ invoiceId:o.id+'-INV001', runId:o.id, invoiceSeq:1,
+      lines:lines, lineCount:lines.length,
+      subtotalBeforeVat:sub, vat:vat, totalInclVat:tot }]);
+  }
+  return run;
+}
+/* the fixture items the synthetic runs use — read-only lookups */
+function aeFxItem(code){
+  var it=aeSrcItems().filter(function(x){ return x.i===code; })[0];
+  return it?{code:it.i,name:it.n,price:it.p}:{code:code,name:code,price:100};
+}
+function aeRunSuite(){
+  var R=[], n=0;
+  function TT(name,fn){ n++; var ok=false,d='';
+    try{ var r=fn(); ok=!!(r&&r.ok); d=(r&&r.detail)||''; }
+    catch(e){ ok=false; d='ERROR: '+e.message; }
+    R.push({n:n,name:name,ok:ok,detail:d}); }
+
+  /* ---------- throwaway world ---------- */
+  var FY='DEMO_FY', TY='DEMO_T';
+  var i5=aeFxItem('DM005'), i1=aeFxItem('DM001'), i6=aeFxItem('DM006');
+  var SEP1=aeMkRun({id:'T-SEP-1',fy:FY,type:TY,pi:1,target:100000,src:'FIXTURE',
+    approval:'APPROVED',approvedAt:'2026-03-01T09:00:00.000Z',
+    lines:[[i5.code,i5.name,877,i5.price],[i1.code,i1.name,100,i1.price]]});
+  var SEP2=aeMkRun({id:'T-SEP-2',fy:FY,type:TY,pi:1,target:150000,src:'FIXTURE',
+    approval:'APPROVED',approvedAt:'2026-03-10T09:00:00.000Z',
+    lines:[[i5.code,i5.name,123,i5.price],[i6.code,i6.name,20,i6.price]]});
+  var SEP3=aeMkRun({id:'T-SEP-3',fy:FY,type:TY,pi:1,target:80000,src:'FIXTURE',
+    approval:'APPROVED',approvedAt:'2026-04-20T09:00:00.000Z',
+    lines:[[i1.code,i1.name,50,i1.price]]});
+  var OCT1=aeMkRun({id:'T-OCT-1',fy:FY,type:TY,pi:2,target:120000,src:'FIXTURE',
+    approval:'APPROVED',approvedAt:'2026-03-05T09:00:00.000Z',
+    lines:[[i5.code,i5.name,60,i5.price]]});
+  var GEN1=aeMkRun({id:'T-GEN-1',fy:FY,type:TY,pi:1,target:90000,src:'FIXTURE',
+    approval:'GENERATED',status:'GENERATED',lines:[[i5.code,i5.name,999,i5.price]]});
+  var REV1=aeMkRun({id:'T-REV-1',fy:FY,type:TY,pi:1,target:90000,src:'FIXTURE',
+    approval:'REVIEW',status:'GENERATED',lines:[[i5.code,i5.name,999,i5.price]]});
+  var LIVE1=aeMkRun({id:'T-LIVE-1',fy:FY,type:TY,pi:1,target:500000,src:'LIVE',
+    approval:'APPROVED',approvedAt:'2026-03-01T09:00:00.000Z',
+    lines:[[i5.code,i5.name,777,i5.price]]});
+  var RUNS=[SEP1,SEP2,SEP3,OCT1,GEN1,REV1,LIVE1];
+  var FAKE_LINES=[{runId:'T-SEP-1',itemId:i5.code,quantity:1,lineTotalInclVat:1}];
+  var BALX={};
+
+  var realRT=window.GHS_RUNTIME;
+  var keep={fy:aeFy,from:aeFrom,to:aeTo,through:aeThrough,ot:aeOpenType,oi:aeOpenItem};
+  function withWorld(src,from,to,through,fn){
+    window.GHS_RUNTIME={
+      getRuns:function(){ return RUNS; },
+      getLines:function(){ return FAKE_LINES; },     /* deliberately wrong — must be ignored */
+      getSource:function(){ return src; },
+      getInvoices:function(id){ var r=RUNS.filter(function(x){return x.runId===id;})[0];
+        return (r&&r.invoices)?r.invoices:null; },
+      currentAllocation:function(s,fy,pi,t,orig){
+        var v=BALX[s+'|'+fy+'|'+pi+'|'+t];
+        return (v!==undefined)?{amount:v,origin:'OVERRIDE'}:{amount:Number(orig)||0,origin:'ORIGINAL'};
+      }
+    };
+    aeFy=FY; aeFrom=from; aeTo=to; aeThrough=through||'';
+    try{ return fn(); } finally { window.GHS_RUNTIME=realRT; }
+  }
+  var SEPBUD=(function(){ var b=(window.GHS_FIXTURE&&window.GHS_FIXTURE.monthlyBudgets||[])
+      .filter(function(x){return x.fy===FY&&x.pi===1;})[0]; return b?Number(b.inc):0; })();
+  var actSep=aeR2(SEP1.distributedInclVat+SEP2.distributedInclVat+SEP3.distributedInclVat);
+
+  TT('AER-01 '+T('العمليات المعتمدة فقط تدخل الفعلي','Only APPROVED runs enter Actual'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    return {ok:r.types.length===1&&r.types[0].runCount===3,
+            detail:'7 runs in the store -> 3 approved September runs counted'};
+  });
+  TT('AER-02 '+T('المسودة والمولَّدة والمراجعة مستبعدة','Draft / Generated / Review excluded'),function(){
+    var rs=withWorld('FIXTURE',1,1,'',function(){ return aeApprovedRuns(); });
+    return {ok:!rs.some(function(x){return x.runId==='T-GEN-1'||x.runId==='T-REV-1';}),
+            detail:'T-GEN-1 (GENERATED) and T-REV-1 (REVIEW) both excluded'};
+  });
+  TT('AER-03 '+T('حتى تاريخ اعتماد يفلتر حسب approvedAt','Through date filters by approvedAt'),function(){
+    var r=withWorld('FIXTURE',1,1,'2026-03-31',function(){ return aeBuild(); });
+    return {ok:r.types[0].runCount===2,
+            detail:'cutoff 2026-03-31 -> 03-01 and 03-10 in · 04-20 out'};
+  });
+  TT('AER-04 '+T('من/إلى شهر يفلتر حسب periodIndex','From/To month filters by periodIndex'),function(){
+    var rs=withWorld('FIXTURE',2,2,'',function(){ return aeApprovedRuns(); });
+    return {ok:rs.length===1&&rs[0].runId==='T-OCT-1',detail:'October window -> T-OCT-1 only'};
+  });
+  TT('AER-05 '+T('الموازنة لا تتضاعف بتعدد التشغيلات','Budget is not multiplied by multiple runs'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    return {ok:r.types[0].currentBudget===SEPBUD&&r.types[0].runCount===3,
+            detail:'3 September runs · current budget stays '+SEPBUD.toFixed(2)+
+                   ' (not '+(SEPBUD*3).toFixed(2)+')'};
+  });
+  TT('AER-06 '+T('الفعلي يجمع كل التشغيلات المطابقة','Actual sums every matching run'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    return {ok:r.types[0].actualValue===actSep&&r.types[0].runBudget===aeR2(100000+150000+80000),
+            detail:'actual '+r.types[0].actualValue.toFixed(2)+' = Σ of 3 snapshots · run budget '+
+                   r.types[0].runBudget.toFixed(2)+' = 100000+150000+80000'};
+  });
+  TT('AER-07 '+T('الحد السنوي لا يتضاعف بتعدد التشغيلات','Annual max is not multiplied by runs'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var it=r.types[0].items.filter(function(i){return i.itemId===i5.code;})[0];
+    return {ok:it.annualMax===aeAnnualMax(i5.code),
+            detail:i5.code+' annual max '+it.annualMax+' — the single (FY,item) limit, not x2'};
+  });
+  TT('AER-08 '+T('المتبقي = الحد السنوي − الكمية','Remaining qty = annual max − actual qty'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var it=r.types[0].items.filter(function(i){return i.itemId===i5.code;})[0];
+    return {ok:it.remainingQty===it.annualMax-it.qty&&it.qty===1000,
+            detail:i5.code+': '+it.annualMax+' − '+it.qty+' = '+it.remainingQty};
+  });
+  TT('AER-09 '+T('المتبقي = الموازنة الحالية − الفعلي','Remaining budget = current budget − actual'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var t=r.types[0];
+    return {ok:t.remainingBudget===aeR2(t.currentBudget-t.actualValue),
+            detail:t.currentBudget.toFixed(2)+' − '+t.actualValue.toFixed(2)+' = '+t.remainingBudget.toFixed(2)};
+  });
+  TT('AER-10 '+T('اختلاف الموازنة يحذّر ولا يغيّر الفعلي','Budget divergence warns, never changes Actual'),function(){
+    var base=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    BALX['FIXTURE|'+FY+'|1|'+TY]=999999;
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    delete BALX['FIXTURE|'+FY+'|1|'+TY];
+    return {ok:r.types[0].currentBudget===999999&&r.types[0].actualValue===base.types[0].actualValue&&
+               r.types[0].runBudget===base.types[0].runBudget&&r.types[0].budgetVariance!==0,
+            detail:'current budget overridden to 999999 · actual and run budget unchanged · variance '+
+                   r.types[0].budgetVariance.toFixed(2)};
+  });
+  TT('AER-11 '+T('سعر الوحدة التاريخي من اللقطة','Historical unit price comes from the snapshot'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var it=r.types[0].items.filter(function(i){return i.itemId===i5.code;})[0];
+    var snap=SEP1.invoices[0].lines.filter(function(l){return l.itemId===i5.code;})[0];
+    return {ok:it.runs.some(function(x){return x.unitPrice===snap.unitPriceSnapshotInclVat;}),
+            detail:i5.code+' run price '+snap.unitPriceSnapshotInclVat+' matches the frozen line'};
+  });
+  TT('AER-12 '+T('السعر المتغيّر يعرض المتوسط المرجَّح','Varying prices show the weighted average'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var ok=r.types[0].items.every(function(i){
+      return i.qty===0 ? i.weightedAvg===null : i.weightedAvg===aeR2(i.value/i.qty); });
+    return {ok:ok,detail:'weighted average = value/qty for every item with an actual'};
+  });
+  TT('AER-13 '+T('لا قراءة من البنود أو الأسعار الحالية','No MASTER / MOP read for Actual'),function(){
+    var src=String(aeBuild)+String(aeSnapshotLines)+String(aeApprovedRuns);
+    return {ok:!/masterFor\(|resolvePrice\(|mopGet\(|balGet\(/.test(src)&&
+               !/getLines\(/.test(src)&&/invoices/.test(src),
+            detail:'aggregation reads run.invoices only — no getLines, no MASTER, no MOP, no BAL'};
+  });
+  TT('AER-14 '+T('لا تغيير في العمليات المعتمدة','No change to approved runs'),function(){
+    var before=JSON.stringify(RUNS);
+    withWorld('FIXTURE',1,1,'',function(){ aeBuild(); aeBuild(); return aeApprovedRuns(); });
+    return {ok:JSON.stringify(RUNS)===before&&Object.isFrozen(SEP1.invoices),
+            detail:'runs byte-identical after 2 builds · snapshots still frozen'};
+  });
+  TT('AER-15 '+T('عزل بيانات التشغيل عن الاختبار','LIVE / FIXTURE isolation'),function(){
+    var rs=withWorld('FIXTURE',1,1,'',function(){ return aeApprovedRuns(); });
+    return {ok:rs.length===3&&!rs.some(function(x){return x.runId==='T-LIVE-1';}),
+            detail:'a LIVE approved run in the same FY/month/type is excluded from the FIXTURE report'};
+  });
+  TT('AER-16 '+T('الفعلي من run.invoices لا من LINES','Actual comes from run.invoices, not LINES'),function(){
+    var src=String(aeSnapshotLines);
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    return {ok:/invoices/.test(src)&&!/getLines/.test(String(aeBuild))&&r.types[0].actualValue===actSep,
+            detail:'getLines() returns a bogus 1-unit row and is ignored · actual '+
+                   r.types[0].actualValue.toFixed(2)+' comes from the frozen invoices'};
+  });
+  TT('AER-17 '+T('تعديل LINES بعد الاعتماد لا يغيّر الفعلي','Mutating LINES does not change Actual'),function(){
+    var a=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    FAKE_LINES.forEach(function(l){ l.quantity=999999; l.lineTotalInclVat=999999; });
+    FAKE_LINES.push({runId:'T-SEP-1',itemId:i5.code,quantity:999999,lineTotalInclVat:999999});
+    var b=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    return {ok:a.types[0].actualValue===b.types[0].actualValue&&a.types[0].actualQty===b.types[0].actualQty,
+            detail:'mutable LINES corrupted to 999999 · actual still '+b.types[0].actualValue.toFixed(2)+
+                   ' and qty '+b.types[0].actualQty};
+  });
+  TT('AER-18 '+T('الكمية والسعر والقيمة من اللقطة','Snapshot quantity / price / value are the source'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var it=r.types[0].items.filter(function(i){return i.itemId===i5.code;})[0];
+    var run=it.runs.filter(function(x){return x.runId==='T-SEP-1';})[0];
+    var snap=SEP1.invoices[0].lines.filter(function(l){return l.itemId===i5.code;})[0];
+    return {ok:run.quantity===877&&run.quantity===snap.quantity&&
+               run.unitPrice===snap.unitPriceSnapshotInclVat&&run.value===aeR2(snap.lineTotalInclVat),
+            detail:i5.code+': qty '+snap.quantity+' · price '+snap.unitPriceSnapshotInclVat+
+                   ' · value '+snap.lineTotalInclVat.toFixed(2)+' — verbatim from the frozen line'};
+  });
+  TT('AER-19 '+T('الحد السنوي يشمل كل أصناف النوع','Type annual max covers every item of the type'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var all=aeTypeItems(TY);
+    var withMax=all.filter(function(x){ return aeAnnualMax(x.i)!=null; });
+    var expected=withMax.reduce(function(a,x){ return a+aeAnnualMax(x.i); },0);
+    var distributed=r.types[0].items.filter(function(i){return i.hasActual;}).length;
+    return {ok:r.types[0].annualMaxQty===expected&&all.length>distributed,
+            detail:all.length+' items in the type · '+withMax.length+' with an annual max · sum '+
+                   expected+' · only '+distributed+' were distributed'};
+  });
+  TT('AER-20 '+T('الصنف بلا تنفيذ: كمية 0 والمتبقي = الحد','Undistributed item: qty 0, remaining = annual max'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var zero=r.types[0].items.filter(function(i){ return !i.hasActual; });
+    return {ok:zero.length>0&&zero.every(function(i){
+              return i.qty===0&&i.value===0&&
+                (i.annualMax==null?i.remainingQty===null:i.remainingQty===i.annualMax); }),
+            detail:zero.length+' undistributed items · qty 0 · value 0 · remaining = annual max'};
+  });
+  TT('AER-21 '+T('الصنف بلا حد سنوي يظهر —','Item without an annual max shows an em dash'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var noMax=r.types[0].items.filter(function(i){ return i.annualMax===null; });
+    return {ok:noMax.every(function(i){ return i.remainingQty===null; }),
+            detail:noMax.length+' items have no annual max -> annualMax null, remainingQty null (rendered \u2014)'};
+  });
+  TT('AER-22 '+T('المتبقي = الحد − الكمية لكل صنف','Remaining = annual max − qty for every item'),function(){
+    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var ok=r.types[0].items.every(function(i){
+      return i.annualMax==null ? i.remainingQty===null : i.remainingQty===i.annualMax-i.qty; });
+    return {ok:ok,detail:r.types[0].items.length+' items checked'};
+  });
+  TT('AER-23 '+T('تعدد التشغيلات يجمع الفعلي لا الحد','Multiple runs aggregate actual, never annual max'),function(){
+    var sep=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
+    var oct=withWorld('FIXTURE',2,2,'',function(){ return aeBuild(); });
+    return {ok:sep.types[0].annualMaxQty===oct.types[0].annualMaxQty&&
+               sep.types[0].runCount===3&&oct.types[0].runCount===1&&
+               sep.types[0].actualValue!==oct.types[0].actualValue,
+            detail:'September (3 runs) and October (1 run) share annual max '+
+                   sep.types[0].annualMaxQty+' · actuals differ'};
+  });
+
+  /* restore the filters the suite borrowed, then repaint the real report */
+  aeFy=keep.fy; aeFrom=keep.from; aeTo=keep.to; aeThrough=keep.through;
+  aeOpenType=keep.ot; aeOpenItem=keep.oi;
+  window.GHS_RUNTIME=realRT;
+  return R;
+}
+function aeRenderTests(R){
+  var pass=R.filter(function(x){return x.ok;}).length;
+  var pill=document.getElementById('aeTPill');
+  pill.textContent=pass+' / '+R.length;
+  pill.className='pill '+(pass===R.length?'ok':'bad');
+  document.getElementById('aeTRows').innerHTML=R.map(function(x){
+    return '<tr><td>'+x.n+'</td><td style="white-space:normal">'+aeEsc(x.name)+'</td>'+
+      '<td><span class="pill '+(x.ok?'ok':'bad')+'">'+(x.ok?'PASS':'FAIL')+'</span></td>'+
+      '<td class="unconstrained" style="white-space:normal">'+aeEsc(x.detail)+'</td></tr>';
+  }).join('');
+}
+document.getElementById('aeRunTests').onclick=function(){
+  aeRenderTests(aeRunSuite());
+  aeRender();                       /* repaint with the restored real data */
+};
+document.getElementById('aeTNote') && (document.getElementById('aeTNote').textContent='');
+
 aeFy=(aeSrcData().fyears[0]||{}).id;
 (function(){ var ms=aeMonthsOf(aeFy); aeFrom=ms.length?ms[0].pi:null; aeTo=ms.length?ms[ms.length-1].pi:null; })();
 aeRender();
