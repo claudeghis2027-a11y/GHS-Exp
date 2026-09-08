@@ -363,6 +363,7 @@ tr.over-row td{background:#fef2f2}
     <div class="rowacts">
       <button class="btn secondary" id="dgReview">مراجعة قبل الاعتماد</button>
       <button class="btn green" id="dgApprove">✓ اعتماد التوزيع والفواتير</button>
+      <button class="btn secondary" id="dgExcel" disabled>📊 تصدير Excel</button>
     </div>
     <div class="runmeta" id="dgApprMeta"></div>
   </div>
@@ -3272,6 +3273,138 @@ function bhRunSuite(){
             detail:'identical values, different object instances (fresh deep clone each call)'};
   });
 
+  /* ---------- S3 · Real XLSX Export (S3-01 .. S3-23) ---------- */
+  var S3=s2Env();
+  var S3a=S3.make(1,5,801,'RUN-XA'); S3.approve(S3a);
+  var S3g=S3.make(1,3,802,'RUN-XG');
+  var S3r=S3.make(1,3,803,'RUN-XR'); S3r.run.approvalStatus='REVIEW';
+  function s3Model(runId){ var c=S3.build(runId); return c?buildWorkbookModel(c):null; }
+  var M3=s3Model('RUN-XA'), C3=S3.build('RUN-XA');
+  function s3Bytes(m){ try{ return xlsxBytes(m); }catch(e){ return null; } }
+
+  TT('S3-01 · '+bhT('عملية معتمدة تُصدَّر','Approved run exports'),function(){
+    var b=s3Bytes(M3);
+    return {ok:M3!==null&&b!==null&&b.length>0&&b[0]===0x50&&b[1]===0x4B,
+            detail:'model built · '+(b?b.length:0)+' bytes · ZIP signature PK '+(b&&b[0]===0x50&&b[1]===0x4B)};
+  });
+  TT('S3-02 · '+bhT('GENERATED محجوبة','GENERATED blocked'),function(){
+    return {ok:s3Model('RUN-XG')===null,detail:'status '+S3g.run.approvalStatus+' -> no model'};
+  });
+  TT('S3-03 · '+bhT('REVIEW محجوبة','REVIEW blocked'),function(){
+    return {ok:s3Model('RUN-XR')===null,detail:'status REVIEW -> no model'};
+  });
+  TT('S3-04 · '+bhT('عملية مجهولة محجوبة','Unknown run blocked'),function(){
+    return {ok:s3Model('RUN-NOPE')===null,detail:'unknown runId -> no model'};
+  });
+  TT('S3-05 · '+bhT('أربع أوراق بالضبط','Exactly 4 sheets'),function(){
+    var names=M3.sheets.map(function(s){return s.name;});
+    return {ok:M3.sheets.length===4&&names[0]==='\u0645\u0644\u062e\u0635'&&names[1]==='\u0627\u0644\u062a\u0648\u0632\u064a\u0639'&&
+               names[2]==='\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631'&&names[3]==='\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',
+            detail:names.join(' · ')};
+  });
+  TT('S3-06 · '+bhT('الملخص يطابق السياق','Summary matches the context'),function(){
+    var rows=M3.sheets[0].rows, map={};
+    rows.slice(1).forEach(function(r){ map[r[0]]=(r[1]&&r[1].n!==undefined)?r[1].n:r[1]; });
+    return {ok:map['Run ID']===C3.metadata.runId&&
+               map['\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a']===C3.metadata.dataSource&&
+               map['\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0645\u0633\u062a\u0647\u062f\u0641\u0629']===C3.totals.targetBudget&&
+               map['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0648\u0632\u064a\u0639']===C3.totals.distributedTotal,
+            detail:'runId · source · target '+C3.totals.targetBudget.toFixed(2)+' · distributed '+C3.totals.distributedTotal.toFixed(2)};
+  });
+  TT('S3-07 · '+bhT('عدد صفوف التوزيع','Distribution row count'),function(){
+    return {ok:M3.sheets[1].rows.length-1===C3.distribution.lineCount,
+            detail:(M3.sheets[1].rows.length-1)+' data rows = '+C3.distribution.lineCount+' lines'};
+  });
+  TT('S3-08 · '+bhT('عدد صفوف الفواتير','Invoice row count'),function(){
+    return {ok:M3.sheets[2].rows.length-2===C3.invoices.count,
+            detail:(M3.sheets[2].rows.length-2)+' invoice rows + 1 total row = '+C3.invoices.count};
+  });
+  TT('S3-09 · '+bhT('عدد صفوف تفاصيل الفواتير','Invoice detail row count'),function(){
+    var n=0; C3.invoices.invoices.forEach(function(v){ n+=v.lines.length; });
+    return {ok:M3.sheets[3].rows.length-1===n,detail:(M3.sheets[3].rows.length-1)+' detail rows = '+n+' invoice lines'};
+  });
+  TT('S3-10 · '+bhT('إجمالي التوزيع = إجمالي الفواتير','Distribution total = invoice total'),function(){
+    var d=0; M3.sheets[1].rows.slice(1).forEach(function(r){ d=r2(d+r[5].n); });
+    var i=0; M3.sheets[2].rows.slice(1,-1).forEach(function(r){ i=r2(i+r[4].n); });
+    return {ok:d===i&&d===r2(C3.totals.distributedTotal),
+            detail:'sheet2 Σ '+d.toFixed(2)+' = sheet3 Σ '+i.toFixed(2)+' = context '+C3.totals.distributedTotal.toFixed(2)};
+  });
+  TT('S3-11 · '+bhT('قبل الضريبة + الضريبة = الإجمالي','Subtotal + VAT = Total'),function(){
+    var ok=M3.sheets[2].rows.slice(1,-1).every(function(r){ return r2(r[2].n+r[3].n)===r[4].n; });
+    var tot=M3.sheets[2].rows[M3.sheets[2].rows.length-1];
+    return {ok:ok&&r2(tot[2].n+tot[3].n)===tot[4].n,
+            detail:'every invoice row balances · total row '+tot[2].n.toFixed(2)+' + '+tot[3].n.toFixed(2)+' = '+tot[4].n.toFixed(2)};
+  });
+  TT('S3-12 · '+bhT('لا تكرار في تفاصيل الفواتير','No duplicate invoice lines'),function(){
+    var c={}; M3.sheets[3].rows.slice(1).forEach(function(r){ c[r[2]]=(c[r[2]]||0)+1; });
+    return {ok:Object.keys(c).every(function(k){return c[k]===1;}),detail:'each item code appears once'};
+  });
+  TT('S3-13 · '+bhT('لا فقد لبنود التوزيع','No omitted distribution lines'),function(){
+    var inDet={}; M3.sheets[3].rows.slice(1).forEach(function(r){ inDet[r[2]]=1; });
+    var miss=M3.sheets[1].rows.slice(1).filter(function(r){ return !inDet[r[1]]; });
+    return {ok:miss.length===0,detail:'missing '+miss.length+' of '+(M3.sheets[1].rows.length-1)};
+  });
+  TT('S3-14 · '+bhT('لا تقسيم كميات','No quantity split'),function(){
+    var q={}; M3.sheets[3].rows.slice(1).forEach(function(r){ q[r[2]]=(q[r[2]]||0)+r[4].n; });
+    return {ok:M3.sheets[1].rows.slice(1).every(function(r){ return q[r[1]]===r[3].n; }),
+            detail:'detail quantity per item equals the distribution quantity'};
+  });
+  TT('S3-15 · '+bhT('القيم تطابق اللقطة','Values match the snapshot'),function(){
+    var ok=M3.sheets[1].rows.slice(1).every(function(r,i){
+      var l=C3.distribution.lines[i];
+      return r[0]===l.lineId&&r[1]===l.itemId&&r[2]===l.itemName&&
+             r[3].n===l.quantity&&r[4].n===l.unitPriceInclVat&&r[5].n===l.lineTotalInclVat; });
+    return {ok:ok,detail:'lineId · code · name · qty · unit price · line total all identical'};
+  });
+  function s3Print(m){ return JSON.stringify(m); }
+  TT('S3-16 · '+bhT('تغيير بيانات البنود لا يؤثر','Master change does not affect the export'),function(){
+    var before=s3Print(M3);
+    S3.F.items.forEach(function(x){ x.p=1; x.n='CHANGED'; x.a=false; });
+    return {ok:s3Print(s3Model('RUN-XA'))===before,detail:'all master prices/names rewritten · workbook identical'};
+  });
+  TT('S3-17 · '+bhT('تغيير السعر الشهري لا يؤثر','MOP change does not affect the export'),function(){
+    var before=s3Print(M3); S3.saveP(1,{DM001:'999.99'});
+    return {ok:s3Print(s3Model('RUN-XA'))===before,detail:'MOP -> 999.99 · workbook identical'};
+  });
+  TT('S3-18 · '+bhT('تغيير الموازنة لا يؤثر','BAL change does not affect the export'),function(){
+    var before=s3Print(M3); S3.saveB(1,'600000');
+    return {ok:s3Print(s3Model('RUN-XA'))===before,detail:'allocation -> 600000 · workbook identical'};
+  });
+  TT('S3-19 · '+bhT('تغيير مصدر الواجهة لا يؤثر','UI source change does not affect the export'),function(){
+    var before=s3Print(M3), keep=bhSource;
+    bhSource='LIVE'; var a=s3Print(s3Model('RUN-XA'));
+    bhSource='FIXTURE'; var b=s3Print(s3Model('RUN-XA'));
+    bhSource=keep;
+    return {ok:a===before&&b===before,detail:'both UI sources yield the identical workbook'};
+  });
+  TT('S3-20 · '+bhT('تصدير RUN-A ثابت بعد RUN-B','RUN-A export identical after RUN-B'),function(){
+    var E=s2Env();
+    var a=E.make(1,5,811,'RUN-YA'); E.approve(a);
+    var first=JSON.stringify(buildWorkbookModel(E.build('RUN-YA')));
+    var b=E.make(1,3,812,'RUN-YB'); E.approve(b);
+    return {ok:JSON.stringify(buildWorkbookModel(E.build('RUN-YA')))===first,
+            detail:'RUN-YB approved afterwards · RUN-YA workbook byte-identical'};
+  });
+  TT('S3-21 · '+bhT('عزل التشغيل عن الاختبار','LIVE / FIXTURE isolation'),function(){
+    var E=s2Env();
+    var L=E.make(1,3,813,'RUN-YL','LIVE'); E.approve(L);
+    var ml=buildWorkbookModel(E.build('RUN-YL'));
+    var src=function(m){ var r=m.sheets[0].rows.filter(function(x){return x[0]==='\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a';})[0]; return r?r[1]:null; };
+    return {ok:src(M3)==='FIXTURE'&&src(ml)==='LIVE'&&E.build('RUN-XA')===null,
+            detail:'FIXTURE workbook source FIXTURE · LIVE workbook source LIVE · no cross lookup'};
+  });
+  TT('S3-22 · '+bhT('التصدير لا يعدّل العملية','Export does not mutate the run'),function(){
+    var before=JSON.stringify({r:S3a.run,l:S3a.lines,i:S3a.run.invoices});
+    s3Model('RUN-XA'); s3Bytes(M3); s3Model('RUN-XA');
+    return {ok:JSON.stringify({r:S3a.run,l:S3a.lines,i:S3a.run.invoices})===before,
+            detail:'run · lines · invoices byte-identical after 3 export calls'};
+  });
+  TT('S3-23 · '+bhT('التصدير لا ينشئ عملية جديدة','Export does not create a new run'),function(){
+    var n=S3.RUNS.length;
+    s3Model('RUN-XA'); s3Bytes(M3);
+    return {ok:S3.RUNS.length===n,detail:'RUNS count '+n+' before and after export'};
+  });
+
   return R;
 }
 function bhRenderTests(R){
@@ -3368,6 +3501,8 @@ function renderApproval(){
   var res=approvalChecks(CURRENT);
   var chk=document.getElementById('dgApprChk'), box=document.getElementById('dgApprStatus');
   var bReview=document.getElementById('dgReview'), bAppr=document.getElementById('dgApprove');
+  var bExcel=document.getElementById('dgExcel');
+  if(bExcel){ bExcel.textContent=T('📊 تصدير Excel','📊 Export Excel'); bExcel.disabled=true; }
   bReview.textContent=T('مراجعة قبل الاعتماد','Review before approval');
   bAppr.textContent=T('✓ اعتماد التوزيع والفواتير','✓ Approve distribution & invoices');
 
@@ -3381,6 +3516,7 @@ function renderApproval(){
       T('عدد الفواتير','invoices')+' '+grp.invoices.length+' · '+
       T('إجمالي الفواتير','invoices total')+' '+money(grp.invoicedTotalInclVat)+'</div>';
     bReview.disabled=true; bAppr.disabled=true;
+    if(bExcel) bExcel.disabled=false;                    /* APPROVED — export allowed */
   } else if(st==='REVIEW'){
     chk.classList.remove('hidden');
     chk.innerHTML=res.checks.map(function(c){
@@ -3700,6 +3836,17 @@ document.getElementById('dgApprove').onclick=function(){
   audit('DISTRIBUTION_APPROVED',CURRENT.run);
   renderApproval();
 };
+document.getElementById('dgExcel').onclick=function(){
+  if(!CURRENT||CURRENT.run.approvalStatus!=='APPROVED'){
+    document.getElementById('dgApprMeta').textContent=
+      T('لا يمكن تصدير هذا التشغيل قبل اعتماده','This run cannot be exported before approval');
+    return; }
+  var r=exportRunToExcel(CURRENT.run.runId);
+  document.getElementById('dgApprMeta').textContent = r.ok
+    ? T('تم تصدير ملف Excel بنجاح — ','Excel exported successfully — ')+r.fileName+
+      ' · '+r.sheets+T(' أوراق · ',' sheets · ')+r.bytes+' bytes'
+    : T('لا يمكن تصدير هذا التشغيل قبل اعتماده','This run cannot be exported before approval');
+};
 document.getElementById('dgGen').onclick=function(){ doGenerate(false); };
 document.getElementById('dgRegen').onclick=function(){ doGenerate(true); };
 Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
@@ -3812,6 +3959,220 @@ function buildExportContext(runId){
   return deepFreeze(ctx);
 }
 
+/* ============================================================================
+   S3 — REAL XLSX EXPORT
+   A minimal, self-contained OOXML writer: an .xlsx file is a ZIP archive of
+   XML parts. The ZIP is written with the STORE method (no compression), so no
+   deflate implementation and no external library are required.
+   Data comes exclusively from buildExportContext(runId) — the exporter never
+   collects or recalculates anything itself.
+   ========================================================================== */
+var CRC_TBL=(function(){ var t=[],c,n,k;
+  for(n=0;n<256;n++){ c=n; for(k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; }
+  return t; })();
+function crc32(bytes){ var c=0xFFFFFFFF;
+  for(var i=0;i<bytes.length;i++) c=CRC_TBL[(c^bytes[i])&0xFF]^(c>>>8);
+  return (c^0xFFFFFFFF)>>>0; }
+function utf8Bytes(str){
+  if(typeof TextEncoder!=='undefined') return new TextEncoder().encode(str);
+  var out=[],i,c;
+  for(i=0;i<str.length;i++){ c=str.charCodeAt(i);
+    if(c<0x80) out.push(c);
+    else if(c<0x800){ out.push(0xC0|(c>>6),0x80|(c&63)); }
+    else if(c<0xD800||c>=0xE000){ out.push(0xE0|(c>>12),0x80|((c>>6)&63),0x80|(c&63)); }
+    else { i++; c=0x10000+(((c&1023)<<10)|(str.charCodeAt(i)&1023));
+      out.push(0xF0|(c>>18),0x80|((c>>12)&63),0x80|((c>>6)&63),0x80|(c&63)); } }
+  return new Uint8Array(out);
+}
+/* ZIP (STORE) writer — enough for a valid .xlsx container */
+function zipStore(files){
+  var parts=[], central=[], offset=0;
+  function u16(n){ return [n&255,(n>>8)&255]; }
+  function u32(n){ return [n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255]; }
+  files.forEach(function(f){
+    var name=utf8Bytes(f.name), data=f.data, crc=crc32(data);
+    var lh=[].concat([0x50,0x4B,0x03,0x04],u16(20),u16(0x0800),u16(0),u16(0),u16(0),
+                     u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0));
+    parts.push(new Uint8Array(lh)); parts.push(name); parts.push(data);
+    central.push({name:name,crc:crc,size:data.length,offset:offset});
+    offset+=lh.length+name.length+data.length;
+  });
+  var cdStart=offset, cd=[];
+  central.forEach(function(c){
+    var h=[].concat([0x50,0x4B,0x01,0x02],u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0),
+                    u32(c.crc),u32(c.size),u32(c.size),u16(c.name.length),
+                    u16(0),u16(0),u16(0),u16(0),u32(0),u32(c.offset));
+    cd.push(new Uint8Array(h)); cd.push(c.name);
+    offset+=h.length+c.name.length;
+  });
+  var end=[].concat([0x50,0x4B,0x05,0x06],u16(0),u16(0),u16(central.length),u16(central.length),
+                    u32(offset-cdStart),u32(cdStart),u16(0));
+  var all=parts.concat(cd,[new Uint8Array(end)]);
+  var total=0; all.forEach(function(a){ total+=a.length; });
+  var buf=new Uint8Array(total), p=0;
+  all.forEach(function(a){ buf.set(a,p); p+=a.length; });
+  return buf;
+}
+function xmlEsc(s){ return String(s==null?'':s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&apos;')
+  .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,''); }
+function colRef(n){ var s=''; n++; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=(n-m-1)/26; } return s; }
+
+/* ---- workbook model: pure data, fully testable without producing bytes ---- */
+function buildWorkbookModel(ctx){
+  if(!ctx) return null;
+  var m=ctx.metadata, t=ctx.totals;
+  var sheets=[];
+  sheets.push({ name:'\u0645\u0644\u062e\u0635', widths:[34,30], rows:[
+    ['\u0627\u0644\u0628\u064a\u0627\u0646','\u0627\u0644\u0642\u064a\u0645\u0629'],
+    ['Run ID',m.runId],
+    ['\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a',m.dataSource],
+    ['\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629',m.financialYear],
+    ['\u0627\u0644\u0634\u0647\u0631',m.month],
+    ['\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',m.expenseType],
+    ['\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0645\u0633\u062a\u0647\u062f\u0641\u0629',{n:t.targetBudget,f:'money'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0648\u0632\u064a\u0639',{n:t.distributedTotal,f:'money'}],
+    ['\u062d\u0627\u0644\u0629 \u0627\u0644\u062a\u0648\u0632\u064a\u0639',m.distributionStatus],
+    ['\u062d\u0627\u0644\u0629 \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f',m.approvalStatus],
+    ['\u0627\u0639\u062a\u0645\u062f\u0647\u0627',m.approvedBy],
+    ['\u0648\u0642\u062a \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f',String(m.approvedAt||'').replace('T',' ').slice(0,19)],
+    ['\u0639\u062f\u062f \u0628\u0646\u0648\u062f \u0627\u0644\u062a\u0648\u0632\u064a\u0639',{n:ctx.distribution.lineCount,f:'qty'}],
+    ['\u0639\u062f\u062f \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',{n:ctx.invoices.count,f:'qty'}]
+  ]});
+  var d=[['Line ID','\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','\u0627\u0644\u0635\u0646\u0641','\u0627\u0644\u0643\u0645\u064a\u0629',
+          '\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629 \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629',
+          '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0628\u0646\u062f \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629',
+          '\u0627\u0644\u0623\u062f\u0646\u0649 \u0627\u0644\u0634\u0647\u0631\u064a','\u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0634\u0647\u0631\u064a',
+          '\u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a']];
+  ctx.distribution.lines.forEach(function(l){
+    d.push([l.lineId,l.itemId,l.itemName,{n:l.quantity,f:'qty'},
+            {n:l.unitPriceInclVat,f:'money'},{n:l.lineTotalInclVat,f:'money'},
+            l.monthlyMinQty==null?'':{n:l.monthlyMinQty,f:'qty'},
+            l.monthlyMaxQty==null?'':{n:l.monthlyMaxQty,f:'qty'},
+            l.annualMaxQty==null?'':{n:l.annualMaxQty,f:'qty'}]);
+  });
+  sheets.push({name:'\u0627\u0644\u062a\u0648\u0632\u064a\u0639',widths:[16,12,34,10,18,20,14,14,14],rows:d});
+
+  var iv=[['\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629','\u0639\u062f\u062f \u0627\u0644\u0628\u0646\u0648\u062f',
+           '\u0627\u0644\u0645\u0628\u0644\u063a \u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629',
+           '\u0627\u0644\u0636\u0631\u064a\u0628\u0629 14%','\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629']];
+  ctx.invoices.invoices.forEach(function(v){
+    iv.push([v.invoiceId,{n:v.lineCount,f:'qty'},{n:v.subtotalBeforeVat,f:'money'},
+             {n:v.vat,f:'money'},{n:v.totalInclVat,f:'money'}]);
+  });
+  iv.push(['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a','',{n:ctx.totals.subtotalBeforeVat,f:'money'},
+           {n:ctx.totals.vat,f:'money'},{n:ctx.totals.totalInclusiveVat,f:'money'}]);
+  sheets.push({name:'\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',widths:[22,12,20,18,22],rows:iv});
+
+  var dt=[['\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629','Line ID','\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641',
+           '\u0627\u0644\u0635\u0646\u0641','\u0627\u0644\u0643\u0645\u064a\u0629',
+           '\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629 \u0634\u0627\u0645\u0644','\u0642\u064a\u0645\u0629 \u0627\u0644\u0628\u0646\u062f \u0634\u0627\u0645\u0644',
+           '\u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','\u0627\u0644\u0636\u0631\u064a\u0628\u0629','\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0634\u0627\u0645\u0644']];
+  ctx.invoices.invoices.forEach(function(v){
+    v.lines.forEach(function(l){
+      dt.push([v.invoiceId,l.invoiceLineId,l.itemId,l.itemName,{n:l.quantity,f:'qty'},
+               {n:l.unitPriceSnapshotInclVat,f:'money'},{n:l.lineTotalInclVat,f:'money'},
+               {n:l.beforeVat,f:'money'},{n:l.vat,f:'money'},{n:l.totalInclVat,f:'money'}]);
+    });
+  });
+  sheets.push({name:'\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631',
+               widths:[22,20,12,32,10,18,18,16,14,18],rows:dt});
+  return {sheets:sheets, fileName:xlsxFileName(ctx)};
+}
+function xlsxFileName(ctx){
+  var m=ctx.metadata;
+  var raw='GHS_Expense_'+m.financialYear+'_M'+m.month+'_'+m.expenseType+'_'+m.runId;
+  return raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx';
+}
+/* ---- model -> xlsx bytes ---- */
+function sheetXml(sh){
+  var rows=sh.rows.map(function(row,ri){
+    var cells=row.map(function(v,ci){
+      var ref=colRef(ci)+(ri+1);
+      if(ri===0) return '<c r="'+ref+'" s="1" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>';
+      if(v&&typeof v==='object'&&typeof v.n==='number')
+        return '<c r="'+ref+'" s="'+(v.f==='money'?2:3)+'"><v>'+v.n+'</v></c>';
+      if(typeof v==='number') return '<c r="'+ref+'"><v>'+v+'</v></c>';
+      if(v==='') return '';
+      return '<c r="'+ref+'" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>';
+    }).join('');
+    return '<row r="'+(ri+1)+'">'+cells+'</row>';
+  }).join('');
+  var cols=sh.widths?('<cols>'+sh.widths.map(function(w,i){
+    return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'; }).join('')+'</cols>'):'';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<sheetViews><sheetView rightToLeft="1" workbookViewId="0">'+
+    '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'+
+    '</sheetView></sheetViews>'+cols+'<sheetData>'+rows+'</sheetData></worksheet>';
+}
+function xlsxBytes(model){
+  var n=model.sheets.length, i;
+  var ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+    '<Default Extension="xml" ContentType="application/xml"/>'+
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
+  for(i=0;i<n;i++) ct+='<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+  ct+='</Types>';
+  var rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'+
+    '</Relationships>';
+  var wbSheets='',wbRels='';
+  for(i=0;i<n;i++){
+    wbSheets+='<sheet name="'+xmlEsc(model.sheets[i].name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>';
+    wbRels+='<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>';
+  }
+  wbRels+='<Relationship Id="rId'+(n+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
+  var wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+    '<sheets>'+wbSheets+'</sheets></workbook>';
+  var wbr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+wbRels+'</Relationships>';
+  var styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="#,##0"/></numFmts>'+
+    '<fonts count="2"><font><sz val="11"/><name val="Arial"/></font>'+
+    '<font><b/><sz val="11"/><name val="Arial"/></font></fonts>'+
+    '<fills count="2"><fill><patternFill patternType="none"/></fill>'+
+    '<fill><patternFill patternType="gray125"/></fill></fills>'+
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+    '<cellXfs count="4">'+
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
+    '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
+    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  var files=[
+    {name:'[Content_Types].xml',data:utf8Bytes(ct)},
+    {name:'_rels/.rels',data:utf8Bytes(rels)},
+    {name:'xl/workbook.xml',data:utf8Bytes(wb)},
+    {name:'xl/_rels/workbook.xml.rels',data:utf8Bytes(wbr)},
+    {name:'xl/styles.xml',data:utf8Bytes(styles)}
+  ];
+  for(i=0;i<n;i++) files.push({name:'xl/worksheets/sheet'+(i+1)+'.xml',data:utf8Bytes(sheetXml(model.sheets[i]))});
+  return zipStore(files);
+}
+/* ---- the only entry point used by the UI ---- */
+function exportRunToExcel(runId){
+  var ctx=buildExportContext(runId);           /* gate + reconciliation live here */
+  if(!ctx) return {ok:false,reason:'NOT_EXPORTABLE'};
+  var model=buildWorkbookModel(ctx);
+  var bytes=xlsxBytes(model);
+  var blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=model.fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1500);
+  return {ok:true,fileName:model.fileName,bytes:bytes.length,sheets:model.sheets.length};
+}
+
 window.GHS_RUNTIME={
   getRuns:function(){ return RUNS; },
   getLines:function(){ return LINES; },
@@ -3823,7 +4184,9 @@ window.GHS_RUNTIME={
     return (r&&r.invoices)?r.invoices:null;
   },
   /* S2 — read-only unified export context of an APPROVED run. */
-  getExportContext:function(runId){ return buildExportContext(runId); }
+  getExportContext:function(runId){ return buildExportContext(runId); },
+  /* S3 — real .xlsx export of an APPROVED run (read-only). */
+  exportExcel:function(runId){ return exportRunToExcel(runId); }
 };
 
 dType=(SRC().types[0]||{}).id; dFy=(SRC().fyears[0]||{}).id;
