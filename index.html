@@ -2368,10 +2368,24 @@ function aeRunSuite(){
                    r.types[0].runBudget.toFixed(2)+' = 100000+150000+80000'};
   });
   TT('AER-07 '+T('الحد السنوي لا يتضاعف بتعدد التشغيلات','Annual max is not multiplied by runs'),function(){
-    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
-    var it=r.types[0].items.filter(function(i){return i.itemId===i5.code;})[0];
-    return {ok:it.annualMax===aeAnnualMax(i5.code),
-            detail:i5.code+' annual max '+it.annualMax+' — the single (FY,item) limit, not x2'};
+    /* the report AND the expected value must be resolved in the SAME context:
+       aeAnnualMax follows reportCtx().src, so calling it after withWorld has
+       restored the real runtime would read the LIVE limits instead. */
+    var z=withWorld('FIXTURE',1,1,'',function(){
+      var r=aeBuild();
+      var it=r.types[0].items.filter(function(i){return i.itemId===i5.code;})[0];
+      var runsWithItem=RUNS.filter(function(x){
+        return x.approvalStatus==='APPROVED'&&x.dataSource==='FIXTURE'&&x.periodIndex===1&&
+               (x.invoices||[]).some(function(v){ return v.lines.some(function(l){
+                 return l.itemId===i5.code; }); }); }).length;
+      return { shown:it.annualMax, source:aeAnnualMax(i5.code),
+               qty:it.qty, runs:runsWithItem, typeRuns:r.types[0].runCount };
+    });
+    var EXPECTED=6000;                       /* the single (FY,item) limit — business value */
+    return {ok:z.shown===EXPECTED&&z.source===EXPECTED&&z.runs>1,
+            detail:i5.code+' appears in '+z.runs+' approved runs (type total '+z.typeRuns+
+                   ') · annual max stays '+z.shown+' = expected '+EXPECTED+
+                   ' · not '+(EXPECTED*z.runs)+' · executed qty '+z.qty};
   });
   TT('AER-08 '+T('المتبقي = الحد السنوي − الكمية','Remaining qty = annual max − actual qty'),function(){
     var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
@@ -2452,14 +2466,30 @@ function aeRunSuite(){
                    ' · value '+snap.lineTotalInclVat.toFixed(2)+' — verbatim from the frozen line'};
   });
   TT('AER-19 '+T('الحد السنوي يشمل كل أصناف النوع','Type annual max covers every item of the type'),function(){
-    var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
-    var all=aeTypeItems(TY);
-    var withMax=all.filter(function(x){ return aeAnnualMax(x.i)!=null; });
-    var expected=withMax.reduce(function(a,x){ return a+aeAnnualMax(x.i); },0);
-    var distributed=r.types[0].items.filter(function(i){return i.hasActual;}).length;
-    return {ok:r.types[0].annualMaxQty===expected&&all.length>distributed,
-            detail:all.length+' items in the type · '+withMax.length+' with an annual max · sum '+
-                   expected+' · only '+distributed+' were distributed'};
+    /* roster and expected sum are resolved inside the same FIXTURE context as
+       the report itself — aeTypeItems and aeAnnualMax both follow reportCtx(). */
+    var z=withWorld('FIXTURE',1,1,'',function(){
+      var r=aeBuild();
+      var all=aeTypeItems(TY);
+      var withMax=all.filter(function(x){ return aeAnnualMax(x.i)!=null; });
+      var expected=withMax.reduce(function(a,x){ return a+aeAnnualMax(x.i); },0);
+      var rosterCodes=r.types[0].items.map(function(i){ return i.itemId; });
+      var missing=all.filter(function(x){ return rosterCodes.indexOf(x.i)===-1; });
+      var dm=r.types[0].items.filter(function(i){ return i.itemId===i5.code; })[0];
+      return { all:all.length, withMax:withMax.length, expected:expected,
+               reported:r.types[0].annualMaxQty,
+               distributed:r.types[0].items.filter(function(i){return i.hasActual;}).length,
+               missing:missing.length,
+               hasDM:!!dm, dmMax:dm?dm.annualMax:null,
+               dmSource:aeAnnualMax(i5.code), runs:r.types[0].runCount };
+    });
+    return {ok:z.reported===z.expected && z.missing===0 && z.hasDM &&
+               z.dmMax===6000 && z.dmSource===6000 &&
+               z.all>z.distributed && z.reported!==z.expected*z.runs,
+            detail:z.all+' items in the type · every one present in the roster · '+
+                   z.withMax+' with an annual max · sum '+z.expected+' counted once (not '+
+                   (z.expected*z.runs)+' across '+z.runs+' runs) · '+i5.code+' = '+z.dmMax+
+                   ' · only '+z.distributed+' were distributed'};
   });
   TT('AER-20 '+T('الصنف بلا تنفيذ: كمية 0 والمتبقي = الحد','Undistributed item: qty 0, remaining = annual max'),function(){
     var r=withWorld('FIXTURE',1,1,'',function(){ return aeBuild(); });
