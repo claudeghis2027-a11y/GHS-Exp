@@ -246,6 +246,7 @@ tr.over-row td{background:#fef2f2}
       </div>
       <div class="rowacts">
         <button class="btn green" id="irAdd">+ إضافة صنف</button>
+        <button class="btn green" id="irExcel">📊 تحميل Excel</button>
         <button class="btn secondary" id="irBack" data-t="item_review.change_type">تغيير نوع المصروف</button>
       </div>
     </div>
@@ -283,10 +284,10 @@ tr.over-row td{background:#fef2f2}
       <input class="inp price" id="fPrice" inputmode="decimal" placeholder="0.00">
       <div class="hint" id="hBefore">قبل الضريبة: —</div>
       <div class="errmsg" id="ePrice"></div></div>
-    <div><label class="lbl">الحد الأدنى السنوي (كمية)</label>
+    <div><label class="lbl">الحد الأدنى (كمية)</label>
       <input class="inp num" id="fMin" inputmode="numeric" placeholder="—">
       <div class="hint">اختياري · عدد صحيح</div></div>
-    <div><label class="lbl">الحد الأقصى السنوي (كمية)</label>
+    <div><label class="lbl">الحد الأقصى (كمية)</label>
       <input class="inp num" id="fMax" inputmode="numeric" placeholder="—">
       <div class="hint">اختياري · عدد صحيح</div></div>
     <div class="full"><div class="errmsg" id="eQty"></div>
@@ -414,6 +415,7 @@ tr.over-row td{background:#fef2f2}
       <div class="rep-f"><label class="lbl" id="qtLTo">إلى شهر</label>
         <select class="field" id="qtTo"></select></div>
       <div class="rep-f rowacts"><button class="btn" id="qtRefresh">تحديث التقرير</button></div>
+      <div class="rep-f rowacts"><button class="btn green" id="qtExcel">📊 تحميل Excel</button></div>
     </div>
     <div class="mi-warn hidden" id="qtWarn"></div>
     <div class="appr-grid" id="qtCards"></div>
@@ -535,6 +537,7 @@ tr.over-row td{background:#fef2f2}
       <div class="rep-f"><label class="lbl" id="miLFy">السنة المالية</label>
         <select class="field" id="miFy"></select></div>
       <div class="rep-f rowacts"><button class="btn green" id="miAdd">+ إضافة بند جديد</button></div>
+      <div class="rep-f rowacts"><button class="btn green" id="miExcel">📊 تحميل Excel</button></div>
     </div>
     <div class="table-wrap"><table>
       <thead><tr>
@@ -638,6 +641,134 @@ if(!D){ console.error('GHS_DATA missing — data.js not loaded'); return; }
 /* ---- sandbox working copy (deep clone of the V5 export) ---- */
 var BASE = JSON.stringify({items:D.items});
 var S = { items: JSON.parse(BASE).items, seq: 1 };
+
+/* ============================================================================
+   BATCH 1b — ITEM REVIEW EXCEL EXPORT
+   The workbook is built from visibleRows() — the very function the table
+   renders from — so the file always carries the same rows, in the same order,
+   under the same active filter and search. Nothing is recomputed from another
+   source: price, before-VAT, limits and status all come from the sandbox rows
+   exactly as the screen shows them.
+   This is sandbox review data, not approved master data, and the summary sheet
+   says so. The approved unified writer (GHS_RUNTIME.buildXlsx) and download
+   helper (window.GHS_DOWNLOAD) are reused as they are.
+   ========================================================================== */
+var IR_FILTER_LABEL={ALL:'\u0627\u0644\u0643\u0644',NONE:'\u0628\u0644\u0627 \u0633\u0639\u0631',
+  SUGGESTED:'\u0645\u0642\u062a\u0631\u062d',APPROVED:'\u0645\u0639\u062a\u0645\u062f',
+  INACTIVE:'\u063a\u064a\u0631 \u0646\u0634\u0637'};
+function irExportContext(){
+  if(!curType) return null;                       /* no type chosen -> nothing to export */
+  var rows=visibleRows();                         /* the table's own source, same order */
+  var ty=D.types.filter(function(x){return x.id===curType;})[0]||{n:curType};
+  var p=progressOf(curType);
+  var counts={NONE:0,SUGGESTED:0,APPROVED:0,INACTIVE:0};
+  rows.forEach(function(it){ var s=stateOf(it); if(counts[s]!==undefined) counts[s]++; });
+  return { rows:rows,
+           metadata:{ typeId:curType, typeName:ty.n,
+                      filter:curFilter, filterLabel:(IR_FILTER_LABEL[curFilter]||curFilter),
+                      search:(curSearch||'').trim(),
+                      shown:rows.length, totalOfType:p.total,
+                      reviewed:p.reviewed, pct:p.pct, counts:counts } };
+}
+function irExportFileName(m){
+  var raw='GHS_ItemReview_'+m.typeId;
+  return raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx';   /* the existing sanitizer */
+}
+function irBuildWorkbookModel(ctx){
+  if(!ctx) return null;
+  var m=ctx.metadata, DASH='\u2014', sheets=[];
+
+  /* ---- 1) ملخص ---- */
+  sheets.push({ name:'\u0645\u0644\u062e\u0635', widths:[40,34], rows:[
+    ['\u0627\u0644\u0628\u064a\u0627\u0646','\u0627\u0644\u0642\u064a\u0645\u0629'],
+    ['\u0627\u0644\u062a\u0642\u0631\u064a\u0631','\u0645\u0631\u0627\u062c\u0639\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641'],
+    ['\u062a\u0646\u0628\u064a\u0647',
+     '\u0628\u064a\u0627\u0646\u0627\u062a \u0645\u0631\u0627\u062c\u0639\u0629 \u2014 \u063a\u064a\u0631 \u0645\u0639\u062a\u0645\u062f\u0629'],
+    ['\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',m.typeName],
+    ['\u0643\u0648\u062f \u0627\u0644\u0646\u0648\u0639',m.typeId],
+    ['\u0627\u0644\u0641\u0644\u062a\u0631 \u0627\u0644\u0641\u0639\u0651\u0627\u0644',m.filterLabel],
+    ['\u0627\u0644\u0628\u062d\u062b \u0627\u0644\u0641\u0639\u0651\u0627\u0644',(m.search||DASH)],
+    ['\u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0645\u0639\u0631\u0648\u0636\u0629',{n:m.shown,f:'qty'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0646\u0648\u0639',{n:m.totalOfType,f:'qty'}],
+    ['\u062a\u0645\u062a \u0645\u0631\u0627\u062c\u0639\u062a\u0647',{n:m.reviewed,f:'qty'}],
+    ['\u0646\u0633\u0628\u0629 \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629',{n:m.pct,f:'percent'}],
+    ['\u0645\u0639\u062a\u0645\u062f',{n:m.counts.APPROVED,f:'qty'}],
+    ['\u0645\u0642\u062a\u0631\u062d',{n:m.counts.SUGGESTED,f:'qty'}],
+    ['\u0628\u0644\u0627 \u0633\u0639\u0631',{n:m.counts.NONE,f:'qty'}],
+    ['\u063a\u064a\u0631 \u0646\u0634\u0637',{n:m.counts.INACTIVE,f:'qty'}]
+  ]});
+
+  /* ---- 2) الأصناف — the rendered rows, verbatim ---- */
+  var ST={NONE:'\u0628\u0644\u0627 \u0633\u0639\u0631',SUGGESTED:'\u0645\u0642\u062a\u0631\u062d',
+          APPROVED:'\u0645\u0639\u062a\u0645\u062f',INACTIVE:'\u063a\u064a\u0631 \u0646\u0634\u0637'};
+  var YES='\u0646\u0639\u0645', NO='\u0644\u0627';
+  var it=[['\u0631\u0642\u0645 \u0627\u0644\u0635\u0646\u0641','\u0627\u0644\u0635\u0646\u0641','\u0627\u0644\u0648\u062d\u062f\u0629',
+           '\u0633\u0639\u0631 \u0627\u0644\u062a\u0634\u063a\u064a\u0644','\u0642\u0628\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629',
+           '\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u062f\u0646\u0649','\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649',
+           '\u0627\u0644\u062d\u0627\u0644\u0629','\u0646\u0634\u0637']];
+  ctx.rows.forEach(function(x){
+    var bv=beforeVat(x.p);                         /* the screen's own VAT split */
+    it.push([x.i, x.n,
+             (x.u?unitName(x.u):DASH),
+             (x.p==null?DASH:{n:x.p,f:'money'}),
+             (bv==null?DASH:{n:bv,f:'money'}),
+             (x.mn==null?DASH:{n:x.mn,f:'qty'}),
+             (x.mx==null?DASH:{n:x.mx,f:'qty'}),
+             (ST[stateOf(x)]||stateOf(x)),
+             (x.a===false?NO:YES)]);
+  });
+  sheets.push({name:'\u0627\u0644\u0623\u0635\u0646\u0627\u0641',widths:[14,38,14,18,18,14,14,14,10],rows:it});
+
+  return {sheets:sheets, fileName:irExportFileName(m)};
+}
+function irExportToExcel(){
+  var ctx;
+  try{ ctx=irExportContext(); }
+  catch(e){ return {ok:false,reason:'CONTEXT_FAILED: '+e.message}; }
+  if(!ctx) return {ok:false,reason:'NO_TYPE_SELECTED'};
+
+  var model;
+  try{ model=irBuildWorkbookModel(ctx); }
+  catch(e){ return {ok:false,reason:'MODEL_FAILED: '+e.message}; }
+  if(!model||model.sheets.length!==2) return {ok:false,reason:'EMPTY_WORKBOOK_MODEL'};
+
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.buildXlsx!=='function') return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
+  var bytes;
+  try{ bytes=RT.buildXlsx(model); }                /* the one approved writer */
+  catch(e){ return {ok:false,reason:'XLSX_BUILD_FAILED: '+e.message}; }
+  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
+  if(!(bytes[0]===0x50&&bytes[1]===0x4B)) return {ok:false,reason:'INVALID_XLSX_SIGNATURE'};
+
+  var dl=window.GHS_DOWNLOAD;                      /* the one approved helper */
+  if(typeof dl!=='function') return {ok:false,reason:'DOWNLOAD_HELPER_UNAVAILABLE'};
+  var d=dl(bytes,model.fileName);
+  if(!d.ok) return {ok:false,reason:d.reason};
+  return {ok:true,fileName:model.fileName,bytes:bytes.length,sheets:model.sheets.length,
+          rows:ctx.rows.length,via:d.via};
+}
+var IR_DL_MSG={
+  NO_TYPE_SELECTED:['\u0627\u062e\u062a\u0631 \u0646\u0648\u0639 \u0645\u0635\u0631\u0648\u0641 \u0642\u0628\u0644 \u0627\u0644\u062a\u0635\u062f\u064a\u0631','Choose an expense type before exporting'],
+  EMPTY_WORKBOOK_MODEL:['\u0646\u0645\u0648\u0630\u062c \u0627\u0644\u0645\u0635\u0646\u0651\u0641 \u0641\u0627\u0631\u063a','Workbook model is empty'],
+  XLSX_WRITER_UNAVAILABLE:['XLSX writer unavailable','XLSX writer unavailable'],
+  DOWNLOAD_HELPER_UNAVAILABLE:['Browser download helper unavailable','Browser download helper unavailable'],
+  EMPTY_FILE_BYTES:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0641\u0627\u0631\u063a','Generated file is empty'],
+  INVALID_XLSX_SIGNATURE:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0644\u064a\u0633 XLSX \u0635\u0627\u0644\u062d\u064b\u0627','Generated file is not a valid XLSX'],
+  BLOB_API_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  OBJECT_URL_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  DOWNLOAD_ATTRIBUTE_UNSUPPORTED:['\u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0644\u0627 \u064a\u062f\u0639\u0645 \u0627\u0644\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u0645\u0628\u0627\u0634\u0631','Browser does not support direct download']
+};
+window.GHS_ITEM_REVIEW={
+  exportContext:irExportContext,
+  workbookModel:function(){ return irBuildWorkbookModel(irExportContext()); },
+  exportToExcel:irExportToExcel,
+  fileNameOf:function(){ var c=irExportContext(); return c?irExportFileName(c.metadata):null; },
+  visibleRows:function(){ return visibleRows(); },
+  setView:function(type,filter,search){ curType=type; curFilter=filter||'ALL'; curSearch=search||''; },
+  view:function(){ return {type:curType,filter:curFilter,search:curSearch}; },
+  messages:IR_DL_MSG
+};
+
 function restoreDefault(){
   S.items = JSON.parse(BASE).items; S.seq = 1;
   curFilter='ALL'; curSearch='';
@@ -899,6 +1030,21 @@ function applyLang(l){
 
 /* ---- wiring ---- */
 document.getElementById('irBack').onclick=backToTypes;
+document.getElementById('irExcel').onclick=function(){
+  var r;
+  /* runs synchronously inside the user gesture */
+  try{ r=irExportToExcel(); }
+  catch(e){ r={ok:false,reason:'UNEXPECTED: '+e.message}; }
+  var line=document.getElementById('irProgLine');
+  if(r.ok){
+    line.textContent='\u062a\u0645 \u062a\u062d\u0645\u064a\u0644 Excel \u2014 '+r.fileName+
+      ' \u00b7 '+r.rows+' \u0635\u0646\u0641\u064b\u0627 \u00b7 '+r.bytes+' bytes';
+    return; }
+  var key=String(r.reason||'UNKNOWN').split(':')[0], m=IR_DL_MSG[key];
+  line.textContent='\u0641\u0634\u0644 \u062a\u062d\u0645\u064a\u0644 Excel: '+
+    (m?m[0]:String(r.reason||'UNKNOWN'));
+  console.error('[EXPORT] Item review Excel failed \u2014',r.reason);
+};
 document.getElementById('irAdd').onclick=function(){ openForm(null); };
 document.getElementById('irSearch').oninput=function(e){ curSearch=e.target.value; renderTable(); };
 document.getElementById('fCancel').onclick=closeForm;
@@ -2589,6 +2735,7 @@ function qtRender(){
    ['qtLFrom','\u0645\u0646 \u0634\u0647\u0631','From month'],
    ['qtLTo','\u0625\u0644\u0649 \u0634\u0647\u0631','To month'],
    ['qtRefresh','\u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062a\u0642\u0631\u064a\u0631','Refresh report'],
+   ['qtExcel','\ud83d\udcca \u062a\u062d\u0645\u064a\u0644 Excel','\ud83d\udcca Download Excel'],
    ['qtC1','\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','Item code'],
    ['qtC2','\u0627\u0644\u0635\u0646\u0641','Item'],
    ['qtC3','\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u0646\u0641\u0651\u0630\u0629','Executed qty'],
@@ -2656,6 +2803,126 @@ function qtRender(){
     ' \u00b7 items='+R.itemCount+' \u00b7 executed_items='+R.executedCount+
     ' \u00b7 source=approved snapshot (read-only)';
 }
+
+/* ============================================================================
+   BATCH 1a — QUANTITY TRACKING EXCEL EXPORT
+   The workbook is built from qtBuild() alone — the very object the screen
+   renders — so the file cannot diverge from what the user is looking at.
+   No quantity, value or limit is recomputed here; qtBuild already sourced them
+   from the frozen approved-run snapshots. The approved unified writer
+   (GHS_RUNTIME.buildXlsx) and download helper (window.GHS_DOWNLOAD) are reused
+   as they are; no existing export is touched.
+   ========================================================================== */
+function qtExportContext(){
+  var r=qtBuild();                                  /* the screen's own state */
+  if(!r) return null;
+  var d=qtData();
+  var fyLabel=(d.fyears.filter(function(f){return f.id===qtFy;})[0]||{}).label||qtFy;
+  var typeName=(d.types.filter(function(t){return t.id===qtType;})[0]||{}).n||qtType;
+  function mLabel(pi){
+    var b=d.monthlyBudgets.filter(function(x){return x.fy===qtFy&&Number(x.pi)===Number(pi);})[0];
+    return b?(monthName(b.pm)+' '+calYear(qtFy,b.pm)):('#'+pi);
+  }
+  return { report:r,
+           metadata:{ source:r.source, fyId:qtFy, fyLabel:fyLabel,
+                      typeId:qtType, typeName:typeName,
+                      fromMonth:qtFrom, toMonth:qtTo,
+                      fromLabel:mLabel(qtFrom), toLabel:mLabel(qtTo),
+                      approvedRunCount:r.runCount,
+                      itemCount:r.itemCount, executedCount:r.executedCount } };
+}
+function qtExportFileName(m){
+  var raw='GHS_QuantityTracking_'+m.fyLabel+'_'+m.source+'_'+m.typeId+
+          '_M'+m.fromMonth+'-M'+m.toMonth;
+  return raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx';   /* the existing sanitizer */
+}
+function qtBuildWorkbookModel(ctx){
+  if(!ctx) return null;
+  var r=ctx.report, m=ctx.metadata, t=r.totals, sheets=[];
+  var OVER='\u062a\u062c\u0627\u0648\u0632', OK='\u0636\u0645\u0646 \u0627\u0644\u062d\u062f',
+      NONE='\u0628\u0644\u0627 \u062a\u0646\u0641\u064a\u0630', NOLIM='\u0628\u0644\u0627 \u062d\u062f \u0633\u0646\u0648\u064a';
+
+  /* ---- 1) ملخص ---- */
+  sheets.push({ name:'\u0645\u0644\u062e\u0635', widths:[40,34], rows:[
+    ['\u0627\u0644\u0628\u064a\u0627\u0646','\u0627\u0644\u0642\u064a\u0645\u0629'],
+    ['\u0627\u0644\u062a\u0642\u0631\u064a\u0631','\u0645\u062a\u0627\u0628\u0639\u0629 \u0627\u0644\u0643\u0645\u064a\u0627\u062a'],
+    ['\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a',m.source],
+    ['\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629',m.fyLabel],
+    ['\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',m.typeName],
+    ['\u0645\u0646 \u0634\u0647\u0631',m.fromLabel],
+    ['\u0625\u0644\u0649 \u0634\u0647\u0631',m.toLabel],
+    ['\u0639\u062f\u062f \u0627\u0644\u062a\u0634\u063a\u064a\u0644\u0627\u062a \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629',{n:m.approvedRunCount,f:'qty'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0623\u0635\u0646\u0627\u0641',{n:m.itemCount,f:'qty'}],
+    ['\u0623\u0635\u0646\u0627\u0641 \u0628\u0647\u0627 \u062a\u0646\u0641\u064a\u0630',{n:m.executedCount,f:'qty'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u0646\u0641\u0651\u0630\u0629',{n:t.qty,f:'qty'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0645\u0628\u0644\u063a \u0627\u0644\u062a\u0646\u0641\u064a\u0630',{n:t.value,f:'money'}],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a',
+      (t.amaxKnown?{n:t.amax,f:'qty'}:'\u2014')],
+    ['\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062a\u0628\u0642\u064a \u0627\u0644\u0645\u0633\u0645\u0648\u062d',
+      (t.amaxKnown?{n:t.remaining,f:'qty'}:'\u2014')],
+    ['\u0623\u0635\u0646\u0627\u0641 \u062a\u062c\u0627\u0648\u0632\u062a \u0627\u0644\u062d\u062f',{n:t.over,f:'qty'}]
+  ]});
+
+  /* ---- 2) الأصناف — every item on screen, in the same order ---- */
+  var it=[['\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','\u0627\u0644\u0635\u0646\u0641',
+           '\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u0646\u0641\u0651\u0630\u0629',
+           '\u0645\u0628\u0644\u063a \u0627\u0644\u062a\u0646\u0641\u064a\u0630',
+           '\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a',
+           '\u0627\u0644\u0645\u062a\u0628\u0642\u064a \u0627\u0644\u0645\u0633\u0645\u0648\u062d',
+           '\u0627\u0644\u062d\u0627\u0644\u0629']];
+  r.rows.forEach(function(x){
+    it.push([x.itemId, x.itemName,
+             {n:x.qty,f:'qty'}, {n:x.value,f:'money'},
+             (x.amax==null?'\u2014':{n:x.amax,f:'qty'}),
+             (x.remaining==null?'\u2014':{n:x.remaining,f:'qty'}),
+             (x.amax==null?NOLIM:(x.overLimit?OVER:(x.hasActual?OK:NONE)))]);
+  });
+  it.push(['\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a','',
+           {n:t.qty,f:'qty'},{n:t.value,f:'money'},
+           (t.amaxKnown?{n:t.amax,f:'qty'}:'\u2014'),
+           (t.amaxKnown?{n:t.remaining,f:'qty'}:'\u2014'),'']);
+  sheets.push({name:'\u0627\u0644\u0623\u0635\u0646\u0627\u0641',widths:[16,34,20,24,22,22,18],rows:it});
+
+  return {sheets:sheets, fileName:qtExportFileName(m)};
+}
+function qtExportToExcel(){
+  var ctx;
+  try{ ctx=qtExportContext(); }
+  catch(e){ return {ok:false,reason:'CONTEXT_FAILED: '+e.message}; }
+  if(!ctx) return {ok:false,reason:'NO_REPORT_STATE'};
+
+  var model;
+  try{ model=qtBuildWorkbookModel(ctx); }
+  catch(e){ return {ok:false,reason:'MODEL_FAILED: '+e.message}; }
+  if(!model||model.sheets.length!==2) return {ok:false,reason:'EMPTY_WORKBOOK_MODEL'};
+
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.buildXlsx!=='function') return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
+  var bytes;
+  try{ bytes=RT.buildXlsx(model); }                   /* the one approved writer */
+  catch(e){ return {ok:false,reason:'XLSX_BUILD_FAILED: '+e.message}; }
+  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
+  if(!(bytes[0]===0x50&&bytes[1]===0x4B)) return {ok:false,reason:'INVALID_XLSX_SIGNATURE'};
+
+  var dl=window.GHS_DOWNLOAD;                         /* the one approved helper */
+  if(typeof dl!=='function') return {ok:false,reason:'DOWNLOAD_HELPER_UNAVAILABLE'};
+  var d=dl(bytes,model.fileName);
+  if(!d.ok) return {ok:false,reason:d.reason};
+  return {ok:true,fileName:model.fileName,bytes:bytes.length,sheets:model.sheets.length,
+          items:ctx.report.rows.length,runs:ctx.metadata.approvedRunCount,via:d.via};
+}
+var QT_DL_MSG={
+  NO_REPORT_STATE:['\u0644\u0627 \u062a\u0648\u062c\u062f \u062d\u0627\u0644\u0629 \u062a\u0642\u0631\u064a\u0631 \u0644\u0644\u062a\u0635\u062f\u064a\u0631','No report state to export'],
+  EMPTY_WORKBOOK_MODEL:['\u0646\u0645\u0648\u0630\u062c \u0627\u0644\u0645\u0635\u0646\u0651\u0641 \u0641\u0627\u0631\u063a','Workbook model is empty'],
+  XLSX_WRITER_UNAVAILABLE:['XLSX writer unavailable','XLSX writer unavailable'],
+  DOWNLOAD_HELPER_UNAVAILABLE:['Browser download helper unavailable','Browser download helper unavailable'],
+  EMPTY_FILE_BYTES:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0641\u0627\u0631\u063a','Generated file is empty'],
+  INVALID_XLSX_SIGNATURE:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0644\u064a\u0633 XLSX \u0635\u0627\u0644\u062d\u064b\u0627','Generated file is not a valid XLSX'],
+  BLOB_API_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  OBJECT_URL_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  DOWNLOAD_ATTRIBUTE_UNSUPPORTED:['\u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0644\u0627 \u064a\u062f\u0639\u0645 \u0627\u0644\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u0645\u0628\u0627\u0634\u0631','Browser does not support direct download']
+};
+
 document.getElementById('qtFy').onchange=function(e){ qtFy=e.target.value; qtFrom=null; qtTo=null; qtRender(); };
 document.getElementById('qtType').onchange=function(e){ qtType=e.target.value; qtRender(); };
 document.getElementById('qtFrom').onchange=function(e){ qtFrom=Number(e.target.value);
@@ -2663,6 +2930,23 @@ document.getElementById('qtFrom').onchange=function(e){ qtFrom=Number(e.target.v
 document.getElementById('qtTo').onchange=function(e){ qtTo=Number(e.target.value);
   if(Number(qtTo)<Number(qtFrom)) qtFrom=qtTo; qtRender(); };
 document.getElementById('qtRefresh').onclick=function(){ qtRender(); };
+document.getElementById('qtExcel').onclick=function(){
+  var r;
+  /* runs synchronously inside the user gesture */
+  try{ r=qtExportToExcel(); }
+  catch(e){ r={ok:false,reason:'UNEXPECTED: '+e.message}; }
+  var note=document.getElementById('qtNote');
+  if(r.ok){
+    note.textContent=T('\u062a\u0645 \u062a\u062d\u0645\u064a\u0644 Excel \u2014 ','Excel downloaded \u2014 ')+r.fileName+
+      ' \u00b7 '+r.sheets+T(' \u0648\u0631\u0642\u062a\u0627\u0646 \u00b7 ',' sheets \u00b7 ')+
+      r.items+T(' \u0635\u0646\u0641\u064b\u0627 \u00b7 ',' items \u00b7 ')+
+      r.runs+T(' \u062a\u0634\u063a\u064a\u0644\u064b\u0627 \u00b7 ',' runs \u00b7 ')+r.bytes+' bytes';
+    return; }
+  var key=String(r.reason||'UNKNOWN').split(':')[0], m=QT_DL_MSG[key];
+  note.textContent=T('\u0641\u0634\u0644 \u062a\u062d\u0645\u064a\u0644 Excel: ','Excel download failed: ')+
+    (m?T(m[0],m[1]):String(r.reason||'UNKNOWN'));
+  console.error('[EXPORT] Quantity tracking Excel failed \u2014',r.reason);
+};
 Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
   if(b.dataset.page==='qtrack') b.addEventListener('click',function(){ qtRender(); }); });
 Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
@@ -2672,7 +2956,12 @@ Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),functio
 window.GHS_QTY_TRACK={
   build:qtBuild, render:qtRender, approvedRuns:qtApprovedRuns, amax:qtAmax,
   setFilters:function(fy,type,from,to){ qtFy=fy; qtType=type; qtFrom=from; qtTo=to; },
-  filters:function(){ return {fy:qtFy,type:qtType,from:qtFrom,to:qtTo}; }
+  filters:function(){ return {fy:qtFy,type:qtType,from:qtFrom,to:qtTo}; },
+  exportContext:qtExportContext,
+  workbookModel:function(){ return qtBuildWorkbookModel(qtExportContext()); },
+  exportToExcel:qtExportToExcel,
+  fileNameOf:function(){ var c=qtExportContext(); return c?qtExportFileName(c.metadata):null; },
+  messages:QT_DL_MSG
 };
 
 /* ============================================================================
@@ -2915,6 +3204,159 @@ function qtRunSuite(){
     return {ok:ENG.ALGORITHM_VERSION==='DE-1.2.1'&&typeof ENG.groupInvoices==='undefined'&&
                typeof ENG.generate==='function'&&typeof ENG.buildEligible==='function',
             detail:'engine '+ENG.ALGORITHM_VERSION+' · groupInvoices undefined · public surface intact'};
+  });
+
+  /* ---------- Batch 1a — Quantity Tracking Excel (QTX-01 .. QTX-14) ---------- */
+  var QX=null, dlQX=[];
+  (function(){
+    var RT=window.GHS_RUNTIME;
+    if(RT&&typeof RT.buildXlsx==='function') QX=RT;
+  })();
+  function qxWorld(src,type,from,to,fn){
+    var realRT=window.GHS_RUNTIME, realDL=window.GHS_DOWNLOAD;
+    var keep={fy:qtFy,type:qtType,from:qtFrom,to:qtTo};
+    window.GHS_RUNTIME={
+      getRuns:function(){ return RUNS; }, getLines:function(){ return FAKE_LINES; },
+      getSource:function(){ return src; },
+      getInvoices:function(id){ var r=RUNS.filter(function(x){return x.runId===id;})[0];
+        return (r&&r.invoices)?r.invoices:null; },
+      currentAllocation:function(s,fy,pi,t,o){ return {amount:Number(o)||0,origin:'ORIGINAL'}; },
+      masterRoster:(realRT&&realRT.masterRoster)?realRT.masterRoster:undefined,
+      buildXlsx:(realRT&&realRT.buildXlsx)?realRT.buildXlsx:undefined
+    };
+    window.GHS_DOWNLOAD=function(b,nm){ dlQX.push({bytes:b.length,name:nm}); return {ok:true,via:'stub'}; };
+    qtFy=FY; qtType=type; qtFrom=from; qtTo=to;
+    try{ return fn(); }
+    finally { window.GHS_RUNTIME=realRT; window.GHS_DOWNLOAD=realDL;
+             qtFy=keep.fy; qtType=keep.type; qtFrom=keep.from; qtTo=keep.to; }
+  }
+
+  TQ('QTX-01 '+T('زر التصدير موجود ومربوط','Export button exists and is wired'),function(){
+    return {ok:!!document.getElementById('qtExcel')&&
+               typeof qtExportToExcel==='function'&&typeof qtBuildWorkbookModel==='function',
+            detail:'#qtExcel present · qtExportToExcel and qtBuildWorkbookModel defined'};
+  });
+  TQ('QTX-02 '+T('التصدير يبني من qtBuild نفسه','Export is built from qtBuild itself'),function(){
+    var z=qxWorld('FIXTURE',TY,1,1,function(){
+      return {ctx:qtExportContext(), rep:qtBuild()}; });
+    return {ok:JSON.stringify(z.ctx.report)===JSON.stringify(z.rep),
+            detail:'export context report object is byte-identical to qtBuild() — no second calculation'};
+  });
+  TQ('QTX-03 '+T('ورقتان بالاسمين الصحيحين','Two sheets with the right names'),function(){
+    var m=qxWorld('FIXTURE',TY,1,1,function(){ return qtBuildWorkbookModel(qtExportContext()); });
+    var n=m.sheets.map(function(s){return s.name;});
+    return {ok:m.sheets.length===2&&n[0]==='\u0645\u0644\u062e\u0635'&&n[1]==='\u0627\u0644\u0623\u0635\u0646\u0627\u0641',
+            detail:n.join(' · ')};
+  });
+  TQ('QTX-04 '+T('كل الأصناف في الملف','Every screen item is in the workbook'),function(){
+    var z=qxWorld('FIXTURE',TY,1,1,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var codes=z.m.sheets[1].rows.slice(1,-1).map(function(x){return x[0];});
+    var screen=z.r.rows.map(function(x){return x.itemId;});
+    return {ok:codes.length===screen.length&&codes.join()===screen.join(),
+            detail:codes.length+' item rows · same codes in the same order as the screen'};
+  });
+  TQ('QTX-05 '+T('الكمية والمبلغ مطابقان للشاشة','Quantity and value match the screen'),function(){
+    var z=qxWorld('FIXTURE',TY,1,1,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var rows=z.m.sheets[1].rows.slice(1,-1);
+    var ok=z.r.rows.every(function(x,i){ return rows[i][2].n===x.qty&&rows[i][3].n===x.value; });
+    return {ok:ok,detail:'every row: qty and value identical to the rendered report'};
+  });
+  TQ('QTX-06 '+T('الحد السنوي والمتبقي مطابقان','Annual max and remaining match'),function(){
+    var z=qxWorld('FIXTURE',TY,1,1,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var rows=z.m.sheets[1].rows.slice(1,-1);
+    var ok=z.r.rows.every(function(x,i){
+      var a=rows[i][4], rm=rows[i][5];
+      return (x.amax==null ? a==='\u2014' : a.n===x.amax) &&
+             (x.remaining==null ? rm==='\u2014' : rm.n===x.remaining); });
+    return {ok:ok,detail:'amax and remaining identical · null rendered as an em dash'};
+  });
+  TQ('QTX-07 '+T('سبتمبر فقط','September only'),function(){
+    var z=qxWorld('FIXTURE',TY,1,1,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var sm=z.m.sheets[0].rows;   /* 7 runs · 8 items · 10 qty · 11 value · 14 over */
+    return {ok:z.r.runCount===2&&sm[7][1].n===z.r.runCount&&sm[10][1].n===z.r.totals.qty&&
+               sm[11][1].n===z.r.totals.value,
+            detail:'2 approved runs · summary qty '+sm[10][1].n+' = report '+z.r.totals.qty+
+                   ' · value '+sm[11][1].n.toFixed(2)};
+  });
+  TQ('QTX-08 '+T('أكتوبر فقط','October only'),function(){
+    var z=qxWorld('FIXTURE',TY,2,2,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var sm=z.m.sheets[0].rows;
+    return {ok:z.r.runCount===1&&sm[7][1].n===1&&sm[10][1].n===z.r.totals.qty,
+            detail:'1 approved run · summary qty '+sm[10][1].n};
+  });
+  TQ('QTX-09 '+T('سبتمبر + أكتوبر','September + October'),function(){
+    var a=qxWorld('FIXTURE',TY,1,1,function(){ return qtBuild(); });
+    var b=qxWorld('FIXTURE',TY,2,2,function(){ return qtBuild(); });
+    var z=qxWorld('FIXTURE',TY,1,2,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var sm=z.m.sheets[0].rows;
+    return {ok:sm[10][1].n===a.totals.qty+b.totals.qty&&z.r.runCount===3&&sm[7][1].n===3,
+            detail:'Sep '+a.totals.qty+' + Oct '+b.totals.qty+' = '+sm[10][1].n+' · 3 runs'};
+  });
+  TQ('QTX-10 '+T('صنف بلا تنفيذ في الملف','Item with no execution is in the workbook'),function(){
+    var z=qxWorld('FIXTURE',TY,1,1,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var zero=z.r.rows.filter(function(x){ return !x.hasActual; });
+    var rows=z.m.sheets[1].rows.slice(1,-1);
+    var ok=zero.length>0&&zero.every(function(x){
+      var row=rows.filter(function(y){return y[0]===x.itemId;})[0];
+      return row&&row[2].n===0&&row[3].n===0&&
+        (x.amax==null||(row[4].n===x.amax&&row[5].n===x.amax)); });
+    return {ok:ok,detail:zero.length+' undistributed items exported with qty 0, value 0, remaining = amax'};
+  });
+  TQ('QTX-11 '+T('صنف متجاوز للحد','Item over the annual maximum'),function(){
+    var z=qxWorld('FIXTURE',TY,1,1,function(){
+      var r=qtBuild(); return {r:r,m:qtBuildWorkbookModel(qtExportContext())}; });
+    var over=z.r.rows.filter(function(x){ return x.overLimit; });
+    var rows=z.m.sheets[1].rows.slice(1,-1);
+    var ok=over.length>0&&over.every(function(x){
+      var row=rows.filter(function(y){return y[0]===x.itemId;})[0];
+      return row&&row[5].n===0&&row[6]==='\u062a\u062c\u0627\u0648\u0632'; });
+    var sm=z.m.sheets[0].rows;
+    return {ok:ok&&sm[14][1].n===z.r.totals.over,
+            detail:over.length+' item(s) over the limit · remaining 0 · status "\u062a\u062c\u0627\u0648\u0632" · summary count '+sm[14][1].n};
+  });
+  TQ('QTX-12 '+T('الحد لا يتضاعف بتعدد التشغيلات','Annual max is not multiplied by run count'),function(){
+    var one=qxWorld('FIXTURE',TY,2,2,function(){ return qtBuildWorkbookModel(qtExportContext()); });
+    var two=qxWorld('FIXTURE',TY,1,1,function(){ return qtBuildWorkbookModel(qtExportContext()); });
+    var g=function(m){ var r=m.sheets[1].rows.slice(1,-1).filter(function(x){return x[0]===i5.c;})[0];
+      return r?(r[4]==='\u2014'?null:r[4].n):null; };
+    return {ok:g(one)===g(two)&&g(two)===AMAX5&&AMAX5===6000,
+            detail:i5.c+' amax '+g(two)+' with 1 run and with 2 runs — not '+(AMAX5*2)};
+  });
+  TQ('QTX-13 '+T('الملف ينزل فعليًا ببايتات صالحة','A real file is produced and handed to the downloader'),function(){
+    if(!QX||typeof QX.buildXlsx!=='function')
+      return {ok:false,detail:'unified writer unavailable in this environment'};
+    dlQX=[];
+    var r=qxWorld('FIXTURE',TY,1,1,function(){ return qtExportToExcel(); });
+    return {ok:r.ok===true&&dlQX.length===1&&dlQX[0].bytes>0&&r.sheets===2&&
+               /^GHS_QuantityTracking_/.test(r.fileName)&&/\.xlsx$/.test(r.fileName)&&
+               !/[^A-Za-z0-9_\-.]/.test(r.fileName),
+            detail:r.ok?(r.fileName+' \u00b7 '+r.bytes+' bytes \u00b7 '+r.items+' items \u00b7 handed to the download helper once')
+                       :('blocked: '+r.reason)};
+  });
+  TQ('QTX-14 '+T('صفر مساس بالتصديرات القائمة','No existing export was touched'),function(){
+    /* S3, S6 and S3.1a live in another IIFE — they are reachable only through the
+       exposed runtime accessors, so that is what this test checks. */
+    /* checked through the PUBLIC surfaces every export publishes, so the test
+       holds regardless of which IIFE a given entry point lives in */
+    var RT=window.GHS_RUNTIME;
+    var sameIife=typeof aeExportToExcel==='function'&&
+                 !!window.GHS_ACTUAL_REPORT&&typeof window.GHS_ACTUAL_REPORT.exportToExcel==='function';
+    var viaRuntime=!!RT&&typeof RT.buildXlsx==='function'&&typeof RT.exportExcel==='function'&&
+                   typeof RT.getExportContext==='function'&&typeof RT.getInvoices==='function'&&
+                   typeof window.GHS_DOWNLOAD==='function';
+    var noOwnWriter=!/xlsxBytes\(|zipStore\(|crc32\(|new Blob\(|createObjectURL/
+                      .test(String(qtExportToExcel)+String(qtBuildWorkbookModel)+String(qtExportContext));
+    return {ok:sameIife&&viaRuntime&&noOwnWriter,
+            detail:'S8 public surface '+(sameIife?'ok':'MISSING')+
+                   ' · S2/S3 + shared writer + shared downloader via GHS_RUNTIME '+(viaRuntime?'ok':'MISSING')+
+                   ' · the new export defines no generator and no downloader '+(noOwnWriter?'ok':'VIOLATED')};
   });
 
   qtFy=keep.fy; qtType=keep.type; qtFrom=keep.from; qtTo=keep.to;
@@ -3642,6 +4084,7 @@ function miFillFilters(){
   fs.value=miFy;
   [['miLSrc','مصدر البيانات','Data source'],['miLType','نوع المصروف','Expense Type'],
    ['miLFy','السنة المالية','Financial Year'],['miAdd','+ إضافة بند جديد','+ Add new item'],
+   ['miExcel','📊 تحميل Excel','📊 Download Excel'],
    ['miTitle','إدارة البنود والأسعار','Master Items & Prices'],
    ['miHistTitle','سجل تعديلات البنود','Item change log'],
    ['miC1','كود الصنف','Item Code'],['miC2','اسم الصنف','Item Name'],
@@ -3661,6 +4104,154 @@ function miFillFilters(){
     'التعديلات هنا تسري على عمليات التوزيع المستقبلية فقط. العمليات السابقة والفواتير والاعتمادات تحتفظ بقيمها الأصلية ولا تتغير. بيانات التشغيل وبيانات الاختبار منفصلتان تمامًا. الحالة في ذاكرة المتصفح فقط وتزول عند تحديث الصفحة.',
     'Changes here apply to future distribution runs only. Past runs, invoices and approvals keep their original values. LIVE and TEST data are fully separate. State lives in browser memory only and is lost on refresh.');
 }
+
+/* ============================================================================
+   BATCH 1c — MASTER ITEMS & PRICES EXCEL EXPORT
+   Rows come from MASTER() — the same store the table renders from — under the
+   same active source, expense type and financial year, so the file always
+   matches the screen. Nothing is recalculated and nothing is written back:
+   MASTER_STORE, GHS_DATA and miLog are untouched.
+   The change log is exported verbatim from MI_HIST. That array is shared across
+   LIVE and FIXTURE by existing design, so the summary sheet says so plainly
+   rather than silently mixing two sources in one file.
+   The approved unified writer (GHS_RUNTIME.buildXlsx) and download helper
+   (window.GHS_DOWNLOAD) are reused as they are.
+   ========================================================================== */
+function miExportContext(){
+  if(!miType||!miFy) return null;                 /* filters not ready */
+  var M=MASTER();
+  var rows=M.items.filter(function(x){ return x.t===miType; });
+  var ty=(M.types||[]).filter(function(x){return x.id===miType;})[0]||{n:miType};
+  var fy=(M.fyears||[]).filter(function(x){return x.id===miFy;})[0]||{label:miFy};
+  var lim={};
+  M.limits.forEach(function(l){ if(l.fy===miFy) lim[l.item]=l; });
+
+  var withPrice=0, active=0, withAmax=0;
+  rows.forEach(function(x){
+    if(x.p!=null) withPrice++;
+    if(x.a===true) active++;
+    var l=lim[x.i]; if(l&&l.amax!=null) withAmax++;
+  });
+  return { rows:rows, limitsOf:lim, history:MI_HIST.slice(),   /* copy — MI_HIST untouched */
+           metadata:{ source:miSrcActive(), typeId:miType, typeName:ty.n,
+                      fyId:miFy, fyLabel:fy.label||miFy,
+                      count:rows.length, active:active, inactive:rows.length-active,
+                      withPrice:withPrice, withoutPrice:rows.length-withPrice,
+                      withAmax:withAmax, historyCount:MI_HIST.length } };
+}
+function miExportFileName(m){
+  var raw='GHS_MasterItems_'+m.source+'_'+m.typeId+'_'+m.fyId;
+  return raw.replace(/[^A-Za-z0-9_\-]/g,'_')+'.xlsx';   /* the existing sanitizer */
+}
+function miBuildWorkbookModel(ctx){
+  if(!ctx) return null;
+  var m=ctx.metadata, DASH='\u2014', sheets=[];
+  var NOTICE='\u0628\u064a\u0627\u0646\u0627\u062a \u0625\u062f\u0627\u0631\u0629 \u2014 \u0642\u0627\u0628\u0644\u0629 \u0644\u0644\u062a\u0639\u062f\u064a\u0644';
+  var HIST_NOTICE='\u0633\u062c\u0644 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a \u064a\u0634\u0645\u0644 \u062a\u0639\u062f\u064a\u0644\u0627\u062a \u0627\u0644\u0645\u0635\u062f\u0631\u064a\u0646 LIVE \u0648 FIXTURE \u0645\u0639\u064b\u0627';
+
+  /* ---- 1) ملخص ---- */
+  sheets.push({ name:'\u0645\u0644\u062e\u0635', widths:[42,36], rows:[
+    ['\u0627\u0644\u0628\u064a\u0627\u0646','\u0627\u0644\u0642\u064a\u0645\u0629'],
+    ['\u0627\u0644\u062a\u0642\u0631\u064a\u0631','\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0628\u0646\u0648\u062f \u0648\u0627\u0644\u0623\u0633\u0639\u0627\u0631'],
+    ['\u062a\u0646\u0628\u064a\u0647',NOTICE],
+    ['\u062a\u0646\u0628\u064a\u0647 \u0633\u062c\u0644 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a',HIST_NOTICE],
+    ['\u0645\u0635\u062f\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a',m.source],
+    ['\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641',m.typeName],
+    ['\u0643\u0648\u062f \u0627\u0644\u0646\u0648\u0639',m.typeId],
+    ['\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629',m.fyLabel],
+    ['\u0639\u062f\u062f \u0627\u0644\u0628\u0646\u0648\u062f',{n:m.count,f:'qty'}],
+    ['\u0646\u0634\u0637',{n:m.active,f:'qty'}],
+    ['\u063a\u064a\u0631 \u0646\u0634\u0637',{n:m.inactive,f:'qty'}],
+    ['\u0628\u0646\u0648\u062f \u0644\u0647\u0627 \u0633\u0639\u0631',{n:m.withPrice,f:'qty'}],
+    ['\u0628\u0646\u0648\u062f \u0628\u0644\u0627 \u0633\u0639\u0631',{n:m.withoutPrice,f:'qty'}],
+    ['\u0628\u0646\u0648\u062f \u0644\u0647\u0627 \u062d\u062f \u0623\u0642\u0635\u0649 \u0633\u0646\u0648\u064a',{n:m.withAmax,f:'qty'}],
+    ['\u0639\u062f\u062f \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a \u0627\u0644\u0645\u0633\u062c\u0644\u0629',{n:m.historyCount,f:'qty'}]
+  ]});
+
+  /* ---- 2) البنود — eight columns, no action column ---- */
+  var ACT='ACTIVE', INA='INACTIVE';
+  var it=[['\u0643\u0648\u062f \u0627\u0644\u0635\u0646\u0641','\u0627\u0633\u0645 \u0627\u0644\u0635\u0646\u0641',
+           '\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629 \u2014 \u0634\u0627\u0645\u0644 VAT',
+           '\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u062f\u0646\u0649 \u0627\u0644\u0634\u0647\u0631\u064a',
+           '\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0634\u0647\u0631\u064a',
+           '\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 \u0627\u0644\u0633\u0646\u0648\u064a',
+           '\u0627\u0644\u062d\u0627\u0644\u0629','\u0622\u062e\u0631 \u062a\u0639\u062f\u064a\u0644']];
+  ctx.rows.forEach(function(x){
+    var l=ctx.limitsOf[x.i]||{};
+    it.push([x.i, x.n,
+             (x.p==null?DASH:{n:x.p,f:'money'}),
+             (l.mmin==null?DASH:{n:l.mmin,f:'qty'}),
+             (l.mmax==null?DASH:{n:l.mmax,f:'qty'}),
+             (l.amax==null?DASH:{n:l.amax,f:'qty'}),
+             (x.a===true?ACT:INA),
+             (x.mtime||DASH)]);
+  });
+  sheets.push({name:'\u0627\u0644\u0628\u0646\u0648\u062f',widths:[14,38,22,18,18,18,14,20],rows:it});
+
+  /* ---- 3) سجل التعديلات — verbatim from MI_HIST, same order ---- */
+  var hs=[['\u0627\u0644\u062a\u0627\u0631\u064a\u062e','\u0627\u0644\u0643\u0648\u062f','\u0627\u0644\u0635\u0646\u0641',
+           '\u0627\u0644\u062d\u0642\u0644','\u0627\u0644\u0642\u064a\u0645\u0629 \u0627\u0644\u0642\u062f\u064a\u0645\u0629',
+           '\u0627\u0644\u0642\u064a\u0645\u0629 \u0627\u0644\u062c\u062f\u064a\u062f\u0629']];
+  ctx.history.forEach(function(r){
+    hs.push([ (r.when==null||r.when===''?DASH:String(r.when)),
+              (r.code==null||r.code===''?DASH:String(r.code)),
+              (r.name==null||r.name===''?DASH:String(r.name)),
+              (r.field==null||r.field===''?DASH:String(r.field)),
+              (r.oldV==null||r.oldV===''?DASH:String(r.oldV)),
+              (r.newV==null||r.newV===''?DASH:String(r.newV)) ]);
+  });
+  sheets.push({name:'\u0633\u062c\u0644 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a',
+               widths:[22,14,34,20,20,20],rows:hs});
+
+  return {sheets:sheets, fileName:miExportFileName(m)};
+}
+function miExportToExcel(){
+  var ctx;
+  try{ ctx=miExportContext(); }
+  catch(e){ return {ok:false,reason:'CONTEXT_FAILED: '+e.message}; }
+  if(!ctx) return {ok:false,reason:'NO_FILTERS'};
+
+  var model;
+  try{ model=miBuildWorkbookModel(ctx); }
+  catch(e){ return {ok:false,reason:'MODEL_FAILED: '+e.message}; }
+  if(!model||model.sheets.length!==3) return {ok:false,reason:'EMPTY_WORKBOOK_MODEL'};
+
+  var RT=window.GHS_RUNTIME;
+  if(!RT||typeof RT.buildXlsx!=='function') return {ok:false,reason:'XLSX_WRITER_UNAVAILABLE'};
+  var bytes;
+  try{ bytes=RT.buildXlsx(model); }                /* the one approved writer */
+  catch(e){ return {ok:false,reason:'XLSX_BUILD_FAILED: '+e.message}; }
+  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
+  if(!(bytes[0]===0x50&&bytes[1]===0x4B)) return {ok:false,reason:'INVALID_XLSX_SIGNATURE'};
+
+  var dl=window.GHS_DOWNLOAD;                      /* the one approved helper */
+  if(typeof dl!=='function') return {ok:false,reason:'DOWNLOAD_HELPER_UNAVAILABLE'};
+  var d=dl(bytes,model.fileName);                  /* one call, inside the click */
+  if(!d.ok) return {ok:false,reason:d.reason};
+  return {ok:true,fileName:model.fileName,bytes:bytes.length,sheets:model.sheets.length,
+          items:ctx.rows.length,changes:ctx.history.length,via:d.via};
+}
+var MI_DL_MSG={
+  NO_FILTERS:['\u0627\u062e\u062a\u0631 \u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641 \u0648\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629 \u0642\u0628\u0644 \u0627\u0644\u062a\u0635\u062f\u064a\u0631','Choose an expense type and a financial year before exporting'],
+  EMPTY_WORKBOOK_MODEL:['\u0646\u0645\u0648\u0630\u062c \u0627\u0644\u0645\u0635\u0646\u0651\u0641 \u0641\u0627\u0631\u063a','Workbook model is empty'],
+  XLSX_WRITER_UNAVAILABLE:['XLSX writer unavailable','XLSX writer unavailable'],
+  DOWNLOAD_HELPER_UNAVAILABLE:['Browser download helper unavailable','Browser download helper unavailable'],
+  EMPTY_FILE_BYTES:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0641\u0627\u0631\u063a','Generated file is empty'],
+  INVALID_XLSX_SIGNATURE:['\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0646\u0627\u062a\u062c \u0644\u064a\u0633 XLSX \u0635\u0627\u0644\u062d\u064b\u0627','Generated file is not a valid XLSX'],
+  BLOB_API_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  OBJECT_URL_UNAVAILABLE:['Browser download API unavailable','Browser download API unavailable'],
+  DOWNLOAD_ATTRIBUTE_UNSUPPORTED:['\u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0644\u0627 \u064a\u062f\u0639\u0645 \u0627\u0644\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u0645\u0628\u0627\u0634\u0631','Browser does not support direct download']
+};
+window.GHS_MASTER_ITEMS={
+  exportContext:miExportContext,
+  workbookModel:function(){ return miBuildWorkbookModel(miExportContext()); },
+  exportToExcel:miExportToExcel,
+  fileNameOf:function(){ var c=miExportContext(); return c?miExportFileName(c.metadata):null; },
+  setView:function(src,type,fy){ miSrc=src; miType=type; miFy=fy; },
+  view:function(){ return {src:miSrcActive(),type:miType,fy:miFy}; },
+  messages:MI_DL_MSG
+};
+
 function miRender(){
   miFillFilters();
   var M=MASTER(), rows=M.items.filter(function(x){return x.t===miType;});
@@ -3783,6 +4374,24 @@ function miSaveNew(){
                  'Item added — it will be used in future runs only and never appears in a past run.'));
   return true;
 }
+document.getElementById('miExcel').onclick=function(){
+  var r;
+  /* runs synchronously inside the user gesture */
+  try{ r=miExportToExcel(); }
+  catch(e){ r={ok:false,reason:'UNEXPECTED: '+e.message}; }
+  var note=document.getElementById('miMsg');
+  if(r.ok){
+    note.innerHTML='<div class="mi-ok">'+miEsc(
+      miT('\u062a\u0645 \u062a\u062d\u0645\u064a\u0644 Excel \u2014 ','Excel downloaded \u2014 ')+r.fileName+
+      ' \u00b7 '+r.items+miT(' \u0628\u0646\u062f\u064b\u0627 \u00b7 ',' items \u00b7 ')+
+      r.changes+miT(' \u062a\u0639\u062f\u064a\u0644\u064b\u0627 \u00b7 ',' changes \u00b7 ')+r.bytes+' bytes')+'</div>';
+    return; }
+  var key=String(r.reason||'UNKNOWN').split(':')[0], m=MI_DL_MSG[key];
+  note.innerHTML='<div class="mi-warn">'+miEsc(
+    miT('\u0641\u0634\u0644 \u062a\u062d\u0645\u064a\u0644 Excel: ','Excel download failed: ')+
+    (m?miT(m[0],m[1]):String(r.reason||'UNKNOWN')))+'</div>';
+  console.error('[EXPORT] Master items Excel failed \u2014',r.reason);
+};
 document.getElementById('miSrc').onchange=function(ev){ miSrc=ev.target.value; miType=null; miFy=null; miRender(); };
 document.getElementById('miType').onchange=function(ev){ miType=ev.target.value; miRender(); };
 document.getElementById('miFy').onchange=function(ev){ miFy=ev.target.value; miRender(); };
