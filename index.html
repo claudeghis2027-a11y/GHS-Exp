@@ -598,22 +598,42 @@ tr.over-row td{background:#fef2f2}
 <div id="modal" class="modal hidden"><div class="modalbox"><button class="close" onclick="closeModal()">إغلاق</button><div id="modalContent"></div></div></div>
 <script>
 const months=['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس'];
-const types=[
-['مطبوعات','🖨️',24765375,[2032118.4,1632696.6,3714997.8,3447434.1,2306567.7,3469098.66,2828464.26,2539701.12,2794276.8,0,0,0]],
-['مستلزمات تعليم','📚',13875279,[1171692,1194036,1171464,1264602,2672490.6,1287060,1273266,1247274,1198140,0,130758,0]],
-['أدوات كتابية','✏️',5955063,[481435.68,587168.4,964953,1275631.956,435138,334476,333165,451063.8,393864.3,386488.5,242928.3,68434.2]],
-['منظفات','🧹',4637004,[565029.6,442234.5,698797.2,580402.5,341076.6,411853.5,305206.5,336898.5,363745.5,189325.5,185563.5,216885]],
-['صيانة وتطوير المبنى','🔧',2407153,[305195.1,760750.5,859172.4,315814.2,0,0,0,38703,41610,0,85917.24,0]],
-['أنشطة فنية','🎨',3145983,[580545,703989.9,581354.4,293675.4,158813.4,20235,15390,321594,24823.5,272146.5,172550.4,855]],
-['بيئة سكانية','🌱',368648,[105678,80484,51476.7,41307.9,14951.1,0,0,14951.1,13537.5,14951.1,0,31310.67]],
-['أنشطة اجتماعية وثقافية','🎭',1648677,[0,397290,455806.2,271035,87420.9,0,107142.9,78756.9,0,125724.9,0,0]],
-['أنشطة رياضية','⚽',1050579,[271120.5,380190,281414.7,117853.2,0,0,0,0,0,0,0,0]],
-['نشاط مكتبي','📋',2210285,[0,0,585059.4,435662.4,198263.328,132462.756,335986.5,15321.6,239400,0,268242,0]]];
+/* Dashboard dataset derived from GHS_DATA (FY001) instead of a hand-maintained
+   copy, so the cards can no longer drift from the workbook. Shape, order and
+   values are unchanged: [name, icon, annual, monthly[12]] sorted by annual
+   descending, exactly as the previous literal was ordered.
+   Icons are presentation only — GHS_DATA carries no icon — so they stay as a
+   static id -> emoji map. Any future type without an entry falls back to 📦. */
+const TYPE_ICON={ET001:'\ud83c\udfad',ET002:'\u26bd',ET003:'\ud83c\udfa8',ET004:'\u270f\ufe0f',
+  ET005:'\ud83c\udf31',ET006:'\ud83d\udd27',ET007:'\ud83d\udcda',ET008:'\ud83d\udda8\ufe0f',
+  ET009:'\ud83e\uddf9',ET010:'\ud83d\udccb'};
+/* the card order the dashboard has always shown — it is not sorted by any field,
+   so it is preserved explicitly rather than re-derived. Unlisted ids go last. */
+const TYPE_ORDER=['ET008','ET007','ET004','ET009','ET006','ET003','ET005','ET001','ET002','ET010'];
+const DASH_FY='FY001';
+const types=(function(){
+  const D=window.GHS_DATA;
+  if(!D||!D.types) return [];
+  const annual={}; (D.annualBudgets||[]).forEach(function(b){
+    if(b.fy===DASH_FY) annual[b.t]=Number(b.inc)||0; });
+  const monthly={}; (D.monthlyBudgets||[]).forEach(function(b){
+    if(b.fy!==DASH_FY) return;
+    (monthly[b.t]=monthly[b.t]||[]).push({pi:Number(b.pi),inc:Number(b.inc)||0}); });
+  return D.types.map(function(t){
+    const rows=(monthly[t.id]||[]).slice().sort(function(a,b){ return a.pi-b.pi; });
+    const m=[]; for(let k=0;k<12;k++) m.push(rows[k]?rows[k].inc:0);
+    const o=TYPE_ORDER.indexOf(t.id);
+    return {ord:(o<0?999:o), row:[t.n, TYPE_ICON[t.id]||'\ud83d\udce6', annual[t.id]||0, m]};
+  }).sort(function(a,b){ return a.ord-b.ord; }).map(function(x){ return x.row; });
+})();
 const sampleItems={
 'منظفات':[['أكياس تواليت مستوردة — علبة 50 قطعة',149,400,6],['Cotton Egypt 250g',75,200,4],['كلور',120,20,5],['صابون',80,40,8],['منظف أرضيات',100,50,7]],
 'أدوات كتابية':[['Faber-Castell 9000 — قلم رصاص',125,550,8],['Staedtler Mars Lumograph',150,400,7],['ورق رسم Strathmore 400',20,1000,10],['Caran d’Ache Grafwood',185,250,4],['Hahnemühle Nostalgie Sketchbook',30,500,5]],
 'مطبوعات':[['مطبوعات دراسية — KG',466490,20,3],['مطبوعات دراسية — الابتدائية',519625,25,5],['مطبوعات دراسية — الإعدادية',436310,25,4],['مطبوعات دراسية — الثانوية',360135,20,4]],
 'مستلزمات تعليم':[['اشتراك برامج تعليم ذكي أساسي أمريكي',200,8000,10],['اشتراك برامج تعليم ذكي أساسي بريطاني',200,8000,10],['برامج تعليم ذكي إضافية أمريكي',400,1000,5],['برامج تعليم ذكي إضافية بريطاني',400,1000,5],['اشتراك برامج متخصصة أمريكي',700,1000,3]]};
+/* demo-only alias: GHS_DATA spells ET004 with a plain alef while this sample
+   set was keyed with a hamza. Same array, no key removed, no name changed. */
+sampleItems['ادوات كتابية']=sampleItems['أدوات كتابية'];
 const fmt=n=>new Intl.NumberFormat('ar-EG-u-nu-latn',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' ج.م';
 let currentMonth=0;
 const monthEl=document.getElementById('month');months.forEach((m,i)=>monthEl.add(new Option(m,m)));monthEl.value=months[0];monthEl.onchange=()=>{currentMonth=months.indexOf(monthEl.value);renderAll()};
