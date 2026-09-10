@@ -623,6 +623,8 @@ window.GHS_PERSIST = (function(){
   var SOURCES = ['LIVE','FIXTURE'];
 
   var snap   = { LIVE:null, FIXTURE:null };   /* overrides, once fetched */
+  var runSnap= null;                          /* persisted approved runs, once fetched */
+  var runState = { loaded:false, failed:false, error:null, count:0, hydrated:false };
   var applied= { LIVE:false, FIXTURE:false }; /* guards a double apply */
   var histRef= null;                          /* the live MI_HIST array */
   var state  = { loaded:false, online:null, error:null, lastSave:null, boot:false };
@@ -726,6 +728,65 @@ window.GHS_PERSIST = (function(){
     });
   }
 
+  /* ---- approved runs (STEP 5) ------------------------------------------
+     Historical approved runs are what the engine charges the annual maximum
+     against, so a failed load is never treated as "no history": it sets
+     runState.failed, which blocks approval until the real history is known. */
+  function loadRuns(){
+    return get(API+'?action=loadRuns')
+      .then(function(r){
+        if(!r||r.ok!==true) throw new Error(r&&r.error?r.error:(r&&r.skipped&&r.skipped.length?'CORRUPT_ROWS':'BAD_RESPONSE'));
+        runSnap=r.runs||[];
+        runState.loaded=true; runState.failed=false; runState.error=null; runState.count=runSnap.length;
+        return runSnap;
+      }).catch(function(e){
+        runSnap=null;
+        runState.loaded=false; runState.failed=true; runState.count=0;
+        runState.error=String(e&&e.message||e);
+        throw e;
+      });
+  }
+  /* Rehydrates the existing RUNS / LINES arrays in place, so every consumer
+     keeps working against the same references it already holds. Idempotent:
+     a run already present is skipped, so repeated loads cannot duplicate. */
+  function hydrateRuns(RUNS, LINES){
+    var res = { runs:0, lines:0, skipped:0, maxSeq:0 };
+    if(!runSnap || !RUNS) return res;
+    runSnap.forEach(function(row){
+      var r = row.run; if(!r || !r.runId) return;
+      if(RUNS.some(function(x){ return x.runId===r.runId; })){ res.skipped++; return; }
+      r.invoices       = deepFreezeLocal(row.invoices||[]);
+      r.masterSnapshot = row.masterSnapshot||[];
+      RUNS.push(r);
+      (row.lines||[]).forEach(function(l){
+        if(!LINES.some(function(x){ return x.lineId===l.lineId; })) { LINES.push(l); res.lines++; }
+      });
+      res.runs++;
+      var m=/(\d+)/.exec(String(r.runId));
+      if(m && Number(m[1])>res.maxSeq) res.maxSeq=Number(m[1]);
+    });
+    runState.hydrated=true;
+    return res;
+  }
+  function deepFreezeLocal(o){
+    if(o && typeof o==='object' && !Object.isFrozen(o)){
+      Object.getOwnPropertyNames(o).forEach(function(k){ deepFreezeLocal(o[k]); });
+      Object.freeze(o);
+    }
+    return o;
+  }
+  function saveRun(source, run, lines, invoices, masterSnapshot){
+    return post({ action:'upsertRun', source:source, run:run,
+                  lines:lines||[], invoices:invoices||[], masterSnapshot:masterSnapshot||[] })
+      .then(function(r){
+        if(!r||r.ok!==true) throw new Error((r&&r.error)||'RUN_SAVE_FAILED');
+        state.online=true;
+        return r;
+      }).catch(function(e){ state.online=false; throw e; });
+  }
+  /* approval is blocked while history is unknown — never while it is merely empty */
+  function approvalBlocked(){ return runState.failed===true; }
+
   /* ---- saving ---------------------------------------------------------- */
   function saveBatch(source, payload){
     var body = { action:'saveBatch', source:source,
@@ -758,12 +819,21 @@ window.GHS_PERSIST = (function(){
     API:API, SCHEMA:SCHEMA,
     loadAll:loadAll, applyTo:applyTo, bindHistory:bindHistory,
     saveBatch:saveBatch,
+    loadRuns:loadRuns, hydrateRuns:hydrateRuns, saveRun:saveRun,
+    approvalBlocked:approvalBlocked,
+    runState:function(){ return { loaded:runState.loaded, failed:runState.failed,
+      error:runState.error, count:runState.count, hydrated:runState.hydrated }; },
+    _injectRuns:function(a){ runSnap=a; runState.loaded=true; runState.failed=false;
+      runState.count=a?a.length:0; },
+    _failRuns:function(){ runSnap=null; runState.loaded=false; runState.failed=true;
+      runState.count=0; runState.error='FORCED'; },
     snapshot:function(k){ return k?snap[k]:snap; },
     hasSnapshot:function(k){ return !!snap[k]; },
     state:function(){ return { loaded:state.loaded, online:state.online,
       error:state.error, lastSave:state.lastSave, boot:state.boot }; },
     _setBoot:function(v){ state.boot=!!v; },
     _reset:function(){ snap={LIVE:null,FIXTURE:null}; applied={LIVE:false,FIXTURE:false};
+      runSnap=null; runState={loaded:false,failed:false,error:null,count:0,hydrated:false};
       state={loaded:false,online:null,error:null,lastSave:null,boot:false}; },
     _inject:function(k,o){ snap[k]=o; }        /* tests only */
   };
@@ -7967,6 +8037,25 @@ document.getElementById('dgApprove').onclick=function(){
   CURRENT.run.invoices=deepFreeze(buildInvoiceSnapshot(CURRENT.grp,VATRATE()));
   CURRENT.run.invoiceCountApproved=CURRENT.run.invoices.length;
   audit('DISTRIBUTION_APPROVED',CURRENT.run);
+  /* one logical write: the run, its lines, its frozen invoices and its master
+     snapshot all land in a single row. Local state is never rolled back. */
+  (function(){
+    var P=window.GHS_PERSIST; if(!P) return;
+    var run=CURRENT.run;
+    var mine=LINES.filter(function(l){ return l.runId===run.runId; });
+    var meta=document.getElementById('dgApprMeta');
+    P.saveRun(run.dataSource, run, mine, run.invoices, run.masterSnapshot||[])
+      .then(function(){
+        meta.textContent=T('\u062a\u0645 \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f \u0648\u0627\u0644\u062d\u0641\u0638 \u0627\u0644\u062f\u0627\u0626\u0645 \u2713','Approved and persisted \u2713');
+      })
+      .catch(function(e){
+        meta.textContent=T('\u26a0\ufe0f \u062a\u0645 \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f \u0644\u0643\u0646 \u0644\u0645 \u064a\u064f\u062d\u0641\u0638 \u2014 \u0633\u064a\u0632\u0648\u0644 \u0639\u0646\u062f \u0627\u0644\u062a\u062d\u062f\u064a\u062b',
+          '\u26a0\ufe0f Approved but NOT persisted \u2014 it will be lost on refresh')+
+          '  \u00b7  '+String(e&&e.message||e);
+        console.error('[PERSIST] run save failed \u2014',e&&e.message);
+        ghsPersistBanner();
+      });
+  })();
   renderApproval();
 };
 document.getElementById('dgExcel').onclick=function(){
@@ -8318,6 +8407,15 @@ window.GHS_RUNTIME={
   getSource:function(){ return dSrc; },
   /* Historical invoices of an APPROVED run. Reads the run itself only —
      never CURRENT, GHS_DATA, GHS_FIXTURE, BAL or MOP. Never regroups. */
+  /* STEP 5 — rehydration hooks. Read/write access to the same arrays every
+     consumer already uses, so nothing else has to change. */
+  hydrate:function(){
+    var P=window.GHS_PERSIST; if(!P) return {runs:0,lines:0,skipped:0,maxSeq:0};
+    var r=P.hydrateRuns(RUNS,LINES);
+    if(r.maxSeq>=SEQ) SEQ=r.maxSeq+1;      /* R6 — no id collision after refresh */
+    return r;
+  },
+  seq:function(){ return SEQ; },
   getInvoices:function(runId){
     var r=RUNS.filter(function(x){ return x.runId===runId; })[0];
     return (r&&r.invoices)?r.invoices:null;
@@ -8804,6 +8902,29 @@ function ghsPersistBanner(){
       '\u0627\u0644\u0642\u0631\u0627\u0621\u0629 \u062a\u0639\u0645\u0644\u060c \u0644\u0643\u0646 \u0623\u064a \u062a\u0639\u062f\u064a\u0644 \u0633\u064a\u0628\u0642\u0649 \u0641\u064a \u0630\u0627\u0643\u0631\u0629 \u0627\u0644\u062c\u0644\u0633\u0629 \u0648\u064a\u0632\u0648\u0644 \u0639\u0646\u062f \u0627\u0644\u062a\u062d\u062f\u064a\u062b'+
       (st.error?('  \u00b7  '+st.error):'');
   } else if(el){ el.parentNode.removeChild(el); }
+  ghsRunsBanner();
+}
+/* A separate, louder banner: history that cannot be read is NOT the same as an
+   empty history. Approval stays blocked while this is showing. */
+function ghsRunsBanner(){
+  var P=window.GHS_PERSIST; if(!P||!P.runState) return;
+  var rs=P.runState();
+  var id='ghsRunsWarn';
+  var el=document.getElementById(id);
+  if(rs.failed===true){
+    if(!el){
+      el=document.createElement('div');
+      el.id=id;
+      el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9998;padding:10px 16px;'+
+        'background:#b91c1c;color:#fff;font:600 14px/1.5 inherit;text-align:center;direction:rtl';
+      document.body.appendChild(el);
+    }
+    el.style.top=document.getElementById('ghsPersistWarn')?'44px':'0';
+    el.textContent='\u26d4 '+
+      '\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0639\u0645\u0644\u064a\u0627\u062a \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629 \u0627\u0644\u0633\u0627\u0628\u0642\u0629 \u2014 '+
+      '\u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f \u0645\u0648\u0642\u0648\u0641. \u0647\u0630\u0627 \u0644\u0627 \u064a\u0639\u0646\u064a \u0623\u0646\u0647 \u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0645\u0644\u064a\u0627\u062a \u0633\u0627\u0628\u0642\u0629.'+
+      (rs.error?('  \u00b7  '+rs.error):'');
+  } else if(el){ el.parentNode.removeChild(el); }
 }
 (function(){
   'use strict';
@@ -8818,6 +8939,9 @@ function ghsPersistBanner(){
   if(document.body) document.body.appendChild(g);
   P._setBoot(true);
 
+  var runsPromise = P.loadRuns().catch(function(e){
+    console.error('[PERSIST] approved-runs load failed \u2014',e&&e.message);
+  });
   P.loadAll().then(function(){
     /* a store may already have been built by a startup render — apply in place */
     if(typeof window.GHS_RUNTIME==='object' && window.GHS_RUNTIME &&
@@ -8831,12 +8955,25 @@ function ghsPersistBanner(){
     console.error('[PERSIST] startup load failed \u2014',e&&e.message);
     ghsPersistBanner();
   }).then(function(){
+    return runsPromise;
+  }).then(function(){
+    /* rehydrate RUNS / LINES in place and resume SEQ past the highest id */
+    try{
+      if(window.GHS_RUNTIME && typeof window.GHS_RUNTIME.hydrate==='function'){
+        var r=window.GHS_RUNTIME.hydrate();
+        if(r.runs) console.info('[PERSIST] rehydrated '+r.runs+' approved run(s), '+
+          r.lines+' line(s) \u00b7 next SEQ '+window.GHS_RUNTIME.seq());
+      }
+    }catch(e){ console.error('[PERSIST] rehydration failed \u2014',e&&e.message); }
+    ghsRunsBanner();
     P._setBoot(false);
     drop();
     /* repaint the screens that show MASTER-derived data */
     try{ if(typeof miRender==='function') miRender(); }catch(e){}
     try{ if(window.GHS_QTY_TRACK&&window.GHS_QTY_TRACK.render) window.GHS_QTY_TRACK.render(); }catch(e){}
     try{ if(window.GHS_ACTUAL_REPORT&&window.GHS_ACTUAL_REPORT.render) window.GHS_ACTUAL_REPORT.render(); }catch(e){}
+    try{ if(typeof renderRuns==='function') renderRuns(); }catch(e){}
+    try{ if(typeof ivRender==='function') ivRender(); }catch(e){}
   });
   /* never let a hung request lock the app out */
   setTimeout(function(){ if(P.state().boot){ P._setBoot(false); drop(); ghsPersistBanner(); } },15000);
