@@ -8909,15 +8909,52 @@ ivRender();
 (function(){
   'use strict';
   var IDS=['bhTestPanel','ivTestPanel','aeTestPanel','brTestPanel','qtTestPanel','miTestPanel'];
+  var SRC_SELECTS=['dgSrc','miSrc','bhSrcSel'];
+  /* Production shows LIVE only. The FIXTURE option is removed from the DOM
+     rather than merely hidden, so it cannot be re-selected from devtools or
+     restored by a stray script; it is put back verbatim in developer mode.
+     fixtures.js, generateDemo and every test harness stay exactly as they are. */
+  var srcStash={};
+  function setFixtureVisible(on){
+    SRC_SELECTS.forEach(function(id){
+      var sel=document.getElementById(id); if(!sel) return;
+      var opts=sel.options||[];
+      if(on){
+        if(srcStash[id] && !Array.prototype.some.call(opts,function(o){return o.value==='FIXTURE';})){
+          var o=document.createElement('option');
+          o.value='FIXTURE'; o.textContent=srcStash[id];
+          sel.appendChild(o);
+        }
+      } else {
+        for(var i=opts.length-1;i>=0;i--){
+          if(opts[i].value==='FIXTURE'){ srcStash[id]=opts[i].textContent; sel.remove(i); }
+        }
+        /* if FIXTURE was the current choice, fall back to LIVE and tell the page */
+        if(sel.value!=='LIVE'){
+          sel.value='LIVE';
+          if(typeof sel.onchange==='function') sel.onchange({target:sel});
+        }
+      }
+    });
+  }
   function setDev(on){
     IDS.forEach(function(id){
       var el=document.getElementById(id);
       if(el){ if(on) el.classList.remove('hidden'); else el.classList.add('hidden'); }
     });
+    setFixtureVisible(!!on);
     window.GHS_DEV_MODE=!!on;
   }
   window.GHS_DEV={ show:function(){ setDev(true); }, hide:function(){ setDev(false); },
-                   isOn:function(){ return !!window.GHS_DEV_MODE; }, panels:IDS.slice() };
+                   isOn:function(){ return !!window.GHS_DEV_MODE; }, panels:IDS.slice(),
+                   sourceSelects:SRC_SELECTS.slice(),
+                   fixtureVisible:function(){
+                     return SRC_SELECTS.some(function(id){
+                       var sel=document.getElementById(id);
+                       return !!sel && Array.prototype.some.call(sel.options||[],
+                         function(o){ return o.value==='FIXTURE'; });
+                     });
+                   } };
   var on=false;
   try{ on=/(^|[?&])dev=1(&|$)/.test(String(location.search||'')); }catch(e){ on=false; }
   setDev(on);
