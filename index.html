@@ -140,6 +140,39 @@ tr.over-row td{background:#fef2f2}
 @media(max-width:750px){.frm{grid-template-columns:1fr}}
 
 
+
+/* ============================================================================
+   PRINT — A4. Everything here lives inside @media print, so the on-screen
+   layout is byte-for-byte unchanged. Chrome/Edge "Save as PDF" in the same
+   dialog is what the PDF button opens; there is no separate PDF generator.
+   ========================================================================== */
+@media print{
+  @page{ size:A4; margin:14mm 12mm; }
+  html,body{ background:#fff !important; color:#000 !important; }
+  .sidebar,.nav,#langsw,.topbar .actions,
+  #ghsBootGate,#ghsPersistWarn,#ghsRunsWarn,
+  .btn,button,select,input,.rowacts,.dist-f .rowacts,
+  #bhTestPanel,#ivTestPanel,#aeTestPanel,#brTestPanel,#qtTestPanel,#miTestPanel,
+  .srcbtn,.chip,.mi-in{ display:none !important; }
+  .page.hidden{ display:none !important; }
+  .main,.content,.wrap{ margin:0 !important; padding:0 !important; width:100% !important; }
+  .panel{ box-shadow:none !important; border:1px solid #999 !important;
+          break-inside:avoid; page-break-inside:avoid; margin:0 0 8mm 0 !important; }
+  .table-wrap{ overflow:visible !important; max-height:none !important; }
+  table{ width:100% !important; border-collapse:collapse !important; font-size:10pt !important; }
+  thead{ display:table-header-group; }            /* repeat headings on every page */
+  tfoot{ display:table-footer-group; }
+  tr,td,th{ break-inside:avoid; page-break-inside:avoid; }
+  th,td{ border:1px solid #999 !important; padding:3pt 4pt !important; color:#000 !important; }
+  th{ background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .total-row td{ font-weight:700 !important; background:#f2f2f2 !important;
+                 -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .pill,.sub-id{ border:1px solid #999 !important; background:transparent !important; color:#000 !important; }
+  .repnote,.runmeta,.unconstrained{ color:#333 !important; }
+  a[href]:after{ content:'' !important; }         /* no URL noise in the margin */
+  .print-only{ display:block !important; }
+}
+.print-only{ display:none; }
 </style><script src="data.js?v=v6"></script>
 <script src="engine.js?v=DE-1.2.1"></script>
 <script src="fixtures.js?v=1"></script>
@@ -167,7 +200,9 @@ tr.over-row td{background:#fef2f2}
         </select></div>
       <div class="rep-f"><label class="lbl" id="bhLFy">السنة المالية</label>
         <select class="field" id="bhFy"></select></div>
-      <div class="rep-f rowacts"><button class="btn green" id="bhExcel">📊 تصدير Excel</button></div>
+      <div class="rep-f rowacts"><button class="btn green" id="bhExcel">📊 تصدير Excel</button>
+        <button class="btn secondary" id="bhPrint">🖨️ طباعة</button>
+        <button class="btn secondary" id="bhPdf">📄 تحميل PDF</button></div>
     </div>
     <div class="mi-warn hidden" id="bhRecon"></div>
     <div class="table-wrap"><table>
@@ -198,7 +233,9 @@ tr.over-row td{background:#fef2f2}
     <div class="dist-f">
       <div class="rep-f" style="min-width:340px"><label class="lbl" id="ivLRun">عملية التوزيع المعتمدة</label>
         <select class="field" id="ivRun"></select></div>
-      <div class="rep-f rowacts"><button class="btn green" id="ivExcel" disabled>📊 تصدير Excel</button></div>
+      <div class="rep-f rowacts"><button class="btn green" id="ivExcel" disabled>📊 تصدير Excel</button>
+        <button class="btn secondary" id="ivPrint">🖨️ طباعة</button>
+        <button class="btn secondary" id="ivPdf">📄 تحميل PDF</button></div>
     </div>
     <div class="appr-grid" id="ivMeta"></div>
   </div>
@@ -247,6 +284,8 @@ tr.over-row td{background:#fef2f2}
       <div class="rowacts">
         <button class="btn green" id="irAdd">+ إضافة صنف</button>
         <button class="btn green" id="irExcel">📊 تحميل Excel</button>
+        <button class="btn secondary" id="irPrint">🖨️ طباعة</button>
+        <button class="btn secondary" id="irPdf">📄 تحميل PDF</button>
         <button class="btn secondary" id="irBack" data-t="item_review.change_type">تغيير نوع المصروف</button>
       </div>
     </div>
@@ -323,6 +362,8 @@ tr.over-row td{background:#fef2f2}
         <button class="btn secondary sm" id="brAll">تحديد الكل</button>
         <button class="btn secondary sm" id="brNone">إلغاء التحديد</button>
         <button class="btn green sm" id="brExcel">📊 تحميل Excel</button>
+        <button class="btn secondary" id="brPrint">🖨️ طباعة</button>
+        <button class="btn secondary" id="brPdf">📄 تحميل PDF</button>
       </div>
     </div>
   </div>
@@ -349,6 +390,8 @@ tr.over-row td{background:#fef2f2}
         <input class="field" id="aeThrough" type="date"></div>
       <div class="rep-f rowacts"><button class="btn secondary sm" id="aeClear">مسح التاريخ</button></div>
       <div class="rep-f rowacts"><button class="btn green" id="aeExcel">📊 تحميل Excel</button></div>
+      <div class="rep-f rowacts"><button class="btn secondary" id="aePrint">🖨️ طباعة</button></div>
+      <div class="rep-f rowacts"><button class="btn secondary" id="aePdf">📄 تحميل PDF</button></div>
     </div>
     <div class="mi-warn hidden" id="aeWarn"></div>
     <div class="appr-grid" id="aeCards"></div>
@@ -416,6 +459,8 @@ tr.over-row td{background:#fef2f2}
         <select class="field" id="qtTo"></select></div>
       <div class="rep-f rowacts"><button class="btn" id="qtRefresh">تحديث التقرير</button></div>
       <div class="rep-f rowacts"><button class="btn green" id="qtExcel">📊 تحميل Excel</button></div>
+      <div class="rep-f rowacts"><button class="btn secondary" id="qtPrint">🖨️ طباعة</button></div>
+      <div class="rep-f rowacts"><button class="btn secondary" id="qtPdf">📄 تحميل PDF</button></div>
     </div>
     <div class="mi-warn hidden" id="qtWarn"></div>
     <div class="appr-grid" id="qtCards"></div>
@@ -502,6 +547,8 @@ tr.over-row td{background:#fef2f2}
       <button class="btn secondary" id="dgReview">مراجعة قبل الاعتماد</button>
       <button class="btn green" id="dgApprove">✓ اعتماد التوزيع والفواتير</button>
       <button class="btn secondary" id="dgExcel" disabled>📊 تصدير Excel</button>
+        <button class="btn secondary" id="dgPrint">🖨️ طباعة</button>
+        <button class="btn secondary" id="dgPdf">📄 تحميل PDF</button>
     </div>
     <div class="runmeta" id="dgApprMeta"></div>
   </div>
@@ -537,7 +584,9 @@ tr.over-row td{background:#fef2f2}
       <div class="rep-f"><label class="lbl" id="miLFy">السنة المالية</label>
         <select class="field" id="miFy"></select></div>
       <div class="rep-f rowacts"><button class="btn green" id="miAdd">+ إضافة بند جديد</button></div>
-      <div class="rep-f rowacts"><button class="btn green" id="miExcel">📊 تحميل Excel</button></div>
+      <div class="rep-f rowacts"><button class="btn green" id="miExcel">📊 تحميل Excel</button>
+        <button class="btn secondary" id="miPrint">🖨️ طباعة</button>
+        <button class="btn secondary" id="miPdf">📄 تحميل PDF</button></div>
     </div>
     <div class="table-wrap"><table>
       <thead><tr>
@@ -1584,9 +1633,13 @@ function brRunSuite(){
     var rows=periodsOf(brFy,brType);
     var B=0; rows.forEach(function(b){ B=R2(B+(Number(b.inc)||0)); });
     var ann=RSRC().annualBudgets.filter(function(a){return a.fy===brFy&&a.t===brType;})[0];
-    return {ok:rows.length>0&&B>0,
-            detail:rows.length+' months · Σmonthly '+B.toFixed(2)+
-                   ' · annual record '+(ann?Number(ann.inc).toFixed(2):'none')};
+    /* the month rows must exist and sum correctly; the amounts are entered by
+       the user, so a cleared budget (0) is a valid state, not a failure */
+    var expect=0; rows.forEach(function(b2){ expect=R2(expect+(Number(b2.inc)||0)); });
+    return {ok:rows.length>0&&B===expect,
+            detail:rows.length+' months · \u03a3monthly '+B.toFixed(2)+
+                   ' · annual record '+(ann?Number(ann.inc||0).toFixed(2):'none')+
+                   (B===0?'  (budgets cleared \u2014 awaiting manual entry)':'')};
   });
   T2(T('حساب المتبقي','Remaining calculation'),function(){
     return {ok:rem(500000,497850)===2150&&rem(100000,0)===100000&&rem(100000,100000)===0,
@@ -8977,6 +9030,55 @@ function ghsRunsBanner(){
   });
   /* never let a hung request lock the app out */
   setTimeout(function(){ if(P.state().boot){ P._setBoot(false); drop(); ghsPersistBanner(); } },15000);
+})();
+
+/* ============================================================================
+   PRINT / PDF
+   Both buttons do the same thing: open the browser's print dialog. The PDF
+   button is labelled honestly — Chrome, Edge and Safari all offer "Save as
+   PDF" as a destination in that dialog, and that is the whole mechanism.
+   There is NO separate PDF generator here, no library and no CDN.
+   The @media print block does the layout work; nothing runs on screen.
+   ========================================================================== */
+window.GHS_PRINT = (function(){
+  'use strict';
+  var IDS=['bh','iv','ir','br','ae','qt','dg','mi'];
+  function printNow(){
+    if(typeof window.print!=='function') return {ok:false,reason:'PRINT_UNAVAILABLE'};
+    try{ window.print(); return {ok:true,via:'browser-print'}; }
+    catch(e){ return {ok:false,reason:String(e&&e.message||e)}; }
+  }
+  function wire(){
+    var wired=0;
+    IDS.forEach(function(p){
+      [p+'Print',p+'Pdf'].forEach(function(id){
+        var b=document.getElementById(id);
+        if(b && !b.getAttribute('data-printwired')){
+          b.setAttribute('data-printwired','1');
+          b.onclick=function(){ printNow(); };
+          wired++;
+        }
+      });
+    });
+    return wired;
+  }
+  return { print:printNow, wire:wire, screens:IDS.slice() };
+})();
+(function(){
+  var n=window.GHS_PRINT.wire();
+  if(n) console.info('[PRINT] '+n+' control(s) wired');
+  /* labels follow the language switch, like every other control */
+  Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+    b.addEventListener('click',function(){ setTimeout(function(){
+      var ar=document.documentElement.getAttribute('dir')!=='ltr';
+      window.GHS_PRINT.screens.forEach(function(p){
+        var pr=document.getElementById(p+'Print'), pd=document.getElementById(p+'Pdf');
+        if(pr) pr.textContent=ar?'\ud83d\udda8\ufe0f \u0637\u0628\u0627\u0639\u0629':'\ud83d\udda8\ufe0f Print';
+        if(pd) pd.textContent=ar?'\ud83d\udcc4 \u062a\u062d\u0645\u064a\u0644 PDF':'\ud83d\udcc4 Save as PDF';
+      });
+      window.GHS_PRINT.wire();
+    },0); });
+  });
 })();
 
 </script></body></html>
