@@ -176,7 +176,7 @@ tr.over-row td{background:#fef2f2}
       <tbody id="bhRows"></tbody>
     </table></div>
   </div>
-  <div class="panel" id="bhTestPanel">
+  <div class="panel hidden" id="bhTestPanel">
     <div class="section-title"><h2 id="bhTTitle">اختبارات الموازنة الهرمية</h2>
       <span class="pill neutral" id="bhTPill">—</span></div>
     <div class="repnote" id="bhTNote"></div>
@@ -215,7 +215,7 @@ tr.over-row td{background:#fef2f2}
     </table></div>
     <div class="runmeta" id="ivFoot"></div>
   </div>
-  <div class="panel" id="ivTestPanel">
+  <div class="panel hidden" id="ivTestPanel">
     <div class="section-title"><h2 id="ivTTitle">اختبارات شاشة الفواتير</h2>
       <span class="pill neutral" id="ivTPill">—</span></div>
     <div class="repnote" id="ivTNote"></div>
@@ -362,7 +362,7 @@ tr.over-row td{background:#fef2f2}
       <tbody id="aeRows"></tbody>
     </table></div>
   </div>
-  <div class="panel" id="aeTestPanel">
+  <div class="panel hidden" id="aeTestPanel">
     <div class="section-title"><h2 id="aeTTitle">اختبارات التنفيذ الفعلي</h2>
       <span class="pill neutral" id="aeTPill">—</span></div>
     <div class="rowacts" style="margin-bottom:14px">
@@ -373,7 +373,7 @@ tr.over-row td{background:#fef2f2}
     </table></div>
   </div>
 
-  <div class="panel" id="brTestPanel">
+  <div class="panel hidden" id="brTestPanel">
     <div class="section-title"><h2 id="brTTitle">اختبارات التقرير</h2>
       <span class="pill neutral" id="brTPill">—</span></div>
     <div class="repnote" id="brTNote"></div>
@@ -429,7 +429,7 @@ tr.over-row td{background:#fef2f2}
     </table></div>
     <div class="runmeta" id="qtFoot"></div>
   </div>
-  <div class="panel" id="qtTestPanel">
+  <div class="panel hidden" id="qtTestPanel">
     <div class="section-title"><h2 id="qtTTitle">اختبارات متابعة الكميات</h2>
       <span class="pill neutral" id="qtTPill">—</span></div>
     <div class="rowacts" style="margin-bottom:14px">
@@ -559,7 +559,7 @@ tr.over-row td{background:#fef2f2}
     </table></div>
   </div>
 
-  <div class="panel" id="miTestPanel">
+  <div class="panel hidden" id="miTestPanel">
     <div class="section-title"><h2 id="miTTitle">اختبارات إدارة البنود</h2>
       <span class="pill neutral" id="miTPill">—</span></div>
     <div class="mi-warn" id="miTNote"></div>
@@ -597,6 +597,178 @@ tr.over-row td{background:#fef2f2}
 </main></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><button class="close" onclick="closeModal()">إغلاق</button><div id="modalContent"></div></div></div>
 <script>
+/* ============================================================================
+   PERSISTENCE — Google Apps Script Web App (schema GHSP-1.0.0)
+
+   MASTER stays exactly what it is today: a synchronous deep clone of
+   data.js / fixtures.js. This module only layers the records the user has
+   already approved on top of that clone, and sends new ones back.
+
+   Ordering is handled without touching the seven scattered startup renders:
+     · the snapshot is requested once, before any of them runs
+     · masterFor() applies whatever has arrived, lazily, at build time
+     · if the snapshot lands after a store was built, it is applied in place
+       to that same object — references held elsewhere stay valid
+   A boot gate keeps the first paint back until the snapshot settles, so the
+   user never sees a pre-persistence value flip to a persisted one.
+
+   Nothing here computes, defaults or resolves a value. No price selection,
+   no cheapest / latest, no supplier, no quotation, no conflict resolution.
+   ========================================================================== */
+window.GHS_PERSIST = (function(){
+  'use strict';
+
+  var API = 'https://script.google.com/macros/s/AKfycbyrazoTuTjKkezqOdXFJP7Op-ihRyV_y7nxptD1PZa8Y_rPWG9EvqZixbQSMeDp46CE/exec';
+  var SCHEMA = 'GHSP-1.0.0';
+  var SOURCES = ['LIVE','FIXTURE'];
+
+  var snap   = { LIVE:null, FIXTURE:null };   /* overrides, once fetched */
+  var applied= { LIVE:false, FIXTURE:false }; /* guards a double apply */
+  var histRef= null;                          /* the live MI_HIST array */
+  var state  = { loaded:false, online:null, error:null, lastSave:null, boot:false };
+
+  /* ---- transport ------------------------------------------------------- */
+  function get(url){
+    if(typeof fetch!=='function') return Promise.reject(new Error('FETCH_UNAVAILABLE'));
+    return fetch(url).then(function(r){ return r.json(); });
+  }
+  function post(body){
+    if(typeof fetch!=='function') return Promise.reject(new Error('FETCH_UNAVAILABLE'));
+    /* no Content-Type header on purpose: the browser default (text/plain)
+       avoids a CORS preflight, which Apps Script does not answer */
+    return fetch(API,{method:'POST',body:JSON.stringify(body)}).then(function(r){ return r.json(); });
+  }
+
+  /* ---- applying overrides onto a MASTER store -------------------------- */
+  var ITEM_FIELDS = ['t','n','p','s','a','u','mn','mx','mtime'];
+
+  function applyTo(key, M){
+    var o = snap[key];
+    if(!o || !M) return { items:0, limits:0, added:0 };
+    var res = { items:0, limits:0, added:0 };
+
+    (o.items||[]).forEach(function(row){
+      var it = M.items.filter(function(x){ return String(x.i)===String(row.i); })[0];
+      if(it){
+        ITEM_FIELDS.forEach(function(f){ if(row[f]!==undefined) it[f]=row[f]; });
+        res.items++;
+      } else {
+        M.items.push({ i:row.i, t:row.t, n:row.n, p:row.p, s:row.s, a:row.a,
+                       u:row.u, mn:row.mn, mx:row.mx, mtime:row.mtime });
+        res.added++;
+      }
+    });
+
+    (o.limits||[]).forEach(function(row){
+      var l = M.limits.filter(function(x){
+        return String(x.item)===String(row.item) && String(x.fy)===String(row.fy); })[0];
+      if(l){
+        ['mmin','mmax','amax'].forEach(function(f){ if(row[f]!==undefined) l[f]=row[f]; });
+        if(row.mode!==undefined)     l.mode=row.mode;
+        if(row.enforced!==undefined) l.enforced=row.enforced;
+        res.limits++;
+      } else {
+        var n={ id:row.id, fy:row.fy, item:row.item,
+                mmin:row.mmin, mmax:row.mmax, amax:row.amax };
+        if(row.mode!==undefined)     n.mode=row.mode;
+        if(row.enforced!==undefined) n.enforced=row.enforced;
+        M.limits.push(n);
+      }
+    });
+
+    applied[key]=true;
+    return res;
+  }
+
+  /* MI_HIST is a live array other code holds by reference — fill it in place */
+  function bindHistory(arr){
+    histRef=arr;
+    fillHistory();
+    return arr;
+  }
+  function fillHistory(){
+    if(!histRef) return 0;
+    var rows=[];
+    SOURCES.forEach(function(k){
+      var o=snap[k]; if(!o) return;
+      (o.history||[]).forEach(function(x){ rows.push(x); });
+    });
+    if(!rows.length) return 0;
+    rows.sort(function(a,b){ return (b.seq||0)-(a.seq||0); });   /* newest first */
+    histRef.length=0;
+    rows.forEach(function(x){
+      histRef.push({ when:x.when, code:x.code, name:x.name,
+                     field:x.field, oldV:x.oldV, newV:x.newV });
+    });
+    return histRef.length;
+  }
+
+  /* ---- startup --------------------------------------------------------- */
+  function loadAll(){
+    return Promise.all(SOURCES.map(function(k){
+      return get(API+'?action=load&source='+encodeURIComponent(k))
+        .then(function(r){
+          if(!r||r.ok!==true) throw new Error(r&&r.error?r.error:'BAD_RESPONSE');
+          if(r.schema && r.schema!==SCHEMA) throw new Error('SCHEMA_MISMATCH:'+r.schema);
+          snap[k]={ items:r.items||[], limits:r.limits||[], history:r.history||[] };
+          return { source:k, counts:r.counts };
+        });
+    })).then(function(list){
+      state.loaded=true; state.online=true; state.error=null;
+      /* the history array may have been bound before the snapshot arrived —
+         fill it now, whichever order the two happened in */
+      fillHistory();
+      return list;
+    }).catch(function(e){
+      state.loaded=false; state.online=false;
+      state.error=String(e&&e.message||e);
+      throw e;
+    });
+  }
+
+  /* ---- saving ---------------------------------------------------------- */
+  function saveBatch(source, payload){
+    var body = { action:'saveBatch', source:source,
+                 items:payload.items||[], limits:payload.limits||[],
+                 history:payload.history||[] };
+    return post(body).then(function(r){
+      state.lastSave = (r&&r.ok===true)
+        ? { ok:true, at:new Date().toISOString(), counts:{items:r.items,limits:r.limits,history:r.history} }
+        : { ok:false, at:new Date().toISOString(), error:(r&&r.error)||'SAVE_FAILED' };
+      if(!r||r.ok!==true) throw new Error(state.lastSave.error);
+      state.online=true;
+      /* keep the local snapshot in step so a later apply is consistent */
+      var o=snap[source]||(snap[source]={items:[],limits:[],history:[]});
+      (payload.items||[]).forEach(function(x){
+        var i=o.items.findIndex(function(y){return String(y.i)===String(x.i);});
+        if(i>-1) o.items[i]=x; else o.items.push(x); });
+      (payload.limits||[]).forEach(function(x){
+        var i=o.limits.findIndex(function(y){
+          return String(y.item)===String(x.item)&&String(y.fy)===String(x.fy);});
+        if(i>-1) o.limits[i]=x; else o.limits.push(x); });
+      return r;
+    }).catch(function(e){
+      state.online=false;
+      state.lastSave={ ok:false, at:new Date().toISOString(), error:String(e&&e.message||e) };
+      throw e;
+    });
+  }
+
+  return {
+    API:API, SCHEMA:SCHEMA,
+    loadAll:loadAll, applyTo:applyTo, bindHistory:bindHistory,
+    saveBatch:saveBatch,
+    snapshot:function(k){ return k?snap[k]:snap; },
+    hasSnapshot:function(k){ return !!snap[k]; },
+    state:function(){ return { loaded:state.loaded, online:state.online,
+      error:state.error, lastSave:state.lastSave, boot:state.boot }; },
+    _setBoot:function(v){ state.boot=!!v; },
+    _reset:function(){ snap={LIVE:null,FIXTURE:null}; applied={LIVE:false,FIXTURE:false};
+      state={loaded:false,online:null,error:null,lastSave:null,boot:false}; },
+    _inject:function(k,o){ snap[k]=o; }        /* tests only */
+  };
+})();
+
 const months=['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس'];
 /* Dashboard dataset derived from GHS_DATA (FY001) instead of a hand-maintained
    copy, so the cards can no longer drift from the workbook. Shape, order and
@@ -4046,6 +4218,8 @@ function renderRuns(){
    Runtime memory only — see the persistence note in the UI.
    ========================================================================== */
 var MASTER_STORE={}, MI_HIST=[], miSrc='LIVE', miType=null, miFy=null;
+/* MI_HIST is held by reference elsewhere — the module fills it in place */
+if(window.GHS_PERSIST) window.GHS_PERSIST.bindHistory(MI_HIST);
 /* Resolve a master store by an EXPLICIT source key.
    Each caller states which source it means:
      · the Master screen  -> MASTER()      follows miSrc
@@ -4061,6 +4235,8 @@ function masterFor(key){
       types:base.types, fyears:base.fyears
     };
     MASTER_STORE[key].items.forEach(function(x){ x.mtime=null; });
+    /* layer the persisted, user-approved records on top of the clone */
+    if(window.GHS_PERSIST) window.GHS_PERSIST.applyTo(key, MASTER_STORE[key]);
   }
   return MASTER_STORE[key];
 }
@@ -4288,8 +4464,11 @@ function miRender(){
       '<td><input class="mi-in" data-f="price" data-id="'+miEsc(x.i)+'" value="'+(x.p==null?'':x.p)+'" inputmode="decimal"></td>'+
       '<td><input class="mi-in" data-f="min" data-id="'+miEsc(x.i)+'" value="'+(l.mmin==null?'':l.mmin)+'" inputmode="numeric"></td>'+
       '<td><input class="mi-in" data-f="max" data-id="'+miEsc(x.i)+'" value="'+(l.mmax==null?'':l.mmax)+'" inputmode="numeric"></td>'+
-      '<td><input class="mi-in" value="'+(l.amax==null?'':l.amax)+'" readonly title="'+miT('يُقرأ من ITEM_YEAR_LIMITS — غير قابل للتحرير في هذه المرحلة','Read from ITEM_YEAR_LIMITS — not editable at this stage')+'"></td>'+
-      '<td><span class="pill '+(act?'ok':'neutral')+'">'+(act?'ACTIVE':'INACTIVE')+'</span></td>'+
+      '<td><input class="mi-in" data-f="amax" data-id="'+miEsc(x.i)+'" value="'+(l.amax==null?'':l.amax)+'" inputmode="numeric"></td>'+
+      '<td><span class="pill '+(x.s==='APPROVED'?'ok':(x.p==null?'neutral':'warn'))+'">'+miEsc(x.s||'NONE')+'</span>'+
+        (act?'':' <span class="pill neutral">INACTIVE</span>')+
+        (x.s==='APPROVED'?'':'<div style="margin-top:6px"><button class="srcbtn" data-appr="'+miEsc(x.i)+'">'+
+          miT('\u0627\u0639\u062a\u0645\u0627\u062f \u0627\u0644\u0633\u0639\u0631','Approve price')+'</button></div>')+'</td>'+
       '<td class="mi-when">'+(x.mtime||'—')+'</td>'+
       '<td><div class="rowacts">'+
         '<button class="btn sm" data-save="'+miEsc(x.i)+'">'+miT('حفظ','Save')+'</button>'+
@@ -4302,6 +4481,7 @@ function miRender(){
   Array.prototype.forEach.call(tb.querySelectorAll('[data-tog]'),function(b){
     b.onclick=function(){ miToggle(b.getAttribute('data-tog')); }; });
   miRenderHist();
+  if(typeof miWireApprove==='function') miWireApprove();
 }
 function miRenderHist(){
   document.getElementById('miHistPill').textContent=MI_HIST.length+' '+miT('تعديل','changes');
@@ -4314,34 +4494,96 @@ function miRenderHist(){
   }).join(''):'<tr><td colspan="6" class="unconstrained" style="text-align:center;padding:20px">'+
     miT('لا توجد تعديلات بعد','No changes yet')+'</td></tr>';
 }
+/* Q5 — manual price approval. The user approves the price they themselves
+   entered; nothing is chosen automatically. It writes to MASTER(), the same
+   store the distribution engine reads, and it is recorded in the change log.
+   No cheapest / latest / supplier / quotation / conflict-resolution logic. */
+/* Sends only the records that actually changed, after the local mutation has
+   already succeeded. A failure never rolls the local change back and never
+   pretends the write landed — the user is told which of the two happened. */
+/* the exact record shapes the API stores — no extra field, no default */
+function miItemRec(it){
+  return { i:it.i, t:it.t, n:it.n, p:it.p, s:it.s, a:it.a,
+           u:(it.u===undefined?null:it.u), mn:(it.mn===undefined?null:it.mn),
+           mx:(it.mx===undefined?null:it.mx), mtime:it.mtime||null };
+}
+function miLimitRec(l){
+  var o={ id:l.id, fy:l.fy, item:l.item, mmin:l.mmin, mmax:l.mmax, amax:l.amax };
+  if(l.mode!==undefined)     o.mode=l.mode;
+  if(l.enforced!==undefined) o.enforced=l.enforced;
+  return o;
+}
+function miPersist(payload, label){
+  if(!window.GHS_PERSIST){ miMsg('warn',miT('\u0627\u0644\u062d\u0641\u0638 \u0641\u064a \u0627\u0644\u0630\u0627\u0643\u0631\u0629 \u0641\u0642\u0637','Saved in memory only')); return; }
+  var src=miSrcActive();
+  window.GHS_PERSIST.saveBatch(src,payload).then(function(){
+    miMsg('ok',label+miT(' \u00b7 \u0645\u062d\u0641\u0648\u0638 \u0641\u064a \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u2713',' \u00b7 persisted \u2713'));
+  }).catch(function(e){
+    miMsg('warn',label+miT(' \u00b7 \u26a0\ufe0f \u0644\u0645 \u064a\u064f\u062d\u0641\u0638 \u2014 \u0627\u0644\u062a\u0639\u062f\u064a\u0644 \u0641\u064a \u0630\u0627\u0643\u0631\u0629 \u0627\u0644\u062c\u0644\u0633\u0629 \u0641\u0642\u0637 \u0648\u0633\u064a\u0632\u0648\u0644 \u0639\u0646\u062f \u0627\u0644\u062a\u062d\u062f\u064a\u062b',
+      ' \u00b7 \u26a0\ufe0f NOT persisted \u2014 the change is in session memory only and will be lost on refresh'));
+    console.error('[PERSIST] save failed \u2014',e&&e.message);
+    ghsPersistBanner();
+  });
+}
+function miApprovePrice(id){
+  var M=MASTER(), it=M.items.filter(function(x){return x.i===id;})[0];
+  if(!it) return {ok:false,reason:'ITEM_NOT_FOUND'};
+  if(it.s==='APPROVED') return {ok:false,reason:'ALREADY_APPROVED'};
+  if(it.p==null||!(Number(it.p)>0)) return {ok:false,reason:'PRICE_REQUIRED'};
+  var before=it.s||'NONE';
+  it.s='APPROVED';                                  /* the only status write */
+  it.mtime=miNow();
+  miLog(id,it.n,miT('حالة السعر','Price status'),before,'APPROVED');
+  miPersist({ items:[miItemRec(it)],
+              history:[{when:it.mtime,code:id,name:it.n,
+                        field:miT('حالة السعر','Price status'),oldV:before,newV:'APPROVED'}] },
+            miT('اعتماد السعر','Price approval'));
+  return {ok:true,itemId:id,price:it.p,from:before};
+}
 function miSave(id){
   var M=MASTER(), it=M.items.filter(function(x){return x.i===id;})[0]; if(!it) return;
   var tb=document.getElementById('miRows');
   var gp=function(f){ return tb.querySelector('[data-f="'+f+'"][data-id="'+id+'"]'); };
-  var pEl=gp('price'), nEl=gp('min'), xEl=gp('max');
-  [pEl,nEl,xEl].forEach(function(e){ e.classList.remove('err'); });
+  var pEl=gp('price'), nEl=gp('min'), xEl=gp('max'), aEl=gp('amax');
+  [pEl,nEl,xEl,aEl].forEach(function(e){ if(e) e.classList.remove('err'); });
 
   var praw=pEl.value.trim(), errs=[];
   var price=null;
   if(praw===''||!/^\d+(\.\d{1,2})?$/.test(praw)||Number(praw)<0){ pEl.classList.add('err');
     errs.push(miT('السعر مطلوب ورقم موجب بمنزلتين عشريتين كحد أقصى','Price is required, non-negative, max 2 decimals')); }
   else price=Number(praw);
-  var mn=miInt(nEl.value), mx=miInt(xEl.value);
+  var mn=miInt(nEl.value), mx=miInt(xEl.value), am=aEl?miInt(aEl.value):undefined;
   if(mn===undefined){ nEl.classList.add('err'); errs.push(miT('الحد الأدنى: عدد صحيح ≥ 0','Minimum must be an integer >= 0')); }
   if(mx===undefined){ xEl.classList.add('err'); errs.push(miT('الحد الأقصى: عدد صحيح ≥ 0','Maximum must be an integer >= 0')); }
   if(mn!=null&&mx!=null&&mx<mn){ nEl.classList.add('err'); xEl.classList.add('err');
     errs.push(miT('الحد الأقصى الشهري لا يمكن أن يقل عن الحد الأدنى الشهري','Monthly Maximum cannot be lower than Monthly Minimum')); }
-  var lchk=miLimit(id);
-  if(lchk.amax!=null&&(!/^\d+$/.test(String(lchk.amax))||Number(lchk.amax)<0)){
-    errs.push(miT('الحد الأقصى السنوي غير صالح','Annual Maximum is invalid')); }
+  /* Q4 — the annual maximum is now typed by the user, validated like the
+     monthly limits. Blank means "not set" and stays null: nothing is invented. */
+  if(am===undefined){ if(aEl) aEl.classList.add('err');
+    errs.push(miT('الحد الأقصى السنوي: عدد صحيح ≥ 0','Annual Maximum must be an integer >= 0')); }
+  if(am!=null&&mx!=null&&am<mx){ if(aEl) aEl.classList.add('err');
+    errs.push(miT('الحد الأقصى السنوي لا يمكن أن يقل عن الحد الأقصى الشهري','Annual Maximum cannot be lower than the Monthly Maximum')); }
   if(errs.length){ miMsg('warn',errs.join(' · ')); return; }
 
   var l=miLimit(id), changed=[];
   if(price!==it.p){ miLog(id,it.n,miT('السعر','Price'),it.p==null?'—':it.p,price); it.p=price; changed.push('price'); }
   if(mn!==l.mmin){ miLog(id,it.n,'Min',l.mmin==null?'—':l.mmin,mn==null?'—':mn); l.mmin=mn; changed.push('min'); }
   if(mx!==l.mmax){ miLog(id,it.n,'Max',l.mmax==null?'—':l.mmax,mx==null?'—':mx); l.mmax=mx; changed.push('max'); }
+  if(am!==l.amax){ miLog(id,it.n,miT('الحد الأقصى السنوي','Annual Max'),l.amax==null?'—':l.amax,am==null?'—':am);
+    l.amax=am; changed.push('amax'); }
   if(!changed.length){ miMsg('note',miT('لا يوجد تغيير للحفظ','Nothing to save')); return; }
   it.mtime=miNow();
+  /* send exactly the records this save touched */
+  (function(){
+    var pay={ items:[], limits:[], history:[] };
+    if(changed.indexOf('price')>-1) pay.items.push(miItemRec(it));
+    if(changed.indexOf('min')>-1||changed.indexOf('max')>-1||changed.indexOf('amax')>-1)
+      pay.limits.push(miLimitRec(l));
+    /* miLog unshifts, so the entries just written are the newest ones */
+    pay.history=MI_HIST.slice(0,changed.length).filter(function(x){ return x.code===id; });
+    if(pay.items.length||pay.limits.length||pay.history.length)
+      miPersist(pay, miT('حفظ التعديل','Save'));
+  })();
   miRender();
   miMsg('ok',miT('تم حفظ التعديل — سيُستخدم في عمليات التوزيع المستقبلية فقط. هذا التعديل لا يؤثر على العمليات السابقة.',
                  'Change saved — it applies to future distribution runs only. It does not affect past runs.'));
@@ -4387,6 +4629,14 @@ function miSaveNew(){
 
   M.items.push({i:code,t:miType,n:name,p:Number(praw),s:'APPROVED',a:act,u:null,mn:null,mx:null,mtime:miNow()});
   M.limits.push({id:'ML'+(M.limits.length+1),fy:miFy,item:code,mmin:mn,mmax:mx,amax:null});
+  (function(){
+    var ni=M.items[M.items.length-1], nl=M.limits[M.limits.length-1];
+    setTimeout(function(){
+      miPersist({ items:[miItemRec(ni)], limits:[miLimitRec(nl)],
+                  history:MI_HIST.slice(0,1).filter(function(x){ return x.code===code; }) },
+                miT('بند جديد','New item'));
+    },0);
+  })();
   miLog(code,name,miT('بند جديد','New item'),'—',miT('أُضيف','added'));
   document.getElementById('miModal').classList.add('hidden');
   miRender();
@@ -4412,6 +4662,23 @@ document.getElementById('miExcel').onclick=function(){
     (m?miT(m[0],m[1]):String(r.reason||'UNKNOWN')))+'</div>';
   console.error('[EXPORT] Master items Excel failed \u2014',r.reason);
 };
+function miWireApprove(){
+  var tb=document.getElementById('miRows'); if(!tb) return;
+  Array.prototype.forEach.call(tb.querySelectorAll('[data-appr]'),function(b){
+    b.onclick=function(){
+      var id=b.getAttribute('data-appr');
+      var r=miApprovePrice(id);
+      if(r.ok){ miRender();
+        miMsg('ok',miT('تم اعتماد سعر الصنف ','Price approved for ')+id+
+          miT(' — سيُستخدم في عمليات التوزيع المستقبلية.',' — it will be used by future distribution runs.'));
+        return; }
+      miMsg('warn',
+        r.reason==='PRICE_REQUIRED'?miT('أدخل سعرًا صالحًا واحفظه قبل الاعتماد','Enter and save a valid price before approving'):
+        r.reason==='ALREADY_APPROVED'?miT('السعر معتمد بالفعل','The price is already approved'):
+        String(r.reason));
+    };
+  });
+}
 document.getElementById('miSrc').onchange=function(ev){ miSrc=ev.target.value; miType=null; miFy=null; miRender(); };
 document.getElementById('miType').onchange=function(ev){ miType=ev.target.value; miRender(); };
 document.getElementById('miFy').onchange=function(ev){ miFy=ev.target.value; miRender(); };
@@ -8480,6 +8747,99 @@ window.GHS_INVOICE_VIEW={
   selected:function(){ return ivRunId; }
 };
 ivRender();
+})();
+
+/* ============================================================================
+   P1 — the six in-page test panels are hidden from the ordinary user.
+   They are not removed: every test control and every suite stays in the file
+   and stays runnable. A developer reveals them with ?dev=1 in the URL, or by
+   double-clicking the sidebar brand — no new UI element is introduced.
+   ========================================================================== */
+(function(){
+  'use strict';
+  var IDS=['bhTestPanel','ivTestPanel','aeTestPanel','brTestPanel','qtTestPanel','miTestPanel'];
+  function setDev(on){
+    IDS.forEach(function(id){
+      var el=document.getElementById(id);
+      if(el){ if(on) el.classList.remove('hidden'); else el.classList.add('hidden'); }
+    });
+    window.GHS_DEV_MODE=!!on;
+  }
+  window.GHS_DEV={ show:function(){ setDev(true); }, hide:function(){ setDev(false); },
+                   isOn:function(){ return !!window.GHS_DEV_MODE; }, panels:IDS.slice() };
+  var on=false;
+  try{ on=/(^|[?&])dev=1(&|$)/.test(String(location.search||'')); }catch(e){ on=false; }
+  setDev(on);
+  /* the brand shortcut is a convenience, never a dependency: if the host has no
+     querySelector the reveal still works through ?dev=1 and window.GHS_DEV */
+  try{
+    var brand=document.querySelector&&document.querySelector('.brand');
+    if(brand){ brand.ondblclick=function(){ setDev(!window.GHS_DEV_MODE); }; }
+  }catch(e){ }
+})();
+
+/* ============================================================================
+   PERSISTENCE BOOT GATE
+   The seven startup renders live in separate IIFEs and stay untouched. The
+   overlay simply holds the first paint back until the snapshot settles, so no
+   pre-persistence value is ever shown and then silently replaced. If the API
+   is unreachable the app still opens — read-only screens work — but a warning
+   stays on screen and every write says plainly that it was not persisted.
+   ========================================================================== */
+function ghsPersistBanner(){
+  var P=window.GHS_PERSIST; if(!P) return;
+  var st=P.state();
+  var id='ghsPersistWarn';
+  var el=document.getElementById(id);
+  if(st.online===false){
+    if(!el){
+      el=document.createElement('div');
+      el.id=id;
+      el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;padding:10px 16px;'+
+        'background:#b91c1c;color:#fff;font:600 14px/1.5 inherit;text-align:center;direction:rtl';
+      document.body.appendChild(el);
+    }
+    el.textContent='\u26a0\ufe0f '+
+      '\u0627\u0644\u062d\u0641\u0638 \u0627\u0644\u062f\u0627\u0626\u0645 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d \u2014 '+
+      '\u0627\u0644\u0642\u0631\u0627\u0621\u0629 \u062a\u0639\u0645\u0644\u060c \u0644\u0643\u0646 \u0623\u064a \u062a\u0639\u062f\u064a\u0644 \u0633\u064a\u0628\u0642\u0649 \u0641\u064a \u0630\u0627\u0643\u0631\u0629 \u0627\u0644\u062c\u0644\u0633\u0629 \u0648\u064a\u0632\u0648\u0644 \u0639\u0646\u062f \u0627\u0644\u062a\u062d\u062f\u064a\u062b'+
+      (st.error?('  \u00b7  '+st.error):'');
+  } else if(el){ el.parentNode.removeChild(el); }
+}
+(function(){
+  'use strict';
+  var P=window.GHS_PERSIST; if(!P) return;
+  var id='ghsBootGate';
+  var g=document.createElement('div');
+  g.id=id;
+  g.style.cssText='position:fixed;inset:0;z-index:10000;display:flex;align-items:center;'+
+    'justify-content:center;background:#f5f7fb;color:#111827;font:600 15px/1.6 inherit;direction:rtl';
+  g.textContent='\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0645\u062d\u0641\u0648\u0638\u0629\u2026';
+  function drop(){ var e=document.getElementById(id); if(e&&e.parentNode) e.parentNode.removeChild(e); }
+  if(document.body) document.body.appendChild(g);
+  P._setBoot(true);
+
+  P.loadAll().then(function(){
+    /* a store may already have been built by a startup render — apply in place */
+    if(typeof window.GHS_RUNTIME==='object' && window.GHS_RUNTIME &&
+       typeof window.GHS_RUNTIME.masterRoster==='function'){
+      ['LIVE','FIXTURE'].forEach(function(k){
+        try{ P.applyTo(k, window.GHS_RUNTIME.masterRoster(k)); }catch(e){}
+      });
+    }
+    ghsPersistBanner();
+  }).catch(function(e){
+    console.error('[PERSIST] startup load failed \u2014',e&&e.message);
+    ghsPersistBanner();
+  }).then(function(){
+    P._setBoot(false);
+    drop();
+    /* repaint the screens that show MASTER-derived data */
+    try{ if(typeof miRender==='function') miRender(); }catch(e){}
+    try{ if(window.GHS_QTY_TRACK&&window.GHS_QTY_TRACK.render) window.GHS_QTY_TRACK.render(); }catch(e){}
+    try{ if(window.GHS_ACTUAL_REPORT&&window.GHS_ACTUAL_REPORT.render) window.GHS_ACTUAL_REPORT.render(); }catch(e){}
+  });
+  /* never let a hung request lock the app out */
+  setTimeout(function(){ if(P.state().boot){ P._setBoot(false); drop(); ghsPersistBanner(); } },15000);
 })();
 
 </script></body></html>
