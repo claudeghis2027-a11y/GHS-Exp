@@ -180,7 +180,7 @@ tr.over-row td{background:#fef2f2}
 <body>
 <div class="app">
 <aside class="side"><div class="brand">GHIS EXP</div><div class="nav">
-<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="invoices">🧾 الفواتير</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="qtrack">📦 متابعة الكميات</button><button data-page="distgen">🎲 توزيع المبالغ</button><button data-page="master">📦 إدارة البنود والأسعار</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
+<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="invoices">🧾 الفواتير</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="qtrack">📦 متابعة الكميات</button><button data-page="distgen">🎲 توزيع المبالغ</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
 <main class="main">
 <div class="top"><div class="title"><h1 id="pageTitle">لوحة التحكم</h1><p id="pageDesc">متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.</p></div><div class="filters"><select class="field" id="year"><option>2026/2027</option></select><select class="field" id="month"></select><div class="langsw" id="langsw"><button data-lang="ar" class="active">العربية</button><button data-lang="en">English</button></div></div></div>
 <section id="dashboard" class="page">
@@ -487,6 +487,86 @@ tr.over-row td{background:#fef2f2}
 </section>
 <section id="distgen" class="page hidden">
   <div class="panel">
+    <div class="section-title"><h2 id="duTitle">أنواع المصروفات</h2>
+      <span class="pill neutral" id="duPill">—</span></div>
+    <div class="repnote" id="duNote"></div>
+    <div class="types" id="duCards"></div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title"><h2 id="miTitle">إدارة البنود والأسعار</h2>
+      <span class="pill neutral" id="miPill"></span></div>
+    <div class="mi-note" id="miNote"></div>
+    <div id="miMsg"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="miLSrc">مصدر البيانات</label>
+        <select class="field" id="miSrc">
+          <option value="LIVE">بيانات التشغيل (v6)</option>
+          <option value="FIXTURE">بيانات اختبار وهمية</option>
+        </select></div>
+      <div class="rep-f"><label class="lbl" id="miLType">نوع المصروف</label>
+        <select class="field" id="miType"></select></div>
+      <div class="rep-f"><label class="lbl" id="miLFy">السنة المالية</label>
+        <select class="field" id="miFy"></select></div>
+      <div class="rep-f rowacts"><button class="btn green" id="miAdd">+ إضافة بند جديد</button></div>
+      <div class="rep-f rowacts"><button class="btn green" id="miExcel">📊 تحميل Excel</button>
+        <button class="btn secondary" id="miPrint">🖨️ طباعة</button>
+        <button class="btn secondary" id="miPdf">📄 تحميل PDF</button></div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th id="miC1">كود الصنف</th><th id="miC2">اسم الصنف</th>
+        <th id="miC3">سعر الوحدة — شامل VAT</th><th id="miC4">الحد الأدنى الشهري</th>
+        <th id="miC5">الحد الأقصى الشهري</th><th id="miC5b">الحد الأقصى السنوي</th>
+        <th id="miC6">الحالة</th><th id="miC7">آخر تعديل</th><th id="miC8">الإجراء</th>
+      </tr></thead>
+      <tbody id="miRows"></tbody>
+    </table></div>
+  </div>
+  <div class="panel" id="miHistPanel">
+    <div class="section-title"><h2 id="miHistTitle">سجل تعديلات البنود</h2>
+      <span class="pill neutral" id="miHistPill"></span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th id="miH1">التاريخ</th><th id="miH2">الكود</th><th id="miH3">الصنف</th>
+        <th id="miH4">الحقل</th><th id="miH5">القيمة القديمة</th><th id="miH6">القيمة الجديدة</th></tr></thead>
+      <tbody id="miHist"></tbody>
+    </table></div>
+  </div>
+
+  <div class="panel hidden" id="miTestPanel">
+    <div class="section-title"><h2 id="miTTitle">اختبارات إدارة البنود</h2>
+      <span class="pill neutral" id="miTPill">—</span></div>
+    <div class="mi-warn" id="miTNote"></div>
+    <div class="rowacts" style="margin-bottom:14px">
+      <button class="btn" id="miRunTests">تشغيل الاختبارات</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th id="miT1">#</th><th id="miT2">الاختبار</th><th id="miT3">النتيجة</th><th id="miT4">التفصيل</th></tr></thead>
+      <tbody id="miTRows"></tbody>
+    </table></div>
+  </div>
+
+  <div class="modal hidden" id="miModal"><div class="modalbox" style="max-width:600px">
+    <button class="close" id="miMClose">إغلاق</button>
+    <h2 id="miMTitle" style="margin:0 0 16px">إضافة بند جديد</h2>
+    <div class="frm">
+      <div><label class="lbl" id="miFType">نوع المصروف</label><input class="inp" id="nType" readonly></div>
+      <div><label class="lbl" id="miFCode">كود الصنف</label><input class="inp" id="nCode"></div>
+      <div class="full"><label class="lbl" id="miFName">اسم الصنف</label><input class="inp" id="nName"></div>
+      <div><label class="lbl" id="miFPrice">سعر الوحدة — شامل VAT</label><input class="inp" id="nPrice" inputmode="decimal"></div>
+      <div><label class="lbl" id="miFStatus">الحالة</label>
+        <select class="inp" id="nActive"><option value="1">ACTIVE</option><option value="0">INACTIVE</option></select></div>
+      <div><label class="lbl" id="miFMin">الحد الأدنى الشهري</label><input class="inp" id="nMin" inputmode="numeric"></div>
+      <div><label class="lbl" id="miFMax">الحد الأقصى الشهري</label><input class="inp" id="nMax" inputmode="numeric"></div>
+      <div class="full"><div class="errmsg" id="nErr"></div></div>
+    </div>
+    <div class="rowacts" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn secondary" id="nCancel">إلغاء</button>
+      <button class="btn" id="nSave">حفظ البند</button>
+    </div>
+  </div></div>
+
+  <div class="panel">
     <div class="section-title"><h2>توزيع المبالغ</h2><span class="pill neutral" id="dgEng"></span></div>
     <div class="sbx" id="dgSbx"></div>
     <div class="dist-f">
@@ -567,80 +647,7 @@ tr.over-row td{background:#fef2f2}
     </table></div>
   </div>
 </section>
-<section id="master" class="page hidden">
-  <div class="panel">
-    <div class="section-title"><h2 id="miTitle">إدارة البنود والأسعار</h2>
-      <span class="pill neutral" id="miPill"></span></div>
-    <div class="mi-note" id="miNote"></div>
-    <div id="miMsg"></div>
-    <div class="dist-f">
-      <div class="rep-f"><label class="lbl" id="miLSrc">مصدر البيانات</label>
-        <select class="field" id="miSrc">
-          <option value="LIVE">بيانات التشغيل (v6)</option>
-          <option value="FIXTURE">بيانات اختبار وهمية</option>
-        </select></div>
-      <div class="rep-f"><label class="lbl" id="miLType">نوع المصروف</label>
-        <select class="field" id="miType"></select></div>
-      <div class="rep-f"><label class="lbl" id="miLFy">السنة المالية</label>
-        <select class="field" id="miFy"></select></div>
-      <div class="rep-f rowacts"><button class="btn green" id="miAdd">+ إضافة بند جديد</button></div>
-      <div class="rep-f rowacts"><button class="btn green" id="miExcel">📊 تحميل Excel</button>
-        <button class="btn secondary" id="miPrint">🖨️ طباعة</button>
-        <button class="btn secondary" id="miPdf">📄 تحميل PDF</button></div>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th id="miC1">كود الصنف</th><th id="miC2">اسم الصنف</th>
-        <th id="miC3">سعر الوحدة — شامل VAT</th><th id="miC4">الحد الأدنى الشهري</th>
-        <th id="miC5">الحد الأقصى الشهري</th><th id="miC5b">الحد الأقصى السنوي</th>
-        <th id="miC6">الحالة</th><th id="miC7">آخر تعديل</th><th id="miC8">الإجراء</th>
-      </tr></thead>
-      <tbody id="miRows"></tbody>
-    </table></div>
-  </div>
-  <div class="panel" id="miHistPanel">
-    <div class="section-title"><h2 id="miHistTitle">سجل تعديلات البنود</h2>
-      <span class="pill neutral" id="miHistPill"></span></div>
-    <div class="table-wrap"><table>
-      <thead><tr><th id="miH1">التاريخ</th><th id="miH2">الكود</th><th id="miH3">الصنف</th>
-        <th id="miH4">الحقل</th><th id="miH5">القيمة القديمة</th><th id="miH6">القيمة الجديدة</th></tr></thead>
-      <tbody id="miHist"></tbody>
-    </table></div>
-  </div>
-
-  <div class="panel hidden" id="miTestPanel">
-    <div class="section-title"><h2 id="miTTitle">اختبارات إدارة البنود</h2>
-      <span class="pill neutral" id="miTPill">—</span></div>
-    <div class="mi-warn" id="miTNote"></div>
-    <div class="rowacts" style="margin-bottom:14px">
-      <button class="btn" id="miRunTests">تشغيل الاختبارات</button>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th id="miT1">#</th><th id="miT2">الاختبار</th><th id="miT3">النتيجة</th><th id="miT4">التفصيل</th></tr></thead>
-      <tbody id="miTRows"></tbody>
-    </table></div>
-  </div>
-
-  <div class="modal hidden" id="miModal"><div class="modalbox" style="max-width:600px">
-    <button class="close" id="miMClose">إغلاق</button>
-    <h2 id="miMTitle" style="margin:0 0 16px">إضافة بند جديد</h2>
-    <div class="frm">
-      <div><label class="lbl" id="miFType">نوع المصروف</label><input class="inp" id="nType" readonly></div>
-      <div><label class="lbl" id="miFCode">كود الصنف</label><input class="inp" id="nCode"></div>
-      <div class="full"><label class="lbl" id="miFName">اسم الصنف</label><input class="inp" id="nName"></div>
-      <div><label class="lbl" id="miFPrice">سعر الوحدة — شامل VAT</label><input class="inp" id="nPrice" inputmode="decimal"></div>
-      <div><label class="lbl" id="miFStatus">الحالة</label>
-        <select class="inp" id="nActive"><option value="1">ACTIVE</option><option value="0">INACTIVE</option></select></div>
-      <div><label class="lbl" id="miFMin">الحد الأدنى الشهري</label><input class="inp" id="nMin" inputmode="numeric"></div>
-      <div><label class="lbl" id="miFMax">الحد الأقصى الشهري</label><input class="inp" id="nMax" inputmode="numeric"></div>
-      <div class="full"><div class="errmsg" id="nErr"></div></div>
-    </div>
-    <div class="rowacts" style="margin-top:18px;justify-content:flex-end">
-      <button class="btn secondary" id="nCancel">إلغاء</button>
-      <button class="btn" id="nSave">حفظ البند</button>
-    </div>
-  </div></div>
-</section>
+<section id="master" class="page hidden"><!-- panels relocated into #distgen (unified screen) --></section>
 <section id="items" class="page hidden"><div class="panel"><div class="section-title"><h2>البنود</h2><select class="field" id="typeSelect"></select></div><div class="table-wrap"><table><thead><tr><th>البند</th><th>سعر الوحدة</th><th>Max سنوي</th><th>Weight</th><th>الحالة</th></tr></thead><tbody id="itemRows"></tbody></table></div></div></section>
 <section id="settings" class="page hidden"><div class="panel"><h2>إعدادات النظام</h2><div class="cards"><div class="card"><b>VAT</b><div class="metric value">14%</div></div><div class="card"><b>Annual Max</b><div class="metric value">مفعل</div></div><div class="card"><b>Monthly Max</b><div class="metric value">قابل للتفعيل</div></div><div class="card"><b>Invoice Count</b><div class="metric value">لكل شهر</div></div></div><div class="notice">هذه صفحة إعدادات أولية. أي تغيير حقيقي سيُربط لاحقًا بقاعدة بيانات Google Sheets وApps Script.</div></div></section>
 </main></div>
@@ -4571,6 +4578,82 @@ window.GHS_MASTER_ITEMS={
   messages:MI_DL_MSG
 };
 
+/* ============================================================================
+   UNIFIED SCREEN — expense-type cards on top of the distribution page.
+
+   The card design is the one from the Item Review screen, but the data is
+   read from MASTER — the operational store — not from that screen's sandbox.
+   Nothing is copied or duplicated: masterFor(), miLimit() and ENG.buildEligible
+   are called directly, and they already live in this same IIFE.
+
+   Clicking a card selects the type for BOTH the distribution filters and the
+   item table below, so one choice drives the whole screen.
+   ========================================================================== */
+function duTypes(){
+  var M=MASTER();
+  return (M.types||[]).slice();
+}
+function duStats(typeId){
+  var M=MASTER();
+  var items=M.items.filter(function(x){ return x.t===typeId; });
+  var priced=items.filter(function(x){ return x.p!=null && Number(x.p)>0; }).length;
+  var approved=items.filter(function(x){ return x.s==='APPROVED'; }).length;
+  var eligible=0;
+  /* the engine is the only authority on eligibility — never re-implemented here */
+  try{
+    if(miFy && typeof ENG!=='undefined' && ENG && typeof ENG.buildEligible==='function'){
+      var mapped=M.items.map(function(x){
+        return {id:x.i,typeId:x.t,name:x.n,level:'ITEM',active:x.a===true,
+                price:x.p,priceStatus:x.s,weight:1}; });
+      var r=ENG.buildEligible({fyId:miFy,typeId:typeId,items:mapped,limits:M.limits,
+        approvedRuns:[],approvedLines:[]});
+      eligible=(r&&r.eligible)?r.eligible.length:0;
+    }
+  }catch(e){ eligible=0; }
+  return { total:items.length, priced:priced, approved:approved, eligible:eligible,
+           pct: items.length ? Math.round(approved*100/items.length) : 0 };
+}
+function duRenderCards(){
+  var host=document.getElementById('duCards'); if(!host) return;
+  var types=duTypes();
+  host.innerHTML=types.map(function(ty){
+    var st=duStats(ty.id);
+    var icon=(typeof TYPE_ICON!=='undefined' && TYPE_ICON[ty.id]) ? TYPE_ICON[ty.id] : '\ud83d\udce6';
+    var active=(miType===ty.id)?' style="outline:2px solid var(--accent,#2563eb)"':'';
+    return '<button class="type" data-dutype="'+miEsc(ty.id)+'"'+active+'>'+
+      '<div class="icon">'+icon+'</div><h3>'+miEsc(ty.n)+'</h3>'+
+      '<div class="amt">'+st.approved+' '+miT('\u0645\u0646','of')+' '+st.total+'</div>'+
+      '<small>'+miT('\u0633\u0639\u0631 \u0645\u0639\u062a\u0645\u062f','approved price')+
+        ' \u2014 '+st.pct+'%'+(st.eligible?(' \u00b7 '+st.eligible+' '+miT('\u0645\u0624\u0647\u0644','eligible')):'')+'</small>'+
+      '<div class="prog"><i style="width:'+st.pct+'%"></i></div></button>';
+  }).join('');
+  Array.prototype.forEach.call(host.querySelectorAll('[data-dutype]'),function(b){
+    b.onclick=function(){ duPickType(b.getAttribute('data-dutype')); };
+  });
+  var tot=0, appr=0;
+  types.forEach(function(ty){ var st=duStats(ty.id); tot+=st.total; appr+=st.approved; });
+  var pill=document.getElementById('duPill');
+  if(pill) pill.textContent=appr+' / '+tot+' '+miT('\u0628\u0633\u0639\u0631 \u0645\u0639\u062a\u0645\u062f','with an approved price');
+  var note=document.getElementById('duNote');
+  if(note) note.textContent=miT(
+    '\u0627\u062e\u062a\u0631 \u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641 \u0644\u0645\u0631\u0627\u062c\u0639\u0629 \u0623\u0635\u0646\u0627\u0641\u0647 \u0648\u062a\u0639\u062f\u064a\u0644 \u0623\u0633\u0639\u0627\u0631\u0647\u0627 \u0648\u062d\u062f\u0648\u062f\u0647\u0627\u060c \u062b\u0645 \u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0634\u0647\u0631\u064a \u0639\u0644\u064a\u0647\u0627.',
+    'Pick an expense type to review its items, edit their prices and limits, then distribute the monthly amount across them.');
+}
+/* one click drives both the item table and the distribution filters */
+function duPickType(typeId){
+  miType=typeId;
+  var ms=document.getElementById('miType');
+  if(ms){ ms.value=typeId; }
+  var ds=document.getElementById('dgType');
+  if(ds){
+    var has=Array.prototype.some.call(ds.options||[],function(o){ return o.value===typeId; });
+    if(has && ds.value!==typeId){
+      ds.value=typeId;
+      if(typeof ds.onchange==='function') ds.onchange({target:ds});
+    }
+  }
+  miRender();
+}
 function miRender(){
   miFillFilters();
   var M=MASTER(), rows=M.items.filter(function(x){return x.t===miType;});
@@ -4605,6 +4688,7 @@ function miRender(){
     b.onclick=function(){ miToggle(b.getAttribute('data-tog')); }; });
   miRenderHist();
   if(typeof miWireApprove==='function') miWireApprove();
+  if(typeof duRenderCards==='function') duRenderCards();
 }
 function miRenderHist(){
   document.getElementById('miHistPill').textContent=MI_HIST.length+' '+miT('تعديل','changes');
