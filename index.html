@@ -180,7 +180,7 @@ tr.over-row td{background:#fef2f2}
 <body>
 <div class="app">
 <aside class="side"><div class="brand">GHIS EXP</div><div class="nav">
-<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="invoices">🧾 الفواتير</button><button data-page="itemreview">📋 مراجعة الأصناف</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="qtrack">📦 متابعة الكميات</button><button data-page="distgen">🎲 توليد التوزيع</button><button data-page="master">📦 إدارة البنود والأسعار</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
+<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="invoices">🧾 الفواتير</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="qtrack">📦 متابعة الكميات</button><button data-page="distgen">🎲 توزيع المبالغ</button><button data-page="master">📦 إدارة البنود والأسعار</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
 <main class="main">
 <div class="top"><div class="title"><h1 id="pageTitle">لوحة التحكم</h1><p id="pageDesc">متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.</p></div><div class="filters"><select class="field" id="year"><option>2026/2027</option></select><select class="field" id="month"></select><div class="langsw" id="langsw"><button data-lang="ar" class="active">العربية</button><button data-lang="en">English</button></div></div></div>
 <section id="dashboard" class="page">
@@ -487,7 +487,7 @@ tr.over-row td{background:#fef2f2}
 </section>
 <section id="distgen" class="page hidden">
   <div class="panel">
-    <div class="section-title"><h2>توليد التوزيع</h2><span class="pill neutral" id="dgEng"></span></div>
+    <div class="section-title"><h2>توزيع المبالغ</h2><span class="pill neutral" id="dgEng"></span></div>
     <div class="sbx" id="dgSbx"></div>
     <div class="dist-f">
       <div class="rep-f"><label class="lbl">نوع المصروف</label><select class="field" id="dgType"></select></div>
@@ -937,7 +937,7 @@ function openType(name){const t=types.find(x=>x[0]===name);const items=sampleIte
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 function saveBudget(){/* replaced by the hierarchical Budget view */}
 function generateDemo(){const total=types.reduce((s,t)=>s+t[3][currentMonth],0);const inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];let left=total;let vals=[];for(let i=0;i<inv-1;i++){let min=total*0.12,max=Math.min(total*0.32,left-(inv-i-1)*min);let v=Math.round((min+Math.random()*(max-min))/50)*50;vals.push(v);left-=v}vals.push(left);document.getElementById('distResult').innerHTML=`<h3>${months[currentMonth]} — توزيع تجريبي</h3><p>Target: <b>${fmt(total)}</b> — عدد الفواتير: <b>${inv}</b></p><div class="table-wrap"><table><thead><tr><th>الفاتورة</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${vals.map((v,i)=>`<tr><td>INV-${String(i+1).padStart(3,'0')}</td><td>${fmt(v)}</td><td><span class="pill ok">Valid</span></td></tr>`).join('')}</tbody><tfoot><tr><th>الإجمالي</th><th>${fmt(vals.reduce((a,b)=>a+b,0))}</th><th><span class="pill ok">مطابق</span></th></tr></tfoot></table></div>`}
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],qtrack:['متابعة الكميات','متابعة الكميات المنفَّذة مقابل الحد الأقصى السنوي لكل صنف.'],distgen:['توليد التوزيع','توليد توزيع الموازنة الشهرية على الأصناف المؤهلة.'],master:['إدارة البنود والأسعار','تعديل أسعار البنود وحدودها الكمية — يسري على عمليات التوزيع المستقبلية فقط.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],qtrack:['متابعة الكميات','متابعة الكميات المنفَّذة مقابل الحد الأقصى السنوي لكل صنف.'],distgen:['توزيع المبالغ','توزيع الميزانية الشهرية على الأصناف المؤهلة وفق الأسعار والحدود المعتمدة.'],master:['إدارة البنود والأسعار','تعديل أسعار البنود وحدودها الكمية — يسري على عمليات التوزيع المستقبلية فقط.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
 renderAll();
 
 /* ============ Prototype Item Management — SANDBOX (in-memory only) ============
@@ -1597,7 +1597,7 @@ function renderReport(){
   var apr=approvedRunCount();
   st.textContent=T('توزيعات معتمدة: ','Approved runs: ')+apr;
   document.getElementById('brNote').textContent = apr===0
-    ? T('لا توجد بيانات تنفيذ معتمدة حتى الآن — لذلك «المنفَّذ» = 0.00 في كل الشهور و«المتبقي» = كامل الموازنة. اعتمد توزيعًا من صفحة «توليد التوزيع» ليظهر هنا.',
+    ? T('لا توجد بيانات تنفيذ معتمدة حتى الآن — لذلك «المنفَّذ» = 0.00 في كل الشهور و«المتبقي» = كامل الموازنة. اعتمد توزيعًا من صفحة «توزيع المبالغ» ليظهر هنا.',
         'No approved execution data yet — Executed = 0.00 for every month and Remaining equals the full budget. Approve a distribution from the "Generate Distribution" page and it will appear here.')
     : T('التقرير للقراءة فقط. «المنفَّذ» يُحسب من التوزيعات المعتمدة فقط ولا يعدّل أي بيان.',
         'Read-only report. Executed is computed from approved distribution runs only and nothing is modified.');
