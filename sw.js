@@ -16,7 +16,7 @@
    Other shell assets stay cache-first for speed; the versioned cache name is
    what retires them.
    ========================================================================== */
-var CACHE_VERSION = 'ghis-exp-v2';
+var CACHE_VERSION = 'ghis-exp-v3';
 var CACHE_NAME = CACHE_VERSION;
 var CACHE_PREFIX = 'ghis-exp-';
 
