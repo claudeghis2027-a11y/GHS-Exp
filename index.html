@@ -961,6 +961,48 @@ window.GHS_PERSIST = (function(){
     }).catch(function(e){ state.online=false; throw e; });
   }
 
+  /* ---- expense types added by the user --------------------------------- */
+  var typeSnap=null;
+  var typeState={ loaded:false, failed:false, error:null, count:0 };
+  function loadTypes(){
+    return get(API+'?action=loadTypes')
+      .then(function(r){
+        if(!r||r.ok!==true) throw new Error(r&&r.error?r.error:'BAD_RESPONSE');
+        typeSnap=r.types||[];
+        typeState.loaded=true; typeState.failed=false; typeState.error=null; typeState.count=typeSnap.length;
+        return typeSnap;
+      }).catch(function(e){
+        typeSnap=null; typeState.loaded=false; typeState.failed=true; typeState.count=0;
+        typeState.error=String(e&&e.message||e); throw e;
+      });
+  }
+  /* appends the user's types onto the ones shipped in data.js — in place, so
+     every reference already held stays valid, and never duplicating an id */
+  function applyTypes(source, arr){
+    if(!typeSnap||!arr) return 0;
+    var n=0;
+    typeSnap.filter(function(t){ return t.source===source && t.active!==false; })
+      .forEach(function(t){
+        if(!arr.some(function(x){ return String(x.id)===String(t.id); })){
+          arr.push({id:t.id,n:t.n}); n++;
+        }
+      });
+    return n;
+  }
+  function saveType(source, id, name){
+    return post({ action:'upsertType', source:source, type:{ id:id, n:name } })
+      .then(function(r){
+        if(!r||r.ok!==true) throw new Error((r&&r.error)||'TYPE_SAVE_FAILED');
+        state.online=true;
+        if(!typeSnap) typeSnap=[];
+        var i=typeSnap.findIndex(function(t){ return t.source===source&&String(t.id)===String(id); });
+        var rec={source:source,id:id,n:name,active:true};
+        if(i>-1) typeSnap[i]=rec; else typeSnap.push(rec);
+        typeState.count=typeSnap.length;
+        return r;
+      }).catch(function(e){ state.online=false; throw e; });
+  }
+
   /* ---- saving ---------------------------------------------------------- */
   function saveBatch(source, payload){
     var body = { action:'saveBatch', source:source,
@@ -995,6 +1037,12 @@ window.GHS_PERSIST = (function(){
     saveBatch:saveBatch,
     loadRuns:loadRuns, hydrateRuns:hydrateRuns, saveRun:saveRun,
     loadBudgets:loadBudgets, budgetOf:budgetOf, saveBudget:saveBudget,
+    loadTypes:loadTypes, applyTypes:applyTypes, saveType:saveType,
+    types:function(){ return typeSnap?typeSnap.slice():null; },
+    typeState:function(){ return { loaded:typeState.loaded, failed:typeState.failed,
+      error:typeState.error, count:typeState.count }; },
+    _injectTypes:function(a){ typeSnap=a; typeState.loaded=true; typeState.failed=false;
+      typeState.count=a?a.length:0; },
     budgets:function(){ return budSnap?budSnap.slice():null; },
     budgetState:function(){ return { loaded:budState.loaded, failed:budState.failed,
       error:budState.error, count:budState.count }; },
@@ -1015,6 +1063,7 @@ window.GHS_PERSIST = (function(){
     _reset:function(){ snap={LIVE:null,FIXTURE:null}; applied={LIVE:false,FIXTURE:false};
       runSnap=null; runState={loaded:false,failed:false,error:null,count:0,hydrated:false};
       budSnap=null; budState={loaded:false,failed:false,error:null,count:0};
+      typeSnap=null; typeState={loaded:false,failed:false,error:null,count:0};
       state={loaded:false,online:null,error:null,lastSave:null,boot:false}; },
     _inject:function(k,o){ snap[k]=o; }        /* tests only */
   };
@@ -4714,10 +4763,7 @@ window.GHS_MASTER_ITEMS={
    Clicking a card selects the type for BOTH the distribution filters and the
    item table below, so one choice drives the whole screen.
    ========================================================================== */
-function duTypes(){
-  var M=MASTER();
-  return (M.types||[]).slice();
-}
+function duTypes(){ return dbTypes(); }   /* one list, one order, every screen */
 function duStats(typeId){
   var M=MASTER();
   var items=M.items.filter(function(x){ return x.t===typeId; });
@@ -4741,17 +4787,7 @@ function duStats(typeId){
 function duRenderCards(){
   var host=document.getElementById('duCards'); if(!host) return;
   var types=duTypes();
-  host.innerHTML=types.map(function(ty){
-    var st=duStats(ty.id);
-    var icon=(typeof TYPE_ICON!=='undefined' && TYPE_ICON[ty.id]) ? TYPE_ICON[ty.id] : '\ud83d\udce6';
-    var active=(miType===ty.id)?' style="outline:2px solid var(--accent,#2563eb)"':'';
-    return '<button class="type" data-dutype="'+miEsc(ty.id)+'"'+active+'>'+
-      '<div class="icon">'+icon+'</div><h3>'+miEsc(ty.n)+'</h3>'+
-      '<div class="amt">'+st.approved+' '+miT('\u0645\u0646','of')+' '+st.total+'</div>'+
-      '<small>'+miT('\u0633\u0639\u0631 \u0645\u0639\u062a\u0645\u062f','approved price')+
-        ' \u2014 '+st.pct+'%'+(st.eligible?(' \u00b7 '+st.eligible+' '+miT('\u0645\u0624\u0647\u0644','eligible')):'')+'</small>'+
-      '<div class="prog"><i style="width:'+st.pct+'%"></i></div></button>';
-  }).join('');
+  host.innerHTML=typeCardsHTML(types,'data-dutype');
   Array.prototype.forEach.call(host.querySelectorAll('[data-dutype]'),function(b){
     b.onclick=function(){ duPickType(b.getAttribute('data-dutype')); };
   });
@@ -4761,8 +4797,8 @@ function duRenderCards(){
   if(pill) pill.textContent=appr+' / '+tot+' '+miT('\u0628\u0633\u0639\u0631 \u0645\u0639\u062a\u0645\u062f','with an approved price');
   var note=document.getElementById('duNote');
   if(note) note.textContent=miT(
-    '\u0627\u062e\u062a\u0631 \u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641 \u0644\u0645\u0631\u0627\u062c\u0639\u0629 \u0623\u0635\u0646\u0627\u0641\u0647 \u0648\u062a\u0639\u062f\u064a\u0644 \u0623\u0633\u0639\u0627\u0631\u0647\u0627 \u0648\u062d\u062f\u0648\u062f\u0647\u0627\u060c \u062b\u0645 \u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0634\u0647\u0631\u064a \u0639\u0644\u064a\u0647\u0627.',
-    'Pick an expense type to review its items, edit their prices and limits, then distribute the monthly amount across them.');
+    '\u0627\u0636\u063a\u0637 \u0639\u0644\u0649 \u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641 \u0644\u0639\u0631\u0636 \u0628\u0646\u0648\u062f\u0647 \u0648\u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u0633\u0639\u0631 \u0648\u0627\u0644\u062d\u062f\u0648\u062f \u0648\u0625\u0636\u0627\u0641\u0629 \u0628\u0646\u062f \u062c\u062f\u064a\u062f.',
+    'Click an expense type to list its items and edit price, limits, or add a new item.');
 }
 /* one click drives both the item table and the distribution filters */
 function duPickType(typeId){
@@ -4780,6 +4816,24 @@ function duPickType(typeId){
   miRender();
 }
 /* ============================================================================
+   SHARED EXPENSE-TYPE CARD
+   One renderer, one look, one icon per type_id — used by the dashboard, by
+   Quantity Review and by Amount Distribution. A card is exactly what was
+   asked for: a large icon and the type name, and the whole card is clickable.
+   Never a dropdown.
+   ========================================================================== */
+function typeCardHTML(typeId, name, attr){
+  var icon=(typeof TYPE_ICON!=='undefined'&&TYPE_ICON[typeId])?TYPE_ICON[typeId]:'\ud83d\udce6';
+  return '<button class="type" '+attr+'="'+miEsc(typeId)+'">'+
+         '<div class="icon">'+icon+'</div>'+
+         '<h3>'+miEsc(name)+'</h3></button>';
+}
+function typeCardsHTML(types, attr){
+  return (types||[]).map(function(t){ return typeCardHTML(t.id, t.n, attr); }).join('');
+}
+window.GHS_TYPECARD={ html:typeCardHTML, list:typeCardsHTML };
+
+/* ============================================================================
    STEP 1 — DASHBOARD
    Fiscal year and month on top, one card per expense type using the shared
    TYPE_ICON map, and the annual budget editor behind a card click.
@@ -4790,7 +4844,46 @@ function duPickType(typeId){
 var dbFy=null, dbPi=null;
 var MONTH_ORDER=[9,10,11,12,1,2,3,4,5,6,7,8];   /* fiscal order: Sep … Aug */
 
-function dbData(){ return RSRC(); }
+/* RSRC, VATRATE, monthName and calYear all live in other IIFEs and are not
+   visible here. Rather than reach across scopes — or move those functions,
+   which would change core code — this module reads the same sources directly. */
+function dbData(){ return (miSrcActive()==='FIXTURE') ? window.GHS_FIXTURE : window.GHS_DATA; }
+/* The base types plus the ones the user added, merged into a fresh array on
+   every call. masterFor hands out base.types BY REFERENCE, so this never
+   pushes into it — GHS_DATA is never mutated and masterFor stays untouched. */
+function dbTypes(){
+  var out=(MASTER().types||[]).slice();
+  var P=window.GHS_PERSIST;
+  if(P&&typeof P.applyTypes==='function') P.applyTypes(miSrcActive(), out);
+  return out;
+}
+/* VAT_RATE ships as the string "0.14" — coerce, but report the source value
+   unchanged so a test can compare against settings directly */
+function dbVatRate(){
+  var st=(window.GHS_DATA&&window.GHS_DATA.settings)||{};
+  var v=Number(st.VAT_RATE);
+  return isNaN(v)?0:v;
+}
+function dbVatRateRaw(){
+  return ((window.GHS_DATA&&window.GHS_DATA.settings)||{}).VAT_RATE;
+}
+var DB_MONTH_AR=['\u064a\u0646\u0627\u064a\u0631','\u0641\u0628\u0631\u0627\u064a\u0631','\u0645\u0627\u0631\u0633','\u0623\u0628\u0631\u064a\u0644','\u0645\u0627\u064a\u0648','\u064a\u0648\u0646\u064a\u0648',
+  '\u064a\u0648\u0644\u064a\u0648','\u0623\u063a\u0633\u0637\u0633','\u0633\u0628\u062a\u0645\u0628\u0631','\u0623\u0643\u062a\u0648\u0628\u0631','\u0646\u0648\u0641\u0645\u0628\u0631','\u062f\u064a\u0633\u0645\u0628\u0631'];
+var DB_MONTH_EN=['January','February','March','April','May','June',
+  'July','August','September','October','November','December'];
+function dbMonthName(pm){
+  var i=Number(pm)-1;
+  if(i<0||i>11) return String(pm);
+  return miT(DB_MONTH_AR[i], DB_MONTH_EN[i]);
+}
+/* the fiscal year runs Sep..Aug, so Sep–Dec sit in the first calendar year */
+function dbCalYear(fyId,pm){
+  var f=(dbData().fyears||[]).filter(function(x){ return x.id===fyId; })[0];
+  var lbl=String((f&&f.label)||'');
+  var m=/(\d{4})\D+(\d{4})/.exec(lbl);
+  if(!m) return '';
+  return (Number(pm)>=9) ? m[1] : m[2];
+}
 function dbSrc(){ return miSrcActive(); }
 function dbMonths(fy){
   var rows=dbData().monthlyBudgets.filter(function(b){ return b.fy===fy; });
@@ -4822,7 +4915,7 @@ function dbMonthlyOf(typeId, pi){
   return (m && m.inc!=null) ? Number(m.inc) : null;
 }
 function dbTotals(){
-  var types=dbData().types||[];
+  var types=dbTypes();
   var annual=0, monthly=0, annualKnown=false, monthlyKnown=false;
   types.forEach(function(ty){
     var a=dbAnnualOf(ty.id);
@@ -4831,12 +4924,12 @@ function dbTotals(){
     if(m!=null){ monthly+=m; monthlyKnown=true; }
   });
   var itemCount=(MASTER().items||[]).length;
-  var vr=VATRATE();
+  var vr=dbVatRate();
   /* VAT contained in the annual budget — the stored amounts are VAT-inclusive */
   var vat=annualKnown? miR2(annual - annual/(1+vr)) : null;
   return { annual:annualKnown?miR2(annual):null,
            monthly:monthlyKnown?miR2(monthly):null,
-           items:itemCount, vat:vat, vatRate:vr };
+           items:itemCount, vat:vat, vatRate:vr, vatRateSource:dbVatRateRaw() };
 }
 function miR2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
 function dbMoney(n){
@@ -4858,24 +4951,14 @@ function dbSyncFilters(){
   var ms=dbMonths(dbFy);
   var sel=document.getElementById('dbMonth');
   sel.innerHTML=ms.map(function(m){
-    return '<option value="'+m.pi+'">'+miEsc(monthName(m.pm)+' '+calYear(dbFy,m.pm))+'</option>'; }).join('');
+    return '<option value="'+m.pi+'">'+miEsc(dbMonthName(m.pm)+' '+dbCalYear(dbFy,m.pm))+'</option>'; }).join('');
   if(!ms.some(function(m){ return m.pi===Number(dbPi); })) dbPi=ms.length?ms[0].pi:null;
   sel.value=dbPi;
 }
 function dbRenderCards(){
   var host=document.getElementById('dbTypeCards'); if(!host) return;
-  var types=(dbData().types||[]).slice();
-  host.innerHTML=types.map(function(ty){
-    var a=dbAnnualOf(ty.id);
-    var m=dbMonthlyOf(ty.id, dbPi);
-    var icon=(typeof TYPE_ICON!=='undefined'&&TYPE_ICON[ty.id])?TYPE_ICON[ty.id]:'\ud83d\udce6';
-    return '<button class="type" data-dbtype="'+miEsc(ty.id)+'">'+
-      '<div class="icon">'+icon+'</div><h3>'+miEsc(ty.n)+'</h3>'+
-      '<div class="amt">'+dbMoney(a.value)+'</div>'+
-      '<small>'+miT('\u0633\u0646\u0648\u064a','annual')+
-        (a.origin==='SAVED'?(' \u00b7 '+miT('\u0645\u062d\u0641\u0648\u0638','saved')):'')+
-        ' \u00b7 '+miT('\u0627\u0644\u0634\u0647\u0631','month')+' '+dbMoney(m)+'</small></button>';
-  }).join('');
+  var types=dbTypes();
+  host.innerHTML=typeCardsHTML(types,'data-dbtype');
   Array.prototype.forEach.call(host.querySelectorAll('[data-dbtype]'),function(b){
     b.onclick=function(){ dbOpenBudget(b.getAttribute('data-dbtype')); };
   });
@@ -4973,7 +5056,7 @@ function dbSaveBudget(){
 }
 /* ---- add expense type: follows the existing ETnnn pattern, never invents one ---- */
 function dbNextTypeId(){
-  var ids=(MASTER().types||[]).map(function(t){ return String(t.id); });
+  var ids=dbTypes().map(function(t){ return String(t.id); });
   var max=0, pad=3;
   ids.forEach(function(id){
     var m=/^ET(\d+)$/.exec(id);
@@ -5003,16 +5086,63 @@ function dbSaveNewType(){
     return {ok:false,reason:'NO_CODE'}; }
   if(!name){ msg.innerHTML='<div class="mi-warn">'+miEsc(miT('\u0623\u062f\u062e\u0644 \u0627\u0633\u0645 \u0627\u0644\u0646\u0648\u0639','Enter the type name'))+'</div>';
     return {ok:false,reason:'NO_NAME'}; }
-  var M=MASTER();
-  if((M.types||[]).some(function(t){ return String(t.id)===code; })){
+  if(dbTypes().some(function(t){ return String(t.id)===code; })){
     msg.innerHTML='<div class="mi-warn">'+miEsc(miT('\u0627\u0644\u0643\u0648\u062f \u0645\u0648\u062c\u0648\u062f','The code already exists'))+'</div>';
     return {ok:false,reason:'DUPLICATE'}; }
-  M.types.push({id:code,n:name});       /* MASTER layer only — data.js untouched */
+  /* the new type lives in the persistence snapshot only; dbTypes() merges it in
+     on every render. Nothing is pushed into the shared MASTER/GHS_DATA array. */
+  var P0=window.GHS_PERSIST;
+  if(P0&&typeof P0._injectTypes==='function'){
+    var cur=P0.types()||[];
+    cur.push({source:miSrcActive(),id:code,n:name,active:true});
+    P0._injectTypes(cur);
+  }
   miLog(code,name,miT('\u0646\u0648\u0639 \u0645\u0635\u0631\u0648\u0641 \u062c\u062f\u064a\u062f','New expense type'),'\u2014',name);
-  msg.innerHTML='<div class="mi-ok">'+miEsc(miT('\u062a\u0645\u062a \u0627\u0644\u0625\u0636\u0627\u0641\u0629','Added'))+' \u00b7 '+miEsc(code)+'</div>';
   dbRender();
+  var P=window.GHS_PERSIST;
+  if(P&&typeof P.saveType==='function'){
+    P.saveType(miSrcActive(),code,name).then(function(){
+      msg.innerHTML='<div class="mi-ok">'+miEsc(miT('\u062a\u0645\u062a \u0627\u0644\u0625\u0636\u0627\u0641\u0629 \u0648\u0627\u0644\u062d\u0641\u0638 \u0627\u0644\u062f\u0627\u0626\u0645 \u2713','Added and saved \u2713'))+' \u00b7 '+miEsc(code)+'</div>';
+    }).catch(function(e){
+      msg.innerHTML='<div class="mi-warn">'+miEsc(
+        miT('\u26a0\ufe0f \u0623\u064f\u0636\u064a\u0641 \u0644\u0643\u0646 \u0644\u0645 \u064a\u064f\u062d\u0641\u0638 \u2014 \u0633\u064a\u0632\u0648\u0644 \u0639\u0646\u062f \u0627\u0644\u062a\u062d\u062f\u064a\u062b: ',
+           '\u26a0\ufe0f Added but NOT saved \u2014 it will be lost on refresh: ')+String(e&&e.message||e))+'</div>';
+      console.error('[TYPE] save failed \u2014',e&&e.message);
+    });
+  } else {
+    msg.innerHTML='<div class="mi-warn">'+miEsc(
+      miT('\u0623\u064f\u0636\u064a\u0641 \u0641\u064a \u0627\u0644\u0630\u0627\u0643\u0631\u0629 \u0641\u0642\u0637','Added in memory only'))+'</div>';
+  }
   return {ok:true,id:code,name:name};
 }
+/* The dashboard functions above live inside this IIFE, so the wiring has to
+   happen here too — binding them from the outer scope silently fails and kills
+   the rest of the boot. Everything is published on window.GHS_DASH for tests. */
+window.GHS_DASH={ render:dbRender, data:dbData, totals:dbTotals,
+  annualOf:dbAnnualOf, monthlyOf:dbMonthlyOf, openBudget:dbOpenBudget,
+  saveBudget:dbSaveBudget, nextTypeId:dbNextTypeId, saveNewType:dbSaveNewType,
+  openNewType:dbOpenNewType, renderCards:dbRenderCards,
+  setFilters:function(fy,pi){ dbFy=fy; dbPi=pi; },
+  filters:function(){ return {fy:dbFy,pi:dbPi}; } };
+(function(){
+  var fy=document.getElementById('dbFy');
+  if(fy) fy.onchange=function(e){ dbFy=e.target.value; dbPi=null;
+    var p=document.getElementById('dbBudgetPanel'); if(p) p.classList.add('hidden');
+    dbRender(); if(window.GHS_MONTHLY) window.GHS_MONTHLY.render(); };
+  var mo=document.getElementById('dbMonth');
+  if(mo) mo.onchange=function(e){ dbPi=Number(e.target.value); dbRender(); };
+  var sv=document.getElementById('dbBSave'); if(sv) sv.onclick=function(){ dbSaveBudget(); };
+  var cl=document.getElementById('dbBClose');
+  if(cl) cl.onclick=function(){ document.getElementById('dbBudgetPanel').classList.add('hidden'); };
+  var at=document.getElementById('dbAddType'); if(at) at.onclick=function(){ dbOpenNewType(); };
+  var ns=document.getElementById('dbNSave'); if(ns) ns.onclick=function(){ dbSaveNewType(); };
+  var nc=document.getElementById('dbNCancel');
+  if(nc) nc.onclick=function(){ document.getElementById('dbNewTypePanel').classList.add('hidden'); };
+
+  dbFy=((dbData().fyears||[])[0]||{}).id;
+  var ms=dbMonths(dbFy); dbPi=ms.length?ms[0].pi:null;
+  dbRender();
+})();
 function miRender(){
   miFillFilters();
   var M=MASTER(), rows=M.items.filter(function(x){return x.t===miType;});
@@ -9478,6 +9608,9 @@ function ghsRunsBanner(){
   var budPromise = P.loadBudgets().catch(function(e){
     console.error('[PERSIST] budgets load failed \u2014',e&&e.message);
   });
+  var typePromise = P.loadTypes().catch(function(e){
+    console.error('[PERSIST] types load failed \u2014',e&&e.message);
+  });
   P.loadAll().then(function(){
     /* a store may already have been built by a startup render — apply in place */
     if(typeof window.GHS_RUNTIME==='object' && window.GHS_RUNTIME &&
@@ -9491,7 +9624,7 @@ function ghsRunsBanner(){
     console.error('[PERSIST] startup load failed \u2014',e&&e.message);
     ghsPersistBanner();
   }).then(function(){
-    return Promise.all([runsPromise,budPromise]);
+    return Promise.all([runsPromise,budPromise,typePromise]);
   }).then(function(){
     /* rehydrate RUNS / LINES in place and resume SEQ past the highest id */
     try{
@@ -9508,6 +9641,8 @@ function ghsRunsBanner(){
     try{ if(typeof miRender==='function') miRender(); }catch(e){}
     try{ if(window.GHS_QTY_TRACK&&window.GHS_QTY_TRACK.render) window.GHS_QTY_TRACK.render(); }catch(e){}
     try{ if(window.GHS_ACTUAL_REPORT&&window.GHS_ACTUAL_REPORT.render) window.GHS_ACTUAL_REPORT.render(); }catch(e){}
+    try{ if(window.GHS_DASH) window.GHS_DASH.render(); }catch(e){}
+    try{ if(window.GHS_MONTHLY) window.GHS_MONTHLY.render(); }catch(e){}
     try{ if(typeof renderRuns==='function') renderRuns(); }catch(e){}
     try{ if(typeof ivRender==='function') ivRender(); }catch(e){}
   });
@@ -9633,18 +9768,7 @@ window.GHS_PRINT = (function(){
   function renderCards(){
     var host=document.getElementById('mbTypeCards'); if(!host) return;
     var d=data(); if(!d) return;
-    host.innerHTML=(d.types||[]).map(function(ty){
-      var ann=annualOf(ty.id);
-      var ms=savedMonths(ty.id).filter(function(m){ return m!=null; });
-      var dist=ms.length?r2(ms.reduce(function(a,b){ return a+Number(b); },0)):null;
-      var icon=(typeof TYPE_ICON!=='undefined'&&TYPE_ICON[ty.id])?TYPE_ICON[ty.id]:'\ud83d\udce6';
-      var pct=(ann&&dist!=null)?Math.min(100,Math.round(dist*100/ann)):0;
-      return '<button class="type" data-mbtype="'+esc(ty.id)+'">'+
-        '<div class="icon">'+icon+'</div><h3>'+esc(ty.n)+'</h3>'+
-        '<div class="amt">'+money(ann)+'</div>'+
-        '<small>'+T2('\u0645\u0648\u0632\u0651\u0639','distributed')+' '+money(dist)+'</small>'+
-        '<div class="prog"><i style="width:'+pct+'%"></i></div></button>';
-    }).join('');
+    host.innerHTML=(window.GHS_TYPECARD?window.GHS_TYPECARD.list(d.types||[],'data-mbtype'):'');
     Array.prototype.forEach.call(host.querySelectorAll('[data-mbtype]'),function(b){
       b.onclick=function(){ open(b.getAttribute('data-mbtype')); };
     });
@@ -9750,6 +9874,7 @@ window.GHS_PRINT = (function(){
   var cl=document.getElementById('mbClose');
   if(cl) cl.onclick=function(){ mbType=null; document.getElementById('mbPanel').classList.add('hidden'); };
 
+  render();                       /* first paint — this module owns its own boot */
   window.GHS_MONTHLY={ render:render, open:open, save:save, validate:validate,
     draft:function(){ return mbDraft.slice(); },
     setDraft:function(a){ mbDraft=a.slice(); cards(); },
@@ -9759,36 +9884,11 @@ window.GHS_PRINT = (function(){
     annualOf:annualOf, savedMonths:savedMonths, sumDraft:sumDraft };
 })();
 
-/* ---- dashboard wiring ---- */
+/* ---- repaint both new screens when the language switches ---- */
 (function(){
-  var fy=document.getElementById('dbFy');
-  if(fy) fy.onchange=function(e){ dbFy=e.target.value; dbPi=null;
-    document.getElementById('dbBudgetPanel').classList.add('hidden'); dbRender(); };
-  var mo=document.getElementById('dbMonth');
-  if(mo) mo.onchange=function(e){ dbPi=Number(e.target.value); dbRender(); };
-  var sv=document.getElementById('dbBSave'); if(sv) sv.onclick=function(){ dbSaveBudget(); };
-  var cl=document.getElementById('dbBClose');
-  if(cl) cl.onclick=function(){ document.getElementById('dbBudgetPanel').classList.add('hidden'); };
-  var at=document.getElementById('dbAddType'); if(at) at.onclick=function(){ dbOpenNewType(); };
-  var ns=document.getElementById('dbNSave'); if(ns) ns.onclick=function(){ dbSaveNewType(); };
-  var nc=document.getElementById('dbNCancel');
-  if(nc) nc.onclick=function(){ document.getElementById('dbNewTypePanel').classList.add('hidden'); };
-
-  window.GHS_DASH={ render:dbRender, data:dbData, totals:dbTotals,
-    annualOf:dbAnnualOf, monthlyOf:dbMonthlyOf, openBudget:dbOpenBudget,
-    saveBudget:dbSaveBudget, nextTypeId:dbNextTypeId, saveNewType:dbSaveNewType,
-    setFilters:function(fy,pi){ dbFy=fy; dbPi=pi; },
-    filters:function(){ return {fy:dbFy,pi:dbPi}; } };
-
-  dbFy=((dbData().fyears||[])[0]||{}).id;
-  var ms=dbMonths(dbFy); dbPi=ms.length?ms[0].pi:null;
-  dbRender();
-  if(window.GHS_MONTHLY) window.GHS_MONTHLY.render();
-
-  /* repaint both screens when the language switches */
   Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
     b.addEventListener('click',function(){ setTimeout(function(){
-      try{ dbRender(); }catch(e){}
+      try{ if(window.GHS_DASH) window.GHS_DASH.render(); }catch(e){}
       try{ if(window.GHS_MONTHLY) window.GHS_MONTHLY.render(); }catch(e){}
     },0); });
   });
