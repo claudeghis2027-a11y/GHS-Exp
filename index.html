@@ -180,11 +180,59 @@ tr.over-row td{background:#fef2f2}
 <body>
 <div class="app">
 <aside class="side"><div class="brand">GHIS EXP</div><div class="nav">
-<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="invoices">🧾 الفواتير</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="qtrack">📦 متابعة الكميات</button><button data-page="distgen">🎲 توزيع المبالغ</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
+<button class="active" data-page="dashboard">🏠 لوحة التحكم</button><button data-page="budget">💰 الموازنة</button><button data-page="invoices">🧾 الفواتير</button><button data-page="budgetreport">📊 تنفيذ الموازنة</button><button data-page="qtrack">📦 متابعة الكميات</button><button data-page="qtyreview">📋 مراجعة الكميات</button><button data-page="distgen">🎲 توزيع المبالغ</button><button data-page="settings">⚙️ الإعدادات</button></div></aside>
 <main class="main">
 <div class="top"><div class="title"><h1 id="pageTitle">لوحة التحكم</h1><p id="pageDesc">متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.</p></div><div class="filters"><select class="field" id="year"><option>2026/2027</option></select><select class="field" id="month"></select><div class="langsw" id="langsw"><button data-lang="ar" class="active">العربية</button><button data-lang="en">English</button></div></div></div>
 <section id="dashboard" class="page">
-<div class="cards" id="metrics"></div><div class="panel"><div class="section-title"><h2>أنواع المصروفات</h2><span class="pill ok">بيانات مرجعية من الشيت</span></div><div class="types" id="types"></div></div>
+  <div class="panel">
+    <div class="section-title"><h2 id="dbTitle">لوحة التحكم</h2>
+      <span class="pill neutral" id="dbPill">—</span></div>
+    <div class="repnote" id="dbNote"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="dbLFy">السنة المالية</label>
+        <select class="field" id="dbFy"></select></div>
+      <div class="rep-f"><label class="lbl" id="dbLMonth">الشهر</label>
+        <select class="field" id="dbMonth"></select></div>
+      <div class="rep-f rowacts"><button class="btn green" id="dbAddType">+ إضافة نوع مصروف</button></div>
+    </div>
+    <div class="appr-grid" id="dbCards"></div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title"><h2 id="dbTypesTitle">أنواع المصروفات</h2>
+      <span class="pill neutral" id="dbTypesPill">—</span></div>
+    <div class="types" id="dbTypeCards"></div>
+  </div>
+
+  <div class="panel hidden" id="dbBudgetPanel">
+    <div class="section-title"><h2 id="dbBTitle">الموازنة السنوية</h2>
+      <span class="pill neutral" id="dbBPill">—</span></div>
+    <div id="dbBMsg"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="dbBLAnnual">الموازنة السنوية — شامل الضريبة</label>
+        <input class="field" id="dbBAnnual" inputmode="decimal"></div>
+      <div class="rep-f rowacts"><button class="btn" id="dbBSave">حفظ الموازنة السنوية</button></div>
+      <div class="rep-f rowacts"><button class="btn secondary" id="dbBClose">إغلاق</button></div>
+    </div>
+    <div class="runmeta" id="dbBMeta"></div>
+  </div>
+
+  <div class="panel hidden" id="dbNewTypePanel">
+    <div class="section-title"><h2 id="dbNTitle">إضافة نوع مصروف</h2></div>
+    <div id="dbNMsg"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="dbNLCode">كود النوع</label>
+        <input class="field" id="dbNCode" readonly></div>
+      <div class="rep-f"><label class="lbl" id="dbNLName">اسم النوع</label>
+        <input class="field" id="dbNName"></div>
+      <div class="rep-f rowacts"><button class="btn green" id="dbNSave">حفظ</button></div>
+      <div class="rep-f rowacts"><button class="btn secondary" id="dbNCancel">إلغاء</button></div>
+    </div>
+    <div class="runmeta" id="dbNMeta"></div>
+  </div>
+
+  <div class="cards hidden" id="metrics"></div>
+  <div class="types hidden" id="types"></div>
 </section>
 <section id="budget" class="page hidden">
   <div class="panel">
@@ -485,8 +533,8 @@ tr.over-row td{background:#fef2f2}
     </table></div>
   </div>
 </section>
-<section id="distgen" class="page hidden">
-  <div class="panel">
+<section id="qtyreview" class="page hidden">
+<div class="panel">
     <div class="section-title"><h2 id="duTitle">أنواع المصروفات</h2>
       <span class="pill neutral" id="duPill">—</span></div>
     <div class="repnote" id="duNote"></div>
@@ -531,7 +579,35 @@ tr.over-row td{background:#fef2f2}
         <th id="miH4">الحقل</th><th id="miH5">القيمة القديمة</th><th id="miH6">القيمة الجديدة</th></tr></thead>
       <tbody id="miHist"></tbody>
     </table></div>
+</section>
+<section id="distgen" class="page hidden">
+  <div class="panel">
+    <div class="section-title"><h2 id="mbTitle">توزيع المبالغ</h2>
+      <span class="pill neutral" id="mbPill">—</span></div>
+    <div class="repnote" id="mbNote"></div>
+    <div class="dist-f">
+      <div class="rep-f"><label class="lbl" id="mbLFy">السنة المالية</label>
+        <select class="field" id="mbFy"></select></div>
+    </div>
+    <div class="types" id="mbTypeCards"></div>
   </div>
+  <div class="panel hidden" id="mbPanel">
+    <div class="section-title"><h2 id="mbMTitle">الموازنة الشهرية</h2>
+      <span class="pill neutral" id="mbMPill">—</span></div>
+    <div id="mbMsg"></div>
+    <div class="appr-grid" id="mbCards"></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th id="mbC1">الشهر</th><th id="mbC2">المبلغ — شامل الضريبة</th></tr></thead>
+      <tbody id="mbRows"></tbody>
+    </table></div>
+    <div class="rowacts" style="margin-top:14px">
+      <button class="btn" id="mbSave">حفظ المبالغ الشهرية</button>
+      <button class="btn secondary" id="mbClose">إغلاق</button>
+    </div>
+    <div class="runmeta" id="mbMeta"></div>
+  </div>
+
+    </div>
 
   <div class="panel hidden" id="miTestPanel">
     <div class="section-title"><h2 id="miTTitle">اختبارات إدارة البنود</h2>
@@ -680,6 +756,8 @@ window.GHS_PERSIST = (function(){
 
   var snap   = { LIVE:null, FIXTURE:null };   /* overrides, once fetched */
   var runSnap= null;                          /* persisted approved runs, once fetched */
+  var budSnap= null;                          /* persisted budgets, once fetched */
+  var budState={ loaded:false, failed:false, error:null, count:0 };
   var runState = { loaded:false, failed:false, error:null, count:0, hydrated:false };
   var applied= { LIVE:false, FIXTURE:false }; /* guards a double apply */
   var histRef= null;                          /* the live MI_HIST array */
@@ -843,6 +921,46 @@ window.GHS_PERSIST = (function(){
   /* approval is blocked while history is unknown — never while it is merely empty */
   function approvalBlocked(){ return runState.failed===true; }
 
+  /* ---- budgets (STEP 1 + STEP 3) ---------------------------------------
+     One row per (source, fy, type): the annual amount plus twelve monthly
+     amounts the user typed. Nothing is spread automatically. */
+  function loadBudgets(){
+    return get(API+'?action=loadBudgets')
+      .then(function(r){
+        if(!r||r.ok!==true) throw new Error(r&&r.error?r.error:'BAD_RESPONSE');
+        budSnap=r.budgets||[];
+        budState.loaded=true; budState.failed=false; budState.error=null; budState.count=budSnap.length;
+        return budSnap;
+      }).catch(function(e){
+        budSnap=null; budState.loaded=false; budState.failed=true; budState.count=0;
+        budState.error=String(e&&e.message||e);
+        throw e;
+      });
+  }
+  function budgetOf(source, fyId, typeId){
+    if(!budSnap) return null;
+    return budSnap.filter(function(b){
+      return b.source===source && String(b.fyId)===String(fyId) && String(b.typeId)===String(typeId);
+    })[0] || null;
+  }
+  function saveBudget(source, fyId, typeId, annual, months, status){
+    var body={ action:'upsertBudget', source:source,
+      budget:{ fyId:fyId, typeId:typeId, annual:annual, months:months||[], status:status||'SAVED' } };
+    return post(body).then(function(r){
+      if(!r||r.ok!==true) throw new Error((r&&r.error)||'BUDGET_SAVE_FAILED');
+      state.online=true;
+      /* keep the local snapshot in step */
+      if(!budSnap) budSnap=[];
+      var i=budSnap.findIndex(function(b){
+        return b.source===source && String(b.fyId)===String(fyId) && String(b.typeId)===String(typeId); });
+      var rec={ source:source, fyId:fyId, typeId:typeId, annual:annual,
+                months:(months||[]).slice(), status:status||'SAVED', updatedAt:new Date().toISOString() };
+      if(i>-1) budSnap[i]=rec; else budSnap.push(rec);
+      budState.count=budSnap.length;
+      return r;
+    }).catch(function(e){ state.online=false; throw e; });
+  }
+
   /* ---- saving ---------------------------------------------------------- */
   function saveBatch(source, payload){
     var body = { action:'saveBatch', source:source,
@@ -876,6 +994,12 @@ window.GHS_PERSIST = (function(){
     loadAll:loadAll, applyTo:applyTo, bindHistory:bindHistory,
     saveBatch:saveBatch,
     loadRuns:loadRuns, hydrateRuns:hydrateRuns, saveRun:saveRun,
+    loadBudgets:loadBudgets, budgetOf:budgetOf, saveBudget:saveBudget,
+    budgets:function(){ return budSnap?budSnap.slice():null; },
+    budgetState:function(){ return { loaded:budState.loaded, failed:budState.failed,
+      error:budState.error, count:budState.count }; },
+    _injectBudgets:function(a){ budSnap=a; budState.loaded=true; budState.failed=false;
+      budState.count=a?a.length:0; },
     approvalBlocked:approvalBlocked,
     runState:function(){ return { loaded:runState.loaded, failed:runState.failed,
       error:runState.error, count:runState.count, hydrated:runState.hydrated }; },
@@ -890,6 +1014,7 @@ window.GHS_PERSIST = (function(){
     _setBoot:function(v){ state.boot=!!v; },
     _reset:function(){ snap={LIVE:null,FIXTURE:null}; applied={LIVE:false,FIXTURE:false};
       runSnap=null; runState={loaded:false,failed:false,error:null,count:0,hydrated:false};
+      budSnap=null; budState={loaded:false,failed:false,error:null,count:0};
       state={loaded:false,online:null,error:null,lastSave:null,boot:false}; },
     _inject:function(k,o){ snap[k]=o; }        /* tests only */
   };
@@ -944,7 +1069,7 @@ function openType(name){const t=types.find(x=>x[0]===name);const items=sampleIte
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 function saveBudget(){/* replaced by the hierarchical Budget view */}
 function generateDemo(){const total=types.reduce((s,t)=>s+t[3][currentMonth],0);const inv=[4,5,4,6,5,4,5,5,4,3,2,2][currentMonth];let left=total;let vals=[];for(let i=0;i<inv-1;i++){let min=total*0.12,max=Math.min(total*0.32,left-(inv-i-1)*min);let v=Math.round((min+Math.random()*(max-min))/50)*50;vals.push(v);left-=v}vals.push(left);document.getElementById('distResult').innerHTML=`<h3>${months[currentMonth]} — توزيع تجريبي</h3><p>Target: <b>${fmt(total)}</b> — عدد الفواتير: <b>${inv}</b></p><div class="table-wrap"><table><thead><tr><th>الفاتورة</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${vals.map((v,i)=>`<tr><td>INV-${String(i+1).padStart(3,'0')}</td><td>${fmt(v)}</td><td><span class="pill ok">Valid</span></td></tr>`).join('')}</tbody><tfoot><tr><th>الإجمالي</th><th>${fmt(vals.reduce((a,b)=>a+b,0))}</th><th><span class="pill ok">مطابق</span></th></tr></tfoot></table></div>`}
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],qtrack:['متابعة الكميات','متابعة الكميات المنفَّذة مقابل الحد الأقصى السنوي لكل صنف.'],distgen:['توزيع المبالغ','توزيع الميزانية الشهرية على الأصناف المؤهلة وفق الأسعار والحدود المعتمدة.'],master:['إدارة البنود والأسعار','تعديل أسعار البنود وحدودها الكمية — يسري على عمليات التوزيع المستقبلية فقط.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden');const titles={dashboard:['لوحة التحكم','متابعة الموازنة والتوزيع والفواتير حسب الشهر ونوع المصروف.'],budget:['الموازنة','تحديد الموازنة وعدد الفواتير لكل شهر.'],itemreview:['مراجعة الأصناف','تحديد سعر التشغيل لكل صنف قبل الموازنة والتوزيع.'],budgetreport:['تنفيذ الموازنة','الموازنة المحددة لكل شهر، والمنفَّذ منها، والمتبقي.'],qtrack:['متابعة الكميات','متابعة الكميات المنفَّذة مقابل الحد الأقصى السنوي لكل صنف.'],qtyreview:['مراجعة الكميات','مراجعة أصناف كل نوع مصروف وتعديل أسعارها وحدودها واعتمادها.'],distgen:['توزيع المبالغ','توزيع الميزانية الشهرية على الأصناف المؤهلة وفق الأسعار والحدود المعتمدة.'],master:['إدارة البنود والأسعار','تعديل أسعار البنود وحدودها الكمية — يسري على عمليات التوزيع المستقبلية فقط.'],distribution:['التوزيع','تجربة Distribution Engine والـInvoice Allocation.'],invoices:['الفواتير','عرض الفواتير وتفاصيلها.'],items:['البنود','Master Data للبنود والأسعار والحدود.'],settings:['الإعدادات','إعدادات النظام والقواعد.']};document.getElementById('pageTitle').textContent=titles[b.dataset.page][0];document.getElementById('pageDesc').textContent=titles[b.dataset.page][1]});
 renderAll();
 
 /* ============ Prototype Item Management — SANDBOX (in-memory only) ============
@@ -4653,6 +4778,240 @@ function duPickType(typeId){
     }
   }
   miRender();
+}
+/* ============================================================================
+   STEP 1 — DASHBOARD
+   Fiscal year and month on top, one card per expense type using the shared
+   TYPE_ICON map, and the annual budget editor behind a card click.
+
+   Every figure comes from GHS_DATA or from the BUDGETS persistence. Nothing is
+   hard-coded and nothing is spread across months automatically.
+   ========================================================================== */
+var dbFy=null, dbPi=null;
+var MONTH_ORDER=[9,10,11,12,1,2,3,4,5,6,7,8];   /* fiscal order: Sep … Aug */
+
+function dbData(){ return RSRC(); }
+function dbSrc(){ return miSrcActive(); }
+function dbMonths(fy){
+  var rows=dbData().monthlyBudgets.filter(function(b){ return b.fy===fy; });
+  var seen={}, out=[];
+  rows.forEach(function(b){ if(!seen[b.pi]){ seen[b.pi]=1; out.push({pi:Number(b.pi),pm:Number(b.pm)}); } });
+  out.sort(function(a,b){ return a.pi-b.pi; });
+  if(!out.length) out=MONTH_ORDER.map(function(pm,i){ return {pi:i+1,pm:pm}; });
+  return out;
+}
+/* the annual figure: the persisted budget wins, the source file is the fallback */
+function dbAnnualOf(typeId){
+  var P=window.GHS_PERSIST;
+  if(P && typeof P.budgetOf==='function'){
+    var b=P.budgetOf(dbSrc(), dbFy, typeId);
+    if(b && b.annual!=null) return {value:Number(b.annual), origin:'SAVED'};
+  }
+  var a=(dbData().annualBudgets||[]).filter(function(x){ return x.fy===dbFy&&x.t===typeId; })[0];
+  if(a && a.inc!=null && Number(a.inc)!==0) return {value:Number(a.inc), origin:'SOURCE'};
+  return {value:null, origin:'NONE'};
+}
+function dbMonthlyOf(typeId, pi){
+  var P=window.GHS_PERSIST;
+  if(P && typeof P.budgetOf==='function'){
+    var b=P.budgetOf(dbSrc(), dbFy, typeId);
+    if(b && b.months && b.months[pi-1]!=null) return Number(b.months[pi-1]);
+  }
+  var m=dbData().monthlyBudgets.filter(function(x){
+    return x.fy===dbFy&&x.t===typeId&&Number(x.pi)===Number(pi); })[0];
+  return (m && m.inc!=null) ? Number(m.inc) : null;
+}
+function dbTotals(){
+  var types=dbData().types||[];
+  var annual=0, monthly=0, annualKnown=false, monthlyKnown=false;
+  types.forEach(function(ty){
+    var a=dbAnnualOf(ty.id);
+    if(a.value!=null){ annual+=a.value; annualKnown=true; }
+    var m=dbMonthlyOf(ty.id, dbPi);
+    if(m!=null){ monthly+=m; monthlyKnown=true; }
+  });
+  var itemCount=(MASTER().items||[]).length;
+  var vr=VATRATE();
+  /* VAT contained in the annual budget — the stored amounts are VAT-inclusive */
+  var vat=annualKnown? miR2(annual - annual/(1+vr)) : null;
+  return { annual:annualKnown?miR2(annual):null,
+           monthly:monthlyKnown?miR2(monthly):null,
+           items:itemCount, vat:vat, vatRate:vr };
+}
+function miR2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
+function dbMoney(n){
+  if(n==null||isNaN(n)) return '\u2014';
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+
+    ' '+(((D.labels&&D.labels['currency.egp'])||{}).ar||'\u062c.\u0645');
+}
+function dbCard(label,value,cls){
+  return '<div class="appr-kv'+(cls?' '+cls:'')+'">'+miEsc(label)+'<b>'+value+'</b></div>';
+}
+function dbSyncFilters(){
+  var d=dbData();
+  var fs=document.getElementById('dbFy'); if(!fs) return;
+  fs.innerHTML=(d.fyears||[]).map(function(f){
+    return '<option value="'+miEsc(f.id)+'">'+miEsc(f.label)+'</option>'; }).join('');
+  if(!(d.fyears||[]).some(function(f){return f.id===dbFy;})) { dbFy=((d.fyears||[])[0]||{}).id; dbPi=null; }
+  fs.value=dbFy;
+
+  var ms=dbMonths(dbFy);
+  var sel=document.getElementById('dbMonth');
+  sel.innerHTML=ms.map(function(m){
+    return '<option value="'+m.pi+'">'+miEsc(monthName(m.pm)+' '+calYear(dbFy,m.pm))+'</option>'; }).join('');
+  if(!ms.some(function(m){ return m.pi===Number(dbPi); })) dbPi=ms.length?ms[0].pi:null;
+  sel.value=dbPi;
+}
+function dbRenderCards(){
+  var host=document.getElementById('dbTypeCards'); if(!host) return;
+  var types=(dbData().types||[]).slice();
+  host.innerHTML=types.map(function(ty){
+    var a=dbAnnualOf(ty.id);
+    var m=dbMonthlyOf(ty.id, dbPi);
+    var icon=(typeof TYPE_ICON!=='undefined'&&TYPE_ICON[ty.id])?TYPE_ICON[ty.id]:'\ud83d\udce6';
+    return '<button class="type" data-dbtype="'+miEsc(ty.id)+'">'+
+      '<div class="icon">'+icon+'</div><h3>'+miEsc(ty.n)+'</h3>'+
+      '<div class="amt">'+dbMoney(a.value)+'</div>'+
+      '<small>'+miT('\u0633\u0646\u0648\u064a','annual')+
+        (a.origin==='SAVED'?(' \u00b7 '+miT('\u0645\u062d\u0641\u0648\u0638','saved')):'')+
+        ' \u00b7 '+miT('\u0627\u0644\u0634\u0647\u0631','month')+' '+dbMoney(m)+'</small></button>';
+  }).join('');
+  Array.prototype.forEach.call(host.querySelectorAll('[data-dbtype]'),function(b){
+    b.onclick=function(){ dbOpenBudget(b.getAttribute('data-dbtype')); };
+  });
+  var pill=document.getElementById('dbTypesPill');
+  if(pill) pill.textContent=types.length+' '+miT('\u0646\u0648\u0639','types');
+}
+function dbRenderTotals(){
+  var t=dbTotals();
+  var host=document.getElementById('dbCards'); if(!host) return;
+  host.innerHTML=
+    dbCard(miT('\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629','Total annual budget'), dbMoney(t.annual))+
+    dbCard(miT('\u0625\u062c\u0645\u0627\u0644\u064a \u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0634\u0647\u0631','Total monthly budget'), dbMoney(t.monthly))+
+    dbCard(miT('\u0625\u062c\u0645\u0627\u0644\u064a \u0628\u0646\u0648\u062f \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a','Total expense items'),
+           new Intl.NumberFormat('en-US').format(t.items))+
+    dbCard(miT('\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0636\u0631\u064a\u0628\u0629 \u0627\u0644\u0645\u0636\u0645\u0651\u0646\u0629','Total VAT included'), dbMoney(t.vat));
+  var pill=document.getElementById('dbPill');
+  if(pill) pill.textContent=miT('\u0636\u0631\u064a\u0628\u0629','VAT')+' '+(t.vatRate*100).toFixed(0)+'%';
+}
+function dbRender(){
+  if(!document.getElementById('dbTypeCards')) return;
+  [['dbTitle','\u0644\u0648\u062d\u0629 \u0627\u0644\u062a\u062d\u0643\u0645','Dashboard'],
+   ['dbLFy','\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629','Financial Year'],
+   ['dbLMonth','\u0627\u0644\u0634\u0647\u0631','Month'],
+   ['dbAddType','+ \u0625\u0636\u0627\u0641\u0629 \u0646\u0648\u0639 \u0645\u0635\u0631\u0648\u0641','+ Add expense type'],
+   ['dbTypesTitle','\u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a','Expense types'],
+   ['dbBTitle','\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629','Annual budget'],
+   ['dbBLAnnual','\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629 \u2014 \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','Annual budget \u2014 VAT inclusive'],
+   ['dbBSave','\u062d\u0641\u0638 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629','Save annual budget'],
+   ['dbBClose','\u0625\u063a\u0644\u0627\u0642','Close'],
+   ['dbNTitle','\u0625\u0636\u0627\u0641\u0629 \u0646\u0648\u0639 \u0645\u0635\u0631\u0648\u0641','Add expense type'],
+   ['dbNLCode','\u0643\u0648\u062f \u0627\u0644\u0646\u0648\u0639','Type code'],
+   ['dbNLName','\u0627\u0633\u0645 \u0627\u0644\u0646\u0648\u0639','Type name'],
+   ['dbNSave','\u062d\u0641\u0638','Save'],['dbNCancel','\u0625\u0644\u063a\u0627\u0621','Cancel']
+  ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=miT(x[1],x[2]); });
+  var note=document.getElementById('dbNote');
+  if(note) note.textContent=miT(
+    '\u0627\u062e\u062a\u0631 \u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629 \u0648\u0627\u0644\u0634\u0647\u0631\u060c \u062b\u0645 \u0627\u0636\u063a\u0637 \u0639\u0644\u0649 \u0646\u0648\u0639 \u0645\u0635\u0631\u0648\u0641 \u0644\u0625\u062f\u062e\u0627\u0644 \u0645\u0648\u0627\u0632\u0646\u062a\u0647 \u0627\u0644\u0633\u0646\u0648\u064a\u0629 \u0648\u062d\u0641\u0638\u0647\u0627. \u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629 \u062a\u0628\u062f\u0623 \u0645\u0646 \u0633\u0628\u062a\u0645\u0628\u0631 \u0648\u062a\u0646\u062a\u0647\u064a \u0641\u064a \u0623\u063a\u0633\u0637\u0633.',
+    'Pick the financial year and month, then click an expense type to enter and save its annual budget. The fiscal year runs September to August.');
+  dbSyncFilters();
+  dbRenderCards();
+  dbRenderTotals();
+}
+/* ---- annual budget editor ---- */
+var dbEditType=null;
+function dbOpenBudget(typeId){
+  dbEditType=typeId;
+  var ty=(dbData().types||[]).filter(function(x){return x.id===typeId;})[0]||{n:typeId};
+  var a=dbAnnualOf(typeId);
+  document.getElementById('dbBudgetPanel').classList.remove('hidden');
+  document.getElementById('dbBPill').textContent=ty.n+'  \u00b7  '+typeId;
+  document.getElementById('dbBAnnual').value=(a.value==null?'':a.value);
+  document.getElementById('dbBMsg').innerHTML='';
+  var meta=document.getElementById('dbBMeta');
+  meta.textContent=miT('\u0627\u0644\u0645\u0635\u062f\u0631','source')+': '+
+    (a.origin==='SAVED'?miT('\u0645\u062d\u0641\u0648\u0638','persisted'):
+     a.origin==='SOURCE'?miT('\u0645\u0644\u0641 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a','data file'):
+     miT('\u063a\u064a\u0631 \u0645\u062f\u062e\u0644\u0629','not entered'));
+}
+function dbSaveBudget(){
+  if(!dbEditType) return {ok:false,reason:'NO_TYPE'};
+  var raw=String(document.getElementById('dbBAnnual').value||'').trim();
+  var msg=document.getElementById('dbBMsg');
+  if(raw===''){ msg.innerHTML='<div class="mi-warn">'+
+    miEsc(miT('\u0623\u062f\u062e\u0644 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629','Enter the annual budget'))+'</div>';
+    return {ok:false,reason:'EMPTY'}; }
+  if(!/^\d+(\.\d{1,2})?$/.test(raw)||Number(raw)<0){
+    msg.innerHTML='<div class="mi-warn">'+
+      miEsc(miT('\u0642\u064a\u0645\u0629 \u063a\u064a\u0631 \u0635\u0627\u0644\u062d\u0629 \u2014 \u0631\u0642\u0645 \u0645\u0648\u062c\u0628 \u0628\u062e\u0627\u0646\u062a\u064a\u0646 \u0639\u0634\u0631\u064a\u062a\u064a\u0646 \u0643\u062d\u062f \u0623\u0642\u0635\u0649','Invalid value \u2014 a positive number with at most two decimals'))+'</div>';
+    return {ok:false,reason:'INVALID'}; }
+  var annual=Number(raw);
+  var P=window.GHS_PERSIST;
+  if(!P||typeof P.saveBudget!=='function'){
+    msg.innerHTML='<div class="mi-warn">'+miEsc(miT('\u0627\u0644\u062d\u0641\u0638 \u0627\u0644\u062f\u0627\u0626\u0645 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d','Persistence unavailable'))+'</div>';
+    return {ok:false,reason:'NO_PERSIST'}; }
+  /* keep whatever monthly amounts were already saved for this type */
+  var cur=P.budgetOf(dbSrc(), dbFy, dbEditType);
+  var months=(cur&&cur.months)?cur.months.slice():[null,null,null,null,null,null,null,null,null,null,null,null];
+  var typed=months.filter(function(m){ return m!=null; });
+  var sum=typed.reduce(function(a,b){ return a+Number(b); },0);
+  if(typed.length && sum-annual>0.005){
+    msg.innerHTML='<div class="mi-warn">'+miEsc(
+      miT('\u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0634\u0647\u0648\u0631 \u0627\u0644\u0645\u062d\u0641\u0648\u0638 ','The saved monthly total ')+
+      dbMoney(miR2(sum))+miT(' \u064a\u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629 \u0627\u0644\u062c\u062f\u064a\u062f\u0629',' exceeds the new annual budget'))+'</div>';
+    return {ok:false,reason:'MONTHLY_EXCEEDS_ANNUAL'}; }
+  var typeId=dbEditType;
+  P.saveBudget(dbSrc(), dbFy, typeId, annual, months, 'SAVED').then(function(){
+    msg.innerHTML='<div class="mi-ok">'+miEsc(miT('\u062a\u0645 \u0627\u0644\u062d\u0641\u0638 \u0627\u0644\u062f\u0627\u0626\u0645 \u2713','Saved \u2713'))+'</div>';
+    dbRender();
+  }).catch(function(e){
+    msg.innerHTML='<div class="mi-warn">'+miEsc(
+      miT('\u26a0\ufe0f \u0644\u0645 \u064a\u064f\u062d\u0641\u0638 \u2014 ','\u26a0\ufe0f NOT saved \u2014 ')+String(e&&e.message||e))+'</div>';
+    console.error('[BUDGET] save failed \u2014',e&&e.message);
+  });
+  return {ok:true,typeId:typeId,annual:annual};
+}
+/* ---- add expense type: follows the existing ETnnn pattern, never invents one ---- */
+function dbNextTypeId(){
+  var ids=(MASTER().types||[]).map(function(t){ return String(t.id); });
+  var max=0, pad=3;
+  ids.forEach(function(id){
+    var m=/^ET(\d+)$/.exec(id);
+    if(m){ pad=m[1].length; if(Number(m[1])>max) max=Number(m[1]); }
+  });
+  if(!max) return null;                 /* no recognisable pattern — refuse */
+  var n=String(max+1); while(n.length<pad) n='0'+n;
+  return 'ET'+n;
+}
+function dbOpenNewType(){
+  var code=dbNextTypeId();
+  var panel=document.getElementById('dbNewTypePanel');
+  panel.classList.remove('hidden');
+  document.getElementById('dbNCode').value=code||'';
+  document.getElementById('dbNName').value='';
+  document.getElementById('dbNMsg').innerHTML= code?'':
+    '<div class="mi-warn">'+miEsc(miT('\u0646\u0645\u0637 \u0643\u0648\u062f \u0627\u0644\u0646\u0648\u0639 \u063a\u064a\u0631 \u0648\u0627\u0636\u062d \u2014 \u0644\u0627 \u064a\u0645\u0643\u0646 \u062a\u0648\u0644\u064a\u062f \u0643\u0648\u062f \u062c\u062f\u064a\u062f','The type-code pattern is not recognisable \u2014 a new code cannot be generated'))+'</div>';
+  document.getElementById('dbNMeta').textContent=miT(
+    '\u0627\u0644\u0643\u0648\u062f \u064a\u062a\u0628\u0639 \u0627\u0644\u0646\u0645\u0637 \u0627\u0644\u062d\u0627\u0644\u064a ET### \u0648\u0644\u0627 \u064a\u064f\u0639\u062f\u0651\u0644 \u064a\u062f\u0648\u064a\u064b\u0627. \u0627\u0644\u0646\u0648\u0639 \u0627\u0644\u062c\u062f\u064a\u062f \u064a\u0638\u0647\u0631 \u0628\u0623\u064a\u0642\u0648\u0646\u0629 \ud83d\udce6 \u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a\u0629.',
+    'The code follows the existing ET### pattern and is not editable. A new type shows the default \ud83d\udce6 icon.');
+}
+function dbSaveNewType(){
+  var code=String(document.getElementById('dbNCode').value||'').trim();
+  var name=String(document.getElementById('dbNName').value||'').trim();
+  var msg=document.getElementById('dbNMsg');
+  if(!code){ msg.innerHTML='<div class="mi-warn">'+miEsc(miT('\u0644\u0627 \u064a\u0648\u062c\u062f \u0643\u0648\u062f','No code'))+'</div>';
+    return {ok:false,reason:'NO_CODE'}; }
+  if(!name){ msg.innerHTML='<div class="mi-warn">'+miEsc(miT('\u0623\u062f\u062e\u0644 \u0627\u0633\u0645 \u0627\u0644\u0646\u0648\u0639','Enter the type name'))+'</div>';
+    return {ok:false,reason:'NO_NAME'}; }
+  var M=MASTER();
+  if((M.types||[]).some(function(t){ return String(t.id)===code; })){
+    msg.innerHTML='<div class="mi-warn">'+miEsc(miT('\u0627\u0644\u0643\u0648\u062f \u0645\u0648\u062c\u0648\u062f','The code already exists'))+'</div>';
+    return {ok:false,reason:'DUPLICATE'}; }
+  M.types.push({id:code,n:name});       /* MASTER layer only — data.js untouched */
+  miLog(code,name,miT('\u0646\u0648\u0639 \u0645\u0635\u0631\u0648\u0641 \u062c\u062f\u064a\u062f','New expense type'),'\u2014',name);
+  msg.innerHTML='<div class="mi-ok">'+miEsc(miT('\u062a\u0645\u062a \u0627\u0644\u0625\u0636\u0627\u0641\u0629','Added'))+' \u00b7 '+miEsc(code)+'</div>';
+  dbRender();
+  return {ok:true,id:code,name:name};
 }
 function miRender(){
   miFillFilters();
@@ -9116,6 +9475,9 @@ function ghsRunsBanner(){
   var runsPromise = P.loadRuns().catch(function(e){
     console.error('[PERSIST] approved-runs load failed \u2014',e&&e.message);
   });
+  var budPromise = P.loadBudgets().catch(function(e){
+    console.error('[PERSIST] budgets load failed \u2014',e&&e.message);
+  });
   P.loadAll().then(function(){
     /* a store may already have been built by a startup render — apply in place */
     if(typeof window.GHS_RUNTIME==='object' && window.GHS_RUNTIME &&
@@ -9129,7 +9491,7 @@ function ghsRunsBanner(){
     console.error('[PERSIST] startup load failed \u2014',e&&e.message);
     ghsPersistBanner();
   }).then(function(){
-    return runsPromise;
+    return Promise.all([runsPromise,budPromise]);
   }).then(function(){
     /* rehydrate RUNS / LINES in place and resume SEQ past the highest id */
     try{
@@ -9198,6 +9560,236 @@ window.GHS_PRINT = (function(){
         if(pd) pd.textContent=ar?'\ud83d\udcc4 \u062a\u062d\u0645\u064a\u0644 PDF':'\ud83d\udcc4 Save as PDF';
       });
       window.GHS_PRINT.wire();
+    },0); });
+  });
+})();
+
+/* ============================================================================
+   STEP 3 — توزيع المبالغ
+   The user types the amount for each of the twelve fiscal months (September
+   first, August last) and saves. Nothing is ever spread automatically; the one
+   rule enforced is that the months may not exceed the annual budget.
+
+   The distribution engine is untouched and still present: ENG.generate,
+   DE-1.2.1, buildInvoiceGroups, approvalChecks and every approved-run path
+   remain exactly as they were. This screen simply does not use them.
+   ========================================================================== */
+(function(){
+  'use strict';
+  var MONTHS_AR=['\u0633\u0628\u062a\u0645\u0628\u0631','\u0623\u0643\u062a\u0648\u0628\u0631','\u0646\u0648\u0641\u0645\u0628\u0631','\u062f\u064a\u0633\u0645\u0628\u0631',
+    '\u064a\u0646\u0627\u064a\u0631','\u0641\u0628\u0631\u0627\u064a\u0631','\u0645\u0627\u0631\u0633','\u0623\u0628\u0631\u064a\u0644','\u0645\u0627\u064a\u0648','\u064a\u0648\u0646\u064a\u0648',
+    '\u064a\u0648\u0644\u064a\u0648','\u0623\u063a\u0633\u0637\u0633'];
+  var MONTHS_EN=['September','October','November','December','January','February',
+    'March','April','May','June','July','August'];
+  var mbFy=null, mbType=null, mbDraft=[];
+
+  function T2(ar,en){ return (document.documentElement.getAttribute('dir')==='ltr')?en:ar; }
+  function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function money(n){
+    if(n==null||isNaN(n)) return '\u2014';
+    return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+
+      ' '+T2('\u062c.\u0645','EGP');
+  }
+  function r2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
+  function RT(){ return window.GHS_RUNTIME; }
+  function src(){ var r=RT(); return (r&&r.getSource)?r.getSource():'LIVE'; }
+  function data(){ return window.GHS_DASH ? window.GHS_DASH.data() : null; }
+
+  function annualOf(typeId){
+    var P=window.GHS_PERSIST, d=data();
+    if(P&&typeof P.budgetOf==='function'){
+      var b=P.budgetOf(src(), mbFy, typeId);
+      if(b&&b.annual!=null) return Number(b.annual);
+    }
+    if(!d) return null;
+    var a=(d.annualBudgets||[]).filter(function(x){ return x.fy===mbFy&&x.t===typeId; })[0];
+    return (a&&a.inc!=null&&Number(a.inc)!==0)?Number(a.inc):null;
+  }
+  function savedMonths(typeId){
+    var P=window.GHS_PERSIST;
+    if(P&&typeof P.budgetOf==='function'){
+      var b=P.budgetOf(src(), mbFy, typeId);
+      if(b&&b.months) return b.months.slice();
+    }
+    return [null,null,null,null,null,null,null,null,null,null,null,null];
+  }
+  function sumDraft(){
+    var s=0, any=false;
+    mbDraft.forEach(function(v){
+      var t=String(v==null?'':v).trim();
+      if(t!==''){ var n=Number(t); if(!isNaN(n)){ s+=n; any=true; } }
+    });
+    return any?r2(s):null;
+  }
+  function syncFy(){
+    var d=data(); if(!d) return;
+    var sel=document.getElementById('mbFy'); if(!sel) return;
+    sel.innerHTML=(d.fyears||[]).map(function(f){
+      return '<option value="'+esc(f.id)+'">'+esc(f.label)+'</option>'; }).join('');
+    if(!(d.fyears||[]).some(function(f){return f.id===mbFy;})) mbFy=((d.fyears||[])[0]||{}).id;
+    sel.value=mbFy;
+  }
+  function renderCards(){
+    var host=document.getElementById('mbTypeCards'); if(!host) return;
+    var d=data(); if(!d) return;
+    host.innerHTML=(d.types||[]).map(function(ty){
+      var ann=annualOf(ty.id);
+      var ms=savedMonths(ty.id).filter(function(m){ return m!=null; });
+      var dist=ms.length?r2(ms.reduce(function(a,b){ return a+Number(b); },0)):null;
+      var icon=(typeof TYPE_ICON!=='undefined'&&TYPE_ICON[ty.id])?TYPE_ICON[ty.id]:'\ud83d\udce6';
+      var pct=(ann&&dist!=null)?Math.min(100,Math.round(dist*100/ann)):0;
+      return '<button class="type" data-mbtype="'+esc(ty.id)+'">'+
+        '<div class="icon">'+icon+'</div><h3>'+esc(ty.n)+'</h3>'+
+        '<div class="amt">'+money(ann)+'</div>'+
+        '<small>'+T2('\u0645\u0648\u0632\u0651\u0639','distributed')+' '+money(dist)+'</small>'+
+        '<div class="prog"><i style="width:'+pct+'%"></i></div></button>';
+    }).join('');
+    Array.prototype.forEach.call(host.querySelectorAll('[data-mbtype]'),function(b){
+      b.onclick=function(){ open(b.getAttribute('data-mbtype')); };
+    });
+    var pill=document.getElementById('mbPill');
+    if(pill) pill.textContent=(d.types||[]).length+' '+T2('\u0646\u0648\u0639','types');
+  }
+  function open(typeId){
+    mbType=typeId;
+    mbDraft=savedMonths(typeId).map(function(v){ return v==null?'':String(v); });
+    document.getElementById('mbPanel').classList.remove('hidden');
+    var d=data();
+    var ty=((d&&d.types)||[]).filter(function(x){return x.id===typeId;})[0]||{n:typeId};
+    document.getElementById('mbMPill').textContent=ty.n+'  \u00b7  '+typeId;
+    document.getElementById('mbMsg').innerHTML='';
+    paint();
+  }
+  function paint(){
+    var tb=document.getElementById('mbRows'); if(!tb) return;
+    tb.innerHTML=MONTHS_AR.map(function(nm,i){
+      return '<tr><td>'+esc(T2(nm,MONTHS_EN[i]))+'</td>'+
+        '<td class="num"><input class="mi-in" data-mb="'+i+'" inputmode="decimal" value="'+
+        esc(mbDraft[i]==null?'':mbDraft[i])+'"></td></tr>';
+    }).join('');
+    Array.prototype.forEach.call(tb.querySelectorAll('[data-mb]'),function(inp){
+      inp.oninput=function(){ mbDraft[Number(inp.getAttribute('data-mb'))]=inp.value; cards(); };
+    });
+    cards();
+  }
+  function cards(){
+    var ann=annualOf(mbType);
+    var dist=sumDraft();
+    var rem=(ann!=null)?r2(ann-(dist||0)):null;
+    var host=document.getElementById('mbCards'); if(!host) return;
+    function kv(l,v,cls){ return '<div class="appr-kv'+(cls?' '+cls:'')+'">'+esc(l)+'<b>'+v+'</b></div>'; }
+    host.innerHTML=
+      kv(T2('\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629','Annual budget'), money(ann))+
+      kv(T2('\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0632\u0651\u0639 \u0639\u0644\u0649 \u0627\u0644\u0634\u0647\u0648\u0631','Distributed across months'), money(dist))+
+      kv(T2('\u0627\u0644\u0645\u062a\u0628\u0642\u064a','Remaining'), money(rem), (rem!=null&&rem<0)?'bad':'');
+    var meta=document.getElementById('mbMeta');
+    if(meta) meta.textContent=T2('\u0627\u0644\u0645\u062a\u0628\u0642\u064a = \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629 \u2212 \u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0645\u0628\u0627\u0644\u063a \u0627\u0644\u0634\u0647\u0631\u064a\u0629',
+      'Remaining = annual budget \u2212 the sum of the monthly amounts');
+  }
+  function validate(){
+    var bad=[];
+    mbDraft.forEach(function(v,i){
+      var t=String(v==null?'':v).trim();
+      if(t==='') return;
+      if(!/^\d+(\.\d{1,2})?$/.test(t)||Number(t)<0) bad.push(i);
+    });
+    if(bad.length) return {ok:false,reason:'INVALID_AMOUNT',months:bad};
+    var ann=annualOf(mbType), dist=sumDraft();
+    if(ann==null) return {ok:false,reason:'NO_ANNUAL_BUDGET'};
+    if(dist!=null && dist-ann>0.005) return {ok:false,reason:'MONTHLY_EXCEEDS_ANNUAL',annual:ann,distributed:dist};
+    return {ok:true,annual:ann,distributed:dist,remaining:r2(ann-(dist||0))};
+  }
+  function save(){
+    var msg=document.getElementById('mbMsg');
+    var v=validate();
+    if(!v.ok){
+      msg.innerHTML='<div class="mi-warn">'+esc(
+        v.reason==='INVALID_AMOUNT'?T2('\u0645\u0628\u0644\u063a \u063a\u064a\u0631 \u0635\u0627\u0644\u062d \u0641\u064a \u0634\u0647\u0631 \u0623\u0648 \u0623\u0643\u062b\u0631','An invalid amount in one or more months'):
+        v.reason==='NO_ANNUAL_BUDGET'?T2('\u0623\u062f\u062e\u0644 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629 \u0645\u0646 \u0644\u0648\u062d\u0629 \u0627\u0644\u062a\u062d\u0643\u0645 \u0623\u0648\u0644\u064b\u0627','Enter the annual budget from the dashboard first'):
+        T2('\u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0634\u0647\u0648\u0631 \u064a\u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629','The monthly total exceeds the annual budget'))+'</div>';
+      return v;
+    }
+    var P=window.GHS_PERSIST;
+    if(!P||typeof P.saveBudget!=='function'){
+      msg.innerHTML='<div class="mi-warn">'+esc(T2('\u0627\u0644\u062d\u0641\u0638 \u0627\u0644\u062f\u0627\u0626\u0645 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d','Persistence unavailable'))+'</div>';
+      return {ok:false,reason:'NO_PERSIST'};
+    }
+    var months=mbDraft.map(function(x){ var t=String(x==null?'':x).trim(); return t===''?null:Number(t); });
+    P.saveBudget(src(), mbFy, mbType, v.annual, months, 'SAVED').then(function(){
+      msg.innerHTML='<div class="mi-ok">'+esc(T2('\u062a\u0645 \u0627\u0644\u062d\u0641\u0638 \u0627\u0644\u062f\u0627\u0626\u0645 \u2713','Saved \u2713'))+'</div>';
+      renderCards(); cards();
+    }).catch(function(e){
+      msg.innerHTML='<div class="mi-warn">'+esc(T2('\u26a0\ufe0f \u0644\u0645 \u064a\u064f\u062d\u0641\u0638 \u2014 ','\u26a0\ufe0f NOT saved \u2014 ')+String(e&&e.message||e))+'</div>';
+      console.error('[BUDGET] monthly save failed \u2014',e&&e.message);
+    });
+    return v;
+  }
+  function render(){
+    if(!document.getElementById('mbTypeCards')) return;
+    [['mbTitle','\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0645\u0628\u0627\u0644\u063a','Amount distribution'],
+     ['mbLFy','\u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0627\u0644\u064a\u0629','Financial Year'],
+     ['mbMTitle','\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0634\u0647\u0631\u064a\u0629','Monthly budget'],
+     ['mbC1','\u0627\u0644\u0634\u0647\u0631','Month'],
+     ['mbC2','\u0627\u0644\u0645\u0628\u0644\u063a \u2014 \u0634\u0627\u0645\u0644 \u0627\u0644\u0636\u0631\u064a\u0628\u0629','Amount \u2014 VAT inclusive'],
+     ['mbSave','\u062d\u0641\u0638 \u0627\u0644\u0645\u0628\u0627\u0644\u063a \u0627\u0644\u0634\u0647\u0631\u064a\u0629','Save monthly amounts'],
+     ['mbClose','\u0625\u063a\u0644\u0627\u0642','Close']
+    ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=T2(x[1],x[2]); });
+    var note=document.getElementById('mbNote');
+    if(note) note.textContent=T2(
+      '\u0627\u062e\u062a\u0631 \u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0631\u0648\u0641 \u062b\u0645 \u0623\u062f\u062e\u0644 \u0645\u0628\u0644\u063a \u0643\u0644 \u0634\u0647\u0631 \u0628\u0646\u0641\u0633\u0643 \u0645\u0646 \u0633\u0628\u062a\u0645\u0628\u0631 \u0625\u0644\u0649 \u0623\u063a\u0633\u0637\u0633. \u0644\u0627 \u064a\u0648\u062c\u062f \u062a\u0648\u0632\u064a\u0639 \u062a\u0644\u0642\u0627\u0626\u064a\u060c \u0648\u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0634\u0647\u0648\u0631 \u0644\u0627 \u064a\u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629.',
+      'Pick an expense type, then type each month\u2019s amount yourself, September through August. Nothing is distributed automatically, and the months may not exceed the annual budget.');
+    syncFy();
+    renderCards();
+    if(mbType) cards();
+  }
+  var fs=document.getElementById('mbFy');
+  if(fs) fs.onchange=function(e){ mbFy=e.target.value; mbType=null;
+    document.getElementById('mbPanel').classList.add('hidden'); render(); };
+  var sv=document.getElementById('mbSave'); if(sv) sv.onclick=function(){ save(); };
+  var cl=document.getElementById('mbClose');
+  if(cl) cl.onclick=function(){ mbType=null; document.getElementById('mbPanel').classList.add('hidden'); };
+
+  window.GHS_MONTHLY={ render:render, open:open, save:save, validate:validate,
+    draft:function(){ return mbDraft.slice(); },
+    setDraft:function(a){ mbDraft=a.slice(); cards(); },
+    setFilters:function(fy,type){ mbFy=fy; mbType=type; },
+    filters:function(){ return {fy:mbFy,type:mbType}; },
+    months:function(){ return MONTHS_AR.slice(); },
+    annualOf:annualOf, savedMonths:savedMonths, sumDraft:sumDraft };
+})();
+
+/* ---- dashboard wiring ---- */
+(function(){
+  var fy=document.getElementById('dbFy');
+  if(fy) fy.onchange=function(e){ dbFy=e.target.value; dbPi=null;
+    document.getElementById('dbBudgetPanel').classList.add('hidden'); dbRender(); };
+  var mo=document.getElementById('dbMonth');
+  if(mo) mo.onchange=function(e){ dbPi=Number(e.target.value); dbRender(); };
+  var sv=document.getElementById('dbBSave'); if(sv) sv.onclick=function(){ dbSaveBudget(); };
+  var cl=document.getElementById('dbBClose');
+  if(cl) cl.onclick=function(){ document.getElementById('dbBudgetPanel').classList.add('hidden'); };
+  var at=document.getElementById('dbAddType'); if(at) at.onclick=function(){ dbOpenNewType(); };
+  var ns=document.getElementById('dbNSave'); if(ns) ns.onclick=function(){ dbSaveNewType(); };
+  var nc=document.getElementById('dbNCancel');
+  if(nc) nc.onclick=function(){ document.getElementById('dbNewTypePanel').classList.add('hidden'); };
+
+  window.GHS_DASH={ render:dbRender, data:dbData, totals:dbTotals,
+    annualOf:dbAnnualOf, monthlyOf:dbMonthlyOf, openBudget:dbOpenBudget,
+    saveBudget:dbSaveBudget, nextTypeId:dbNextTypeId, saveNewType:dbSaveNewType,
+    setFilters:function(fy,pi){ dbFy=fy; dbPi=pi; },
+    filters:function(){ return {fy:dbFy,pi:dbPi}; } };
+
+  dbFy=((dbData().fyears||[])[0]||{}).id;
+  var ms=dbMonths(dbFy); dbPi=ms.length?ms[0].pi:null;
+  dbRender();
+  if(window.GHS_MONTHLY) window.GHS_MONTHLY.render();
+
+  /* repaint both screens when the language switches */
+  Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+    b.addEventListener('click',function(){ setTimeout(function(){
+      try{ dbRender(); }catch(e){}
+      try{ if(window.GHS_MONTHLY) window.GHS_MONTHLY.render(); }catch(e){}
     },0); });
   });
 })();
