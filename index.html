@@ -725,7 +725,22 @@ tr.over-row td{background:#fef2f2}
 </section>
 <section id="master" class="page hidden"><!-- panels relocated into #distgen (unified screen) --></section>
 <section id="items" class="page hidden"><div class="panel"><div class="section-title"><h2>البنود</h2><select class="field" id="typeSelect"></select></div><div class="table-wrap"><table><thead><tr><th>البند</th><th>سعر الوحدة</th><th>Max سنوي</th><th>Weight</th><th>الحالة</th></tr></thead><tbody id="itemRows"></tbody></table></div></div></section>
-<section id="settings" class="page hidden"><div class="panel"><h2>إعدادات النظام</h2><div class="cards"><div class="card"><b>VAT</b><div class="metric value">14%</div></div><div class="card"><b>Annual Max</b><div class="metric value">مفعل</div></div><div class="card"><b>Monthly Max</b><div class="metric value">قابل للتفعيل</div></div><div class="card"><b>Invoice Count</b><div class="metric value">لكل شهر</div></div></div><div class="notice">هذه صفحة إعدادات أولية. أي تغيير حقيقي سيُربط لاحقًا بقاعدة بيانات Google Sheets وApps Script.</div></div></section>
+<section id="settings" class="page hidden">
+  <div class="panel">
+    <div class="section-title"><h2 id="stTitle">إعدادات النظام</h2>
+      <span class="pill neutral" id="stPill">—</span></div>
+    <div class="repnote" id="stNote"></div>
+    <div class="appr-grid" id="stCards"></div>
+  </div>
+  <div class="panel">
+    <div class="section-title"><h2 id="stAllTitle">كل الإعدادات</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th id="stC1">الإعداد</th><th id="stC2">القيمة</th><th id="stC3">الاستخدام</th></tr></thead>
+      <tbody id="stRows"></tbody>
+    </table></div>
+    <div class="runmeta" id="stMeta"></div>
+  </div>
+</section>
 </main></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><button class="close" onclick="closeModal()">إغلاق</button><div id="modalContent"></div></div></div>
 <script>
@@ -5155,7 +5170,7 @@ function miRender(){
     var act=x.a===true;
     return '<tr'+(act?'':' class="inactive-row"')+'>'+
       '<td><span class="sub-id" style="margin:0">'+miEsc(x.i)+'</span></td>'+
-      '<td style="white-space:normal;max-width:280px">'+miEsc(x.n)+'</td>'+
+      '<td style="min-width:240px"><input class="mi-in" data-f="name" data-id="'+miEsc(x.i)+'" value="'+miEsc(x.n==null?'':x.n)+'" style="text-align:start"></td>'+
       '<td><input class="mi-in" data-f="price" data-id="'+miEsc(x.i)+'" value="'+(x.p==null?'':x.p)+'" inputmode="decimal"></td>'+
       '<td><input class="mi-in" data-f="min" data-id="'+miEsc(x.i)+'" value="'+(l.mmin==null?'':l.mmin)+'" inputmode="numeric"></td>'+
       '<td><input class="mi-in" data-f="max" data-id="'+miEsc(x.i)+'" value="'+(l.mmax==null?'':l.mmax)+'" inputmode="numeric"></td>'+
@@ -5240,8 +5255,8 @@ function miSave(id){
   var M=MASTER(), it=M.items.filter(function(x){return x.i===id;})[0]; if(!it) return;
   var tb=document.getElementById('miRows');
   var gp=function(f){ return tb.querySelector('[data-f="'+f+'"][data-id="'+id+'"]'); };
-  var pEl=gp('price'), nEl=gp('min'), xEl=gp('max'), aEl=gp('amax');
-  [pEl,nEl,xEl,aEl].forEach(function(e){ if(e) e.classList.remove('err'); });
+  var pEl=gp('price'), nEl=gp('min'), xEl=gp('max'), aEl=gp('amax'), nmEl=gp('name');
+  [pEl,nEl,xEl,aEl,nmEl].forEach(function(e){ if(e) e.classList.remove('err'); });
 
   var praw=pEl.value.trim(), errs=[];
   var price=null;
@@ -5249,10 +5264,17 @@ function miSave(id){
     errs.push(miT('السعر مطلوب ورقم موجب بمنزلتين عشريتين كحد أقصى','Price is required, non-negative, max 2 decimals')); }
   else price=Number(praw);
   var mn=miInt(nEl.value), mx=miInt(xEl.value), am=aEl?miInt(aEl.value):undefined;
+  /* the item name is now editable. Only trimmed text is accepted — an empty
+     name is refused rather than silently kept, and the id never changes. */
+  var nm=nmEl?String(nmEl.value||'').trim():undefined;
   if(mn===undefined){ nEl.classList.add('err'); errs.push(miT('الحد الأدنى: عدد صحيح ≥ 0','Minimum must be an integer >= 0')); }
   if(mx===undefined){ xEl.classList.add('err'); errs.push(miT('الحد الأقصى: عدد صحيح ≥ 0','Maximum must be an integer >= 0')); }
   if(mn!=null&&mx!=null&&mx<mn){ nEl.classList.add('err'); xEl.classList.add('err');
     errs.push(miT('الحد الأقصى الشهري لا يمكن أن يقل عن الحد الأدنى الشهري','Monthly Maximum cannot be lower than Monthly Minimum')); }
+  if(nmEl && nm===''){ nmEl.classList.add('err');
+    errs.push(miT('اسم البند مطلوب','The item name is required')); }
+  if(nmEl && nm!=='' && nm.length>200){ nmEl.classList.add('err');
+    errs.push(miT('اسم البند طويل جدًا (200 حرف كحد أقصى)','The item name is too long (200 characters maximum)')); }
   /* Q4 — the annual maximum is now typed by the user, validated like the
      monthly limits. Blank means "not set" and stays null: nothing is invented. */
   if(am===undefined){ if(aEl) aEl.classList.add('err');
@@ -5267,12 +5289,14 @@ function miSave(id){
   if(mx!==l.mmax){ miLog(id,it.n,'Max',l.mmax==null?'—':l.mmax,mx==null?'—':mx); l.mmax=mx; changed.push('max'); }
   if(am!==l.amax){ miLog(id,it.n,miT('الحد الأقصى السنوي','Annual Max'),l.amax==null?'—':l.amax,am==null?'—':am);
     l.amax=am; changed.push('amax'); }
+  if(nm!==undefined && nm!==it.n){ miLog(id,nm,miT('اسم البند','Item name'),it.n||'—',nm);
+    it.n=nm; changed.push('name'); }
   if(!changed.length){ miMsg('note',miT('لا يوجد تغيير للحفظ','Nothing to save')); return; }
   it.mtime=miNow();
   /* send exactly the records this save touched */
   (function(){
     var pay={ items:[], limits:[], history:[] };
-    if(changed.indexOf('price')>-1) pay.items.push(miItemRec(it));
+    if(changed.indexOf('price')>-1||changed.indexOf('name')>-1) pay.items.push(miItemRec(it));
     if(changed.indexOf('min')>-1||changed.indexOf('max')>-1||changed.indexOf('amax')>-1)
       pay.limits.push(miLimitRec(l));
     /* miLog unshifts, so the entries just written are the newest ones */
@@ -9891,6 +9915,100 @@ window.GHS_PRINT = (function(){
       try{ if(window.GHS_DASH) window.GHS_DASH.render(); }catch(e){}
       try{ if(window.GHS_MONTHLY) window.GHS_MONTHLY.render(); }catch(e){}
     },0); });
+  });
+})();
+
+/* ============================================================================
+   SETTINGS — read-only, and now actually reading
+   The old screen printed four fixed strings ("14%", "مفعل", …) that were not
+   connected to anything. This renders the real GHS_DATA.settings and says
+   plainly which of them the system currently uses in its calculations.
+   Nothing here is editable: these are source rules, not user input.
+   ========================================================================== */
+(function(){
+  'use strict';
+  function T2(ar,en){ return (document.documentElement.getAttribute('dir')==='ltr')?en:ar; }
+  function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* which settings the running code actually consults — verified, not assumed */
+  var USED={ VAT_RATE:true };
+  var LABEL={
+    VAT_RATE:['نسبة ضريبة القيمة المضافة','VAT rate'],
+    CURRENCY:['العملة','Currency'],
+    UI_DIRECTION:['اتجاه الواجهة','UI direction'],
+    NUMBER_FORMAT:['تنسيق الأرقام','Number format'],
+    EXPENSE_TYPE_IDS_FROZEN:['أكواد أنواع المصروفات مجمّدة','Expense type ids frozen'],
+    ITEM_IDS_FROZEN:['أكواد البنود مجمّدة','Item ids frozen'],
+    ID_FREEZE_DATE:['تاريخ تجميد الأكواد','Id freeze date'],
+    ID_FREEZE_ET_RANGE:['مدى أكواد الأنواع','Expense type id range'],
+    ID_FREEZE_IT_RANGE:['مدى أكواد البنود','Item id range'],
+    DATA_PACK_VERSION:['إصدار حزمة البيانات','Data pack version'],
+    DATA_PACK_STAGE:['مرحلة حزمة البيانات','Data pack stage']
+  };
+  function label(k){ var l=LABEL[k]; return l?T2(l[0],l[1]):k; }
+  function pretty(k,v){
+    if(k==='VAT_RATE'){ var n=Number(v); return isNaN(n)?String(v):((n*100).toFixed(0)+'%'); }
+    if(v==='TRUE')  return T2('نعم','Yes');
+    if(v==='FALSE') return T2('لا','No');
+    return String(v);
+  }
+  function settings(){ return (window.GHS_DATA&&window.GHS_DATA.settings)||{}; }
+
+  function render(){
+    var host=document.getElementById('stCards'); if(!host) return;
+    var st=settings();
+    var keys=Object.keys(st);
+
+    [['stTitle','إعدادات النظام','System settings'],
+     ['stAllTitle','كل الإعدادات','All settings'],
+     ['stC1','الإعداد','Setting'],['stC2','القيمة','Value'],['stC3','الاستخدام','Used by']
+    ].forEach(function(x){ var e=document.getElementById(x[0]); if(e) e.textContent=T2(x[1],x[2]); });
+
+    /* the four headline rules, read from the data */
+    var D=window.GHS_DATA||{};
+    function kv(l,v,note){
+      return '<div class="appr-kv">'+esc(l)+'<b>'+esc(v)+'</b>'+
+             (note?('<small style="display:block;font-weight:400;opacity:.75">'+esc(note)+'</small>'):'')+'</div>';
+    }
+    host.innerHTML=
+      kv(T2('نسبة الضريبة','VAT rate'), pretty('VAT_RATE',st.VAT_RATE),
+         T2('السعر المخزَّن شامل الضريبة','The stored unit price is VAT inclusive'))+
+      kv(T2('العملة','Currency'), st.CURRENCY||'—','')+
+      kv(T2('أنواع المصروفات','Expense types'), String((D.types||[]).length),
+         T2('من ملف البيانات','from the data file'))+
+      kv(T2('بنود المصروفات','Expense items'), String((D.items||[]).length),
+         T2('من ملف البيانات','from the data file'));
+
+    var tb=document.getElementById('stRows');
+    if(tb){
+      tb.innerHTML=keys.length? keys.map(function(k){
+        return '<tr><td>'+esc(label(k))+'<div class="sub-id" style="margin:4px 0 0">'+esc(k)+'</div></td>'+
+          '<td>'+esc(pretty(k,st[k]))+'</td>'+
+          '<td>'+(USED[k]
+            ? '<span class="pill ok">'+esc(T2('مستخدم في الحساب','used in calculations'))+'</span>'
+            : '<span class="pill neutral">'+esc(T2('مرجعي','reference'))+'</span>')+'</td></tr>';
+      }).join('')
+      : '<tr><td colspan="3" class="unconstrained" style="text-align:center;padding:24px">'+
+        esc(T2('لا توجد إعدادات في ملف البيانات','No settings in the data file'))+'</td></tr>';
+    }
+
+    var pill=document.getElementById('stPill');
+    if(pill) pill.textContent=keys.length+' '+T2('إعداد','settings');
+    var note=document.getElementById('stNote');
+    if(note) note.textContent=T2(
+      'هذه الإعدادات تُقرأ من ملف البيانات ولا تُعدَّل من هنا. «مستخدم في الحساب» يعني أن النظام يقرأ هذه القيمة فعليًا أثناء التشغيل؛ «مرجعي» يعني أنها موثّقة ولا تدخل في أي حساب حاليًا.',
+      'These settings are read from the data file and are not editable here. "Used in calculations" means the running system actually reads the value; "reference" means it is documented but does not affect any calculation today.');
+    var meta=document.getElementById('stMeta');
+    if(meta) meta.textContent=T2('المصدر','Source')+': GHS_DATA.settings'+
+      (st.DATA_PACK_VERSION?('  ·  '+T2('حزمة البيانات','data pack')+' '+st.DATA_PACK_VERSION):'')+
+      (st.DATA_PACK_STAGE?('  ·  '+st.DATA_PACK_STAGE):'');
+  }
+
+  render();
+  window.GHS_SETTINGS={ render:render, settings:settings, used:function(){ return Object.keys(USED); } };
+  Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
+    b.addEventListener('click',function(){ setTimeout(render,0); });
   });
 })();
 
