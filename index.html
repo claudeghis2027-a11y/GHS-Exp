@@ -176,6 +176,10 @@ tr.over-row td{background:#fef2f2}
 
 /* ---- sign-in screen: the same palette, a quiet ledger-paper backdrop drawn
    entirely in CSS so nothing is fetched ---- */
+/* the overlay is addressed by id, so hiding it needs a rule of at least the
+   same specificity — a bare .hidden class is outranked and the sign-in screen
+   would stay on top of the application for ever */
+#loginScreen.hidden{display:none !important}
 #loginScreen{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;
   background:
     radial-gradient(1100px 520px at 15% -10%, rgba(37,99,235,.16), transparent 60%),
