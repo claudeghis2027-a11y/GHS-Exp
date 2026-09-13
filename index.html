@@ -1,882 +1,191 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GHIS EXP</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111827">
-<meta name="application-name" content="GHIS EXP">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="GHIS EXP">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/ghis-exp-192.png">
-<link rel="apple-touch-icon" href="icons/ghis-exp-192.png">
-<style>
-:root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#6b7280;--line:#e7eaf0;--accent:#2563eb;--accent2:#0f766e;--danger:#dc2626;--warn:#d97706;--shadow:0 8px 30px rgba(15,23,42,.07)}*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}.side{width:250px;background:#111827;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh}.brand{font-size:21px;font-weight:800;padding:8px 10px 24px}.brand small{display:block;color:#9ca3af;font-size:11px;margin-top:5px}.nav button{width:100%;border:0;background:transparent;color:#d1d5db;text-align:right;padding:13px 12px;border-radius:10px;margin:3px 0}.nav button.active,.nav button:hover{background:#1f2937;color:#fff}.main{flex:1;padding:24px;max-width:1500px;margin:auto;width:100%}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}.title h1{margin:0;font-size:27px}.title p{margin:6px 0;color:var(--muted)}.filters{display:flex;gap:10px;flex-wrap:wrap}.field{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:145px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--shadow)}.metric .label{color:var(--muted);font-size:13px}.metric .value{font-size:24px;font-weight:800;margin-top:8px}.metric .sub{font-size:12px;color:var(--muted);margin-top:5px}.types{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.type{transition:.15s;border:1px solid var(--line);background:#fff;border-radius:15px;padding:18px;text-align:right}.type:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:#cbd5e1}.icon{font-size:27px}.type h3{margin:12px 0 5px;font-size:16px}.type .amt{font-weight:800;font-size:18px}.type small{color:var(--muted)}.panel{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin-bottom:16px}.panel h2{margin:0 0 14px;font-size:19px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.btn{border:0;border-radius:9px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:700}.btn.secondary{background:#eef2ff;color:#1d4ed8}.btn.green{background:#0f766e}.btn.danger{background:#fee2e2;color:#991b1b}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:750px}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th{background:#f8fafc;color:#475569;font-size:13px}.pill{display:inline-block;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}.hidden{display:none}.modal.hidden{display:none}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:20px}.modalbox{background:#fff;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:22px}.close{float:left;border:0;background:#f1f5f9;border-radius:8px;padding:7px 10px}.notice{padding:12px 14px;background:#eff6ff;border-right:4px solid var(--accent);border-radius:8px;color:#1e3a8a;margin-bottom:14px}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}@media(max-width:1100px){.types{grid-template-columns:repeat(3,1fr)}.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:750px){.app{display:block}.side{width:100%;height:auto;position:static}.types{grid-template-columns:repeat(2,1fr)}.top{display:block}.filters{margin-top:12px}.cards{grid-template-columns:1fr 1fr}.main{padding:14px}}
-
-/* ===== Item Review additions — same visual language, no overrides ===== */
-.pill.neutral{background:#f1f5f9;color:#475569}
-.prog{height:7px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:9px}
-.prog>i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:.2s}
-.type .prog{margin-top:11px}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700}
-.chip:hover{border-color:#cbd5e1}
-.chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
-.chip .c{opacity:.75;margin-inline-start:5px;font-weight:400}
-.ir-search{min-width:230px}
-.sub-id{display:block;color:var(--muted);font-size:11px;margin-top:3px;direction:ltr;text-align:start}
-.srcbtn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:6px 11px;font-size:13px}
-.srcbtn:hover{border-color:#cbd5e1}
-.srcrow>td{background:#f8fafc;padding:0}
-.srcinner{padding:12px 14px}
-.srctable{min-width:0;margin:0}
-.srctable th,.srctable td{padding:7px 9px;font-size:13px;border-bottom:1px solid #eef2f7}
-.srctable tr:last-child td{border-bottom:0}
-.srctable .mo{white-space:normal;max-width:210px;line-height:1.7}
-.price-ro{display:inline-block;min-width:118px;background:#f8fafc;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-weight:700;text-align:start}
-.price-ro.empty{color:var(--muted);font-weight:400}
-.muted{color:var(--muted)}
-.ir-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-.ir-prog-line{font-size:13px;color:var(--muted)}
-.ir-prog-line b{color:var(--ink);font-size:15px}
-.ro-note{padding:12px 14px;background:#fffbeb;border-inline-start:4px solid var(--warn);border-radius:8px;color:#92400e;margin-bottom:14px;font-size:13px}
-.langsw{display:flex;gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
-.langsw button{border:0;background:transparent;padding:9px 13px;font-size:13px;font-weight:700;color:var(--muted)}
-.langsw button.active{background:var(--accent);color:#fff}
-html[dir=ltr] .nav button,html[dir=ltr] .type,html[dir=ltr] th,html[dir=ltr] td{text-align:left}
-html[dir=ltr] .close{float:right}
-html[dir=ltr] .notice{border-right:0;border-left:4px solid var(--accent)}
-/* ===== Prototype Item Management — sandbox editing ===== */
-.sbx{padding:12px 14px;background:#eff6ff;border-inline-start:4px solid var(--accent);border-radius:8px;color:#1e40af;margin-bottom:14px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.sbx b{color:#1d4ed8}
-.inp{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink);width:100%;box-sizing:border-box}
-.inp:focus{outline:0;border-color:var(--accent)}
-.inp.err{border-color:var(--danger);background:#fef2f2}
-.inp.num{max-width:96px;text-align:start}
-.inp.price{max-width:130px;font-weight:700}
-.frm{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.frm .full{grid-column:1/-1}
-.lbl{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:700}
-.hint{font-size:12px;color:var(--muted);margin-top:5px}
-.errmsg{font-size:12px;color:var(--danger);margin-top:5px;min-height:15px}
-.rowacts{display:flex;gap:6px;flex-wrap:wrap}
-.btn.sm{padding:7px 11px;font-size:12px}
-.inactive-row td{opacity:.55}
-.qty-cell{white-space:nowrap}
-.qty-cell .sep{color:var(--muted);margin:0 4px}
-.unconstrained{color:var(--muted);font-size:12px}
-/* ===== Monthly Budget Execution Report ===== */
-.rep-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
-.rep-f{display:flex;flex-direction:column;gap:6px}
-.rep-f .lbl{margin:0}
-.months-box{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;max-width:100%}
-.months-grid{display:grid;grid-template-columns:repeat(6,minmax(92px,1fr));gap:8px}
-.mchk{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
-.mchk input{width:15px;height:15px;accent-color:var(--accent)}
-.months-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
-.num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
-.num.neg{color:var(--danger)}
-.num.zero{color:var(--muted);font-weight:400}
-tr.total-row td{background:#f8fafc;font-weight:800;border-top:2px solid var(--line)}
-tr.over-row td{background:#fef2f2}
-
-/* ===== Distribution (STEP 2) ===== */
-.dist-f{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
-.dist-f .rep-f{min-width:170px}
-.res-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
-.res-status{padding:13px 15px;border-radius:10px;font-weight:700;font-size:14px;margin-bottom:14px}
-.rs-exact{background:#dcfce7;color:#166534;border-inline-start:4px solid var(--accent2)}
-.rs-partial{background:#dcfce7;color:#166534;border-inline-start:4px solid var(--accent2)}
-.rs-closest{background:#fef3c7;color:#92400e;border-inline-start:4px solid var(--warn)}
-.rs-infeasible{background:#fee2e2;color:#991b1b;border-inline-start:4px solid var(--danger)}
-.rs-over{background:#fee2e2;color:#991b1b;border-inline-start:4px solid var(--danger)}
-.rs-sub{font-weight:400;font-size:13px;margin-top:6px;opacity:.9}
-.excl-tbl td{font-size:13px}
-.invrow>td{background:#f8fafc;padding:0}
-
-/* ===== Master Items & Prices ===== */
-.mi-in{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;width:100%;box-sizing:border-box;max-width:120px}
-.mi-in:focus{outline:0;border-color:var(--accent)}
-.mi-in.err{border-color:var(--danger);background:#fef2f2}
-.mi-in[readonly]{background:#f8fafc;color:var(--muted)}
-.mi-note{padding:11px 13px;background:#eff6ff;border-inline-start:4px solid var(--accent);border-radius:8px;color:#1e40af;font-size:13px;margin-bottom:14px}
-.mi-warn{padding:11px 13px;background:#fffbeb;border-inline-start:4px solid var(--warn);border-radius:8px;color:#92400e;font-size:13px;margin-bottom:14px}
-.mi-ok{padding:11px 13px;background:#dcfce7;border-inline-start:4px solid var(--accent2);border-radius:8px;color:#166534;font-size:13px;margin-bottom:14px}
-.mi-when{font-size:12px;color:var(--muted);white-space:nowrap}
-.bh-sub>td{background:#f8fafc;padding:0}
-.bh-inner{padding:12px 14px}
-.bh-t{min-width:0;margin:0}
-.bh-t th,.bh-t td{padding:7px 9px;font-size:13px;border-bottom:1px solid #eef2f7}
-.bh-t tr:last-child td{border-bottom:0}
-.bh-src{font-size:11px;padding:2px 7px;border-radius:999px;font-weight:700;white-space:nowrap}
-.bh-src.m{background:#dcfce7;color:#166534}
-.bh-src.b{background:#f1f5f9;color:#475569}
-.bh-in{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;max-width:110px;box-sizing:border-box}
-.bh-in:focus{outline:0;border-color:var(--accent)}
-.bh-in.err{border-color:var(--danger);background:#fef2f2}
-.bh-in.dirty{border-color:var(--warn);background:#fffbeb}
-.dg-qty{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 7px;font:inherit;font-size:13px;max-width:90px;text-align:center;box-sizing:border-box}
-.dg-qty:focus{outline:0;border-color:var(--accent)}
-.dg-qty.dirty{border-color:var(--warn);background:#fffbeb}
-.dg-qty.err{border-color:var(--danger);background:#fef2f2}
-.chk{list-style:none;padding:0;margin:0 0 14px}
-.chk li{padding:7px 0;font-size:13px;border-bottom:1px solid #eef2f7;display:flex;gap:9px;align-items:flex-start}
-.chk li:last-child{border-bottom:0}
-.chk .m{font-weight:800;min-width:16px}
-.chk .yes{color:#166534}.chk .no{color:#991b1b}
-.appr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
-.appr-kv{font-size:13px;color:var(--muted)}
-.appr-kv b{display:block;color:var(--ink);font-size:15px;margin-top:3px;font-weight:800}
-@media(max-width:1100px){.appr-grid{grid-template-columns:repeat(2,1fr)}}
-.invrow .srcinner{padding:10px 12px}
-.runmeta{font-size:12px;color:var(--muted);margin-top:10px;direction:ltr;text-align:start;font-family:monospace}
-@media(max-width:1100px){.res-grid{grid-template-columns:repeat(2,1fr)}}
-.repnote{padding:12px 14px;background:#fffbeb;border-inline-start:4px solid var(--warn);border-radius:8px;color:#92400e;margin-bottom:14px;font-size:13px}
-@media(max-width:1100px){.sum-grid{grid-template-columns:repeat(2,1fr)}.months-grid{grid-template-columns:repeat(4,minmax(88px,1fr))}}
-@media(max-width:750px){.months-grid{grid-template-columns:repeat(3,minmax(84px,1fr))}}
-
-@media(max-width:750px){.frm{grid-template-columns:1fr}}
-
-
-
-/* ============================================================================
-   PRINT — A4. Everything here lives inside @media print, so the on-screen
-   layout is byte-for-byte unchanged. Chrome/Edge "Save as PDF" in the same
-   dialog is what the PDF button opens; there is no separate PDF generator.
-   ========================================================================== */
-@media print{
-  @page{ size:A4; margin:14mm 12mm; }
-  html,body{ background:#fff !important; color:#000 !important; }
-  .sidebar,.nav,#langsw,.topbar .actions,
-  #ghsBootGate,#ghsPersistWarn,#ghsRunsWarn,
-  .btn,button,select,input,.rowacts,.dist-f .rowacts,
-  #bhTestPanel,#ivTestPanel,#aeTestPanel,#brTestPanel,#qtTestPanel,#miTestPanel,
-  .srcbtn,.chip,.mi-in{ display:none !important; }
-  .page.hidden{ display:none !important; }
-  .main,.content,.wrap{ margin:0 !important; padding:0 !important; width:100% !important; }
-  .panel{ box-shadow:none !important; border:1px solid #999 !important;
-          break-inside:avoid; page-break-inside:avoid; margin:0 0 8mm 0 !important; }
-  .table-wrap{ overflow:visible !important; max-height:none !important; }
-  table{ width:100% !important; border-collapse:collapse !important; font-size:10pt !important; }
-  thead{ display:table-header-group; }            /* repeat headings on every page */
-  tfoot{ display:table-footer-group; }
-  tr,td,th{ break-inside:avoid; page-break-inside:avoid; }
-  th,td{ border:1px solid #999 !important; padding:3pt 4pt !important; color:#000 !important; }
-  th{ background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .total-row td{ font-weight:700 !important; background:#f2f2f2 !important;
-                 -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .pill,.sub-id{ border:1px solid #999 !important; background:transparent !important; color:#000 !important; }
-  .repnote,.runmeta,.unconstrained{ color:#333 !important; }
-  a[href]:after{ content:'' !important; }         /* no URL noise in the margin */
-  .print-only{ display:block !important; }
-}
-.print-only{ display:none; }
-
-/* ---- sign-in screen: the same palette, a quiet ledger-paper backdrop drawn
-   entirely in CSS so nothing is fetched ---- */
-/* the overlay is addressed by id, so hiding it needs a rule of at least the
-   same specificity — a bare .hidden class is outranked and the sign-in screen
-   would stay on top of the application for ever */
-#loginScreen.hidden{display:none !important}
-#loginScreen{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;
-  background:
-    radial-gradient(1100px 520px at 15% -10%, rgba(37,99,235,.16), transparent 60%),
-    radial-gradient(900px 480px at 110% 110%, rgba(15,118,110,.14), transparent 60%),
-    repeating-linear-gradient(0deg, rgba(15,23,42,.035) 0 1px, transparent 1px 34px),
-    repeating-linear-gradient(90deg, rgba(15,23,42,.03) 0 1px, transparent 1px 34px),
-    linear-gradient(160deg,#0f172a 0%,#111827 45%,#0b1220 100%);}
-#loginScreen .box{width:100%;max-width:400px;background:var(--card);border-radius:16px;
-  box-shadow:0 24px 60px rgba(2,6,23,.45);padding:30px 26px;border:1px solid var(--line)}
-#loginScreen .mark{font-size:24px;font-weight:800;letter-spacing:.5px;margin-bottom:2px}
-#loginScreen .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
-#loginScreen .field{width:100%;margin-bottom:14px}
-#loginScreen .btn{width:100%;justify-content:center}
-#loginScreen .lbl{display:block;margin-bottom:6px}
-#loginScreen .foot{color:var(--muted);font-size:11.5px;margin-top:18px;line-height:1.7}
-@media (max-width:480px){#loginScreen .box{padding:24px 18px}}
-
-/* ---- print: A4, the document only ---- */
-@media print{
-  @page{ size:A4; margin:14mm 12mm; }
-  html,body{ background:#fff !important; color:#000 !important; }
-  .side,.top,.nav,#langsw,.rowacts,.dist-f,#loginScreen,
-  button,select,input,.notice,.repnote{ display:none !important; }
-  .app{ display:block !important; }
-  .main{ margin:0 !important; padding:0 !important; max-width:none !important; }
-  .page.hidden{ display:none !important; }
-  .panel{ box-shadow:none !important; border:1px solid #999 !important;
-          break-inside:avoid; page-break-inside:avoid; margin:0 0 8mm 0 !important; }
-  .table-wrap{ overflow:visible !important; max-height:none !important; }
-  table{ width:100% !important; border-collapse:collapse !important; font-size:10pt !important; }
-  thead{ display:table-header-group; }
-  tr,td,th{ break-inside:avoid; page-break-inside:avoid; }
-  th,td{ border:1px solid #999 !important; padding:3pt 4pt !important; color:#000 !important; }
-  th{ background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .appr-grid{ display:grid !important; grid-template-columns:repeat(4,1fr) !important; gap:6pt !important; }
-  .appr-kv{ border:1px solid #999 !important; }
-  .pill{ border:1px solid #999 !important; background:transparent !important; color:#000 !important; }
-}
-</style>
-</head>
-<body>
-
-<div id="loginScreen">
-  <div class="box">
-    <div class="mark">GHIS EXP</div>
-    <div class="sub">نظام المصروفات</div>
-    <label class="lbl" id="lgLUser">اسم المستخدم</label>
-    <input class="field" id="lgUser" autocomplete="username">
-    <label class="lbl" id="lgLPass">كلمة المرور</label>
-    <input class="field" id="lgPass" type="password" autocomplete="current-password">
-    <div id="lgMsg"></div>
-    <button class="btn" id="lgBtn">دخول</button>
-    <div class="foot">الدخول هنا قفل تنظيمي داخل المتصفح، وليس حماية أمنية: التطبيق ثابت بلا خادم يتحقق.</div>
-  </div>
-</div>
-
-<div class="app hidden" id="appRoot">
-  <aside class="side">
-    <div class="brand">GHIS EXP</div>
-    <div class="nav">
-      <button data-page="home" class="active">🏠 الرئيسية</button>
-      <button data-page="settings">⚙️ إعدادات النظام</button>
-      <button data-page="types">📂 أنواع المصروفات</button>
-      <button data-page="prices">💰 الأسعار والكميات</button>
-      <button data-page="budgets">📊 توزيع الميزانيات شهريًا</button>
-      <button data-page="qtydist">📦 توزيع الكميات</button>
-      <button data-page="invoices">🧾 طباعة الفواتير</button>
-      <button data-page="reports">📈 التقارير</button>
-      <button data-page="users">👥 المستخدمين</button>
-    </div>
-  </aside>
-
-  <main class="main">
-    <div class="top">
-      <div class="title"><h1 id="pgTitle">الرئيسية</h1><p id="pgSub">—</p><div id="srvNote"></div></div>
-      <div class="filters">
-        <div class="rep-f" style="margin:0"><label class="lbl" id="ycLbl">السنة المالية</label>
-          <select class="field" id="ycSel" style="min-width:140px"></select></div>
-        <div class="rep-f" style="margin:0"><label class="lbl">&nbsp;</label>
-          <span class="pill neutral" id="whoami">—</span></div>
-        <div class="rep-f" style="margin:0"><label class="lbl">&nbsp;</label>
-          <button class="btn secondary" id="logoutBtn">خروج</button></div>
-        <div class="langsw" id="langsw"><button data-lang="ar" class="active">ع</button><button data-lang="en">EN</button></div>
-      </div>
-    </div>
-
-    <section id="home" class="page">
-      <div class="panel">
-        <div class="section-title"><h2 id="hoTitle">ملخص السنة</h2><span class="pill neutral" id="hoPill">—</span></div>
-        <div id="hoMsg"></div>
-        <div class="dist-f"><div class="rep-f"><label class="lbl" id="hoLMonth">الشهر</label>
-          <select class="field" id="hoMonth"></select></div></div>
-        <div class="appr-grid" id="hoCards"></div>
-      </div>
-    </section>
-
-    <section id="settings" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="fyTitle">السنوات المالية</h2><span class="pill neutral" id="fyPill">—</span></div>
-        <div class="dist-f">
-          <div class="rep-f"><label class="lbl" id="fyLNew">سنة مالية جديدة</label><select class="field" id="fyNew"></select></div>
-          <div class="rep-f rowacts"><button class="btn green" id="fyAdd">إضافة</button></div>
-        </div>
-        <div id="fyMsg"></div>
-        <div class="table-wrap"><table><thead><tr><th id="fyC1">السنة</th><th id="fyC2">المدى</th>
-          <th id="fyC3">الفواتير</th><th id="fyC4">الحالة</th><th id="fyC5">الإجراء</th></tr></thead>
-          <tbody id="fyRows"></tbody></table></div>
-      </div>
-      <div class="panel">
-        <div class="section-title"><h2 id="stTitle">إعدادات النظام</h2></div>
-        <div class="table-wrap"><table><thead><tr><th id="stC1">الإعداد</th><th id="stC2">القيمة</th></tr></thead>
-          <tbody id="stRows"></tbody></table></div>
-      </div>
-    </section>
-
-    <section id="types" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="tyTitle">أنواع المصروفات</h2><span class="pill neutral" id="tyPill">—</span></div>
-        <div id="tyMsg"></div>
-        <div class="dist-f" data-adminonly>
-          <div class="rep-f"><label class="lbl" id="tyLNewType">نوع مصروف جديد</label>
-            <input class="field" id="tyNewType"></div>
-          <div class="rep-f rowacts"><button class="btn green" id="tyAddType">إضافة نوع</button></div>
-        </div>
-        <div class="types" id="tyCards"></div>
-      </div>
-      <div class="panel hidden" id="tyPanel">
-        <div class="section-title"><h2 id="tyItemCount">—</h2><span class="pill neutral" id="tyPanelPill">—</span></div>
-        <div class="dist-f">
-          <div class="rep-f"><label class="lbl" id="tyLName">اسم النوع</label><input class="field" id="tyName"></div>
-          <div class="rep-f rowacts"><button class="btn" id="tySave">حفظ الاسم</button></div>
-          <div class="rep-f"><label class="lbl" id="tyLSearch">بحث</label><input class="field" id="tySearch"></div>
-        </div>
-        <div class="dist-f">
-          <div class="rep-f"><label class="lbl" id="tyLNewItem">بند جديد</label><input class="field" id="tyNewItem"></div>
-          <div class="rep-f rowacts"><button class="btn green" id="tyAddItem">إضافة بند</button></div>
-        </div>
-        <div class="table-wrap"><table><thead><tr><th id="tyC1">كود البند</th><th id="tyC2">اسم البند</th>
-          <th id="tyC3">الأسماء السابقة</th><th id="tyC4">الإجراء</th></tr></thead>
-          <tbody id="tyRows"></tbody></table></div>
-      </div>
-    </section>
-
-    <section id="prices" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="prTitle">الأسعار والكميات</h2><span class="pill neutral" id="prCount">—</span></div>
-        <div id="prMsg"></div>
-        <div class="types" id="prCards"></div>
-      </div>
-      <div class="panel hidden" id="prPanel">
-        <div class="section-title"><h2>&nbsp;</h2><span class="pill neutral" id="prPanelPill">—</span></div>
-        <div class="dist-f"><div class="rep-f"><label class="lbl" id="prLSearch">بحث</label>
-          <input class="field" id="prSearch"></div></div>
-        <div class="table-wrap"><table><thead><tr><th id="prC1">الكود</th><th id="prC2">اسم البند</th>
-          <th id="prC3">الوحدة</th><th id="prC4">سعر الوحدة</th><th id="prC5">الحد الأقصى الشهري</th>
-          <th id="prC6">الحد الأقصى السنوي</th><th id="prC7">المنفَّذ</th><th id="prC8">الإجراء</th></tr></thead>
-          <tbody id="prRows"></tbody></table></div>
-      </div>
-    </section>
-
-    <section id="budgets" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="buTitle">توزيع الميزانيات شهريًا</h2></div>
-        <div id="buMsg"></div>
-        <div class="types" id="buCards"></div>
-      </div>
-      <div class="panel hidden" id="buPanel">
-        <div class="section-title"><h2>&nbsp;</h2><span class="pill neutral" id="buPanelPill">—</span></div>
-        <div class="dist-f">
-          <div class="rep-f"><label class="lbl" id="buLAnnual">الموازنة السنوية</label>
-            <input class="field" id="buAnnual" inputmode="decimal"></div>
-          <div class="rep-f rowacts"><button class="btn" id="buSaveAnnual">حفظ الموازنة السنوية</button></div>
-        </div>
-        <div class="runmeta" id="buLock">—</div>
-        <div class="table-wrap"><table><thead><tr><th>نوع المصروف</th>
-          <th>سبتمبر</th><th>أكتوبر</th><th>نوفمبر</th><th>ديسمبر</th><th>يناير</th><th>فبراير</th>
-          <th>مارس</th><th>أبريل</th><th>مايو</th><th>يونيو</th><th>يوليو</th><th>أغسطس</th>
-          <th>الإجمالي</th><th>الموازنة السنوية</th><th>المتبقي</th></tr></thead>
-          <tbody id="buRows"></tbody></table></div>
-        <div class="rowacts" style="margin-top:14px"><button class="btn" id="buSaveMonthly">حفظ التوزيع الشهري</button></div>
-      </div>
-    </section>
-
-    <section id="qtydist" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="qdTitle">توزيع الكميات</h2></div>
-        <div id="qdMsg"></div>
-        <div class="dist-f"><div class="rep-f"><label class="lbl" id="qdLMonth">الشهر</label>
-          <select class="field" id="qdMonth"></select></div></div>
-        <div class="types" id="qdCards"></div>
-      </div>
-      <div class="panel hidden" id="qdPanel">
-        <div class="section-title"><h2>&nbsp;</h2><span class="pill neutral" id="qdPanelPill">—</span></div>
-        <div class="appr-grid">
-          <div class="appr-kv">موازنة الشهر<b id="qdBudget">—</b></div>
-          <div class="appr-kv">المنفَّذ حتى الآن<b id="qdDone">—</b></div>
-        </div>
-        <div class="dist-f">
-          <div class="rep-f"><label class="lbl" id="qdLInv">عدد الفواتير</label>
-            <input class="field" id="qdInv" inputmode="numeric" value="1"></div>
-          <div class="rep-f rowacts"><button class="btn" id="qdStart">بدء التوزيع</button></div>
-          <div class="rep-f rowacts"><button class="btn green" id="qdApprove" disabled>اعتماد</button></div>
-        </div>
-        <div class="table-wrap"><table><thead><tr><th id="qdC1">البند</th><th id="qdC2">الوحدة</th>
-          <th id="qdC3">سعر الوحدة</th><th id="qdC4">الكمية</th><th id="qdC5">إجمالي المبلغ</th></tr></thead>
-          <tbody id="qdReview"></tbody></table></div>
-        <div class="appr-grid" id="qdTotals"></div>
-      </div>
-    </section>
-
-    <section id="invoices" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="ivTitle">طباعة الفواتير</h2></div>
-        <div id="ivMsg"></div>
-        <div class="dist-f"><div class="rep-f"><label class="lbl" id="ivLMonth">الشهر</label>
-          <select class="field" id="ivMonth"></select></div></div>
-        <div class="types" id="ivCards"></div>
-      </div>
-      <div class="panel hidden" id="ivListPanel">
-        <div class="section-title"><h2>&nbsp;</h2><span class="pill neutral" id="ivListPill">—</span></div>
-        <div class="table-wrap"><table><thead><tr><th id="ivL1">رقم الفاتورة</th><th id="ivL2">التاريخ</th>
-          <th id="ivL3">الصافي</th><th id="ivL4">اعتمدها</th><th id="ivL5">الحالة</th>
-          <th id="ivL6">الإجراء</th></tr></thead><tbody id="ivRows"></tbody></table></div>
-      </div>
-      <div class="panel hidden" id="ivDocPanel">
-        <div class="section-title"><h2>&nbsp;</h2><span class="pill neutral" id="ivDocPill">—</span></div>
-        <div class="appr-grid" id="ivDocHead"></div>
-        <div class="table-wrap"><table><thead><tr><th id="ivD1">البند</th><th id="ivD2">الوحدة</th>
-          <th id="ivD3">سعر الوحدة</th><th id="ivD4">الكمية</th><th id="ivD5">إجمالي المبلغ</th>
-          <th id="ivD6">الضريبة</th><th id="ivD7">الخصم المسموح به</th><th id="ivD8">صافي المبلغ</th></tr></thead>
-          <tbody id="ivDocRows"></tbody></table></div>
-        <div class="appr-grid" id="ivDocTotals"></div>
-        <div id="ivEditBox"></div>
-        <div id="ivAudit"></div>
-        <div class="rowacts" style="margin-top:14px">
-          <button class="btn secondary" id="ivPrint">طباعة</button>
-          <button class="btn secondary" id="ivPdf">حفظ PDF</button>
-          <button class="btn green" id="ivExcel">Excel</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="reports" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="rpTitle">التقارير</h2><span class="pill neutral" id="rpPill">—</span></div>
-        <div id="rpMsg"></div>
-        <div class="dist-f">
-          <div class="rep-f"><label class="lbl" id="rpLKind">التقرير</label><select class="field" id="rpKind"></select></div>
-          <div class="rep-f" id="rpFromBox"><label class="lbl" id="rpLFrom">من شهر</label><select class="field" id="rpFrom"></select></div>
-          <div class="rep-f"><label class="lbl" id="rpLTo">إلى شهر</label><select class="field" id="rpTo"></select></div>
-          <div class="rep-f" id="rpTypeBox"><label class="lbl" id="rpLType">نوع المصروف</label><select class="field" id="rpType"></select></div>
-          <div class="rep-f rowacts"><button class="btn secondary" id="rpPrint">طباعة</button></div>
-          <div class="rep-f rowacts"><button class="btn green" id="rpExcel">Excel</button></div>
-        </div>
-        <div class="table-wrap"><table><thead id="rpHead"></thead><tbody id="rpRows"></tbody></table></div>
-      </div>
-    </section>
-
-    <section id="users" class="page hidden">
-      <div class="panel">
-        <div class="section-title"><h2 id="usTitle">المستخدمين</h2></div>
-        <div id="usMsg"></div>
-        <div class="dist-f" data-adminonly>
-          <div class="rep-f"><label class="lbl" id="usLName">اسم مستخدم جديد</label><input class="field" id="usName"></div>
-          <div class="rep-f"><label class="lbl" id="usLPass">كلمة المرور</label><input class="field" id="usPass" type="password"></div>
-          <div class="rep-f"><label class="lbl">الدور</label><select class="field" id="usRole">
-            <option value="USER">User</option><option value="ADMIN">Admin</option></select></div>
-          <div class="rep-f rowacts"><button class="btn green" id="usAdd">إضافة مستخدم</button></div>
-        </div>
-        <div class="table-wrap"><table><thead><tr><th id="usC1">اسم المستخدم</th><th id="usC2">الدور</th>
-          <th id="usC3">الحالة</th><th id="usC4">الإجراء</th></tr></thead><tbody id="usRows"></tbody></table></div>
-      </div>
-    </section>
-  </main>
-</div>
-
-<script src="data.js"></script>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GHIS EXP</title><style>*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial;background:#f4f7fa;color:#17212b;direction:rtl}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center}.loginbox,.panel{background:#fff;border:1px solid #d9e1e8;border-radius:14px;box-shadow:0 5px 18px #12316612;padding:20px}.loginbox{width:380px}.logo{width:48px;height:48px;background:#123166;color:#fff;border-radius:12px;display:grid;place-items:center;font-weight:bold;margin:auto auto 10px}.loginbox{text-align:center}.field{border:1px solid #d9e1e8;border-radius:8px;padding:9px;width:100%;background:#fff}.formrow{text-align:right;margin:12px 0}.lbl{font-size:12px;font-weight:bold;color:#667788;display:block;margin-bottom:5px}.btn{border:0;border-radius:8px;padding:9px 12px;background:#123166;color:#fff;cursor:pointer;font-weight:bold}.btn.secondary{background:#fff;color:#123166;border:1px solid #d9e1e8}.btn.danger{background:#b42318}.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.sidebar{background:#fff;border-left:1px solid #d9e1e8;padding:16px;position:sticky;top:0;height:100vh}.brand{display:flex;gap:9px;align-items:center;border-bottom:1px solid #d9e1e8;padding-bottom:15px;margin-bottom:12px}.brand .logo{margin:0;width:40px;height:40px}.brand b{color:#123166}.brand small{display:block;color:#667788}.nav{display:grid;gap:4px}.nav button{border:0;background:none;text-align:right;padding:10px;border-radius:8px;cursor:pointer;color:#405a73;font-weight:bold}.nav button.active,.nav button:hover{background:#edf3f8;color:#123166}.main{min-width:0}.top{height:76px;background:#fff;border-bottom:1px solid #d9e1e8;padding:0 22px;display:flex;align-items:center}.top h1{margin:0;color:#123166}.content{padding:20px;max-width:1600px;margin:auto}.title{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px}.type{background:#fff;border:1px solid #d9e1e8;border-radius:12px;padding:15px;text-align:center;cursor:pointer}.type:hover{border-color:#7890a8}.icon{font-size:32px}.type h3{font-size:13px;margin:7px 0}.muted{font-size:11px;color:#667788}.table{overflow:auto;border:1px solid #d9e1e8;border-radius:9px}table{width:100%;border-collapse:collapse;min-width:700px}th,td{padding:8px;border-bottom:1px solid #d9e1e8;font-size:12px;text-align:right}th{background:#f7f9fb}.actions{display:flex;gap:6px;flex-wrap:wrap}.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{background:#fff;border:1px solid #d9e1e8;border-radius:10px;padding:13px}.stat small{color:#667788}.stat b{display:block;color:#123166;font-size:18px;margin-top:5px;direction:ltr}.toolbar{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.toolbar>div{min-width:160px;flex:1}.notice{padding:10px;background:#eff6ff;border-right:4px solid #123166;border-radius:7px;font-size:12px;margin:10px 0}.modalback{position:fixed;inset:0;background:#10203366;display:grid;place-items:center;padding:20px;z-index:20}.modal{background:#fff;border-radius:13px;padding:18px;width:min(850px,95vw);max-height:90vh;overflow:auto}.modalhead{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#eee;padding:7px;border-radius:7px}.sub{margin-top:15px;border-top:1px solid #d9e1e8;padding-top:15px}@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.statgrid{grid-template-columns:1fr 1fr}}@media print{.sidebar,.top,.no-print{display:none!important}.content{padding:0}.panel{box-shadow:none;border:0}}</style><link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#123166">
+</head><body><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" class="field" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" class="field" type="password" value="" autocomplete="current-password"></div><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="settings">⚙️ إعدادات النظام</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><script src="data.js"></script>
 <script>
 /* ============================================================================
-   GHIS EXP — application.
+   GHIS EXP — production frontend.
 
-   The visual language is the approved prototype's: same stylesheet, same
-   .app/.side/.top shell, same cards, panels and tables. Everything below is
-   the system behind it.
+   The markup, the stylesheet and the whole rendering vocabulary are the
+   approved prototype's, unchanged: one #content div, page functions that
+   return HTML, wire() binding afterwards, the same .panel / .cards / .type /
+   .table / .stat / .toolbar / .modal classes.
 
-   Two rules shape the data model:
-     · expense types, items, users and the unit list are shared;
-     · every operational value belongs to exactly one fiscal year.
-   Nothing reads operational data without going through the selected year.
+   What is replaced is the data layer underneath. The prototype kept its state
+   in localStorage; this talks to the Apps Script backend over a session token
+   and lets the server decide every financial rule. The only thing kept in the
+   browser is that token — never a password, never a role the server has not
+   confirmed, never the operational data itself.
    ========================================================================== */
 (function(){
 'use strict';
 
-const TYPE_ICON={ET001:'\ud83c\udfad',ET002:'\u26bd',ET003:'\ud83c\udfa8',ET004:'\u270f\ufe0f',
-  ET005:'\ud83c\udf31',ET006:'\ud83d\udd27',ET007:'\ud83d\udcda',ET008:'\ud83d\udda8\ufe0f',
-  ET009:'\ud83e\uddf9',ET010:'\ud83d\udccb'};
+var API_URL='https://script.google.com/macros/s/AKfycbyrazoTuTjKkezqOdXFJP7Op-ihRyV_y7nxptD1PZa8Y_rPWG9EvqZixbQSMeDp46CE/exec';
+var TOKEN_KEY='ghis_exp_token';
 
-/* ============================================================================
-   BACKEND — Google Apps Script Web App over Google Sheets.
+var TOKEN=null, USER=null;
+var page='home', type=null, month=0, report=null;
+var S={ types:[], items:[], units:[], fy:[], currentFy:null,
+        prices:{}, limits:{}, annual:{}, monthly:{},
+        invoices:[], executions:[], users:[], vat:0.14 };
+var TYPE_ICON={ET001:'🎭',ET002:'⚽',ET003:'🎨',ET004:'✏️',ET005:'🌱',
+  ET006:'🔧',ET007:'📚',ET008:'🖨️',ET009:'🧹',ET010:'📋'};
+var M=['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير',
+       'مارس','أبريل','مايو','يونيو','يوليو','أغسطس'];
+var UNITS=['لتر','مل','وحدة','قطعة','علبة','كرتونة','عدد','كجم','جرام','طن',
+           'متر','سنتيمتر','عبوة','زجاجة','جالون','رول','باكو','دستة'];
 
-   The browser holds no authority. It sends a session token with every call and
-   the server decides what the token may do. Roles, budgets, ceilings, approval
-   status and every financial figure are re-checked server-side; whatever this
-   file believes is only what the screen draws.
-
-   Requests are POSTed without a Content-Type header on purpose: the browser
-   default avoids a CORS preflight, which Apps Script does not answer.
-   ========================================================================== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbyrazoTuTjKkezqOdXFJP7Op-ihRyV_y7nxptD1PZa8Y_rPWG9EvqZixbQSMeDp46CE/exec';
-var TOKEN = null;                /* lives for this tab only, never written down */
-var ONLINE = null;               /* null = not tried yet */
-
-function apiCall(action, payload){
-  var body = payload || {};
-  body.action = action;
-  if(TOKEN) body.token = TOKEN;
-  if(typeof fetch!=='function')
-    return Promise.reject(new Error('FETCH_UNAVAILABLE'));
-  return fetch(API_URL, { method:'POST', body:JSON.stringify(body) })
+/* ---------- the one place the browser talks to the server ---------- */
+function api(action,payload){
+  var body=payload||{}; body.action=action;
+  if(TOKEN) body.token=TOKEN;
+  if(typeof fetch!=='function') return Promise.reject(new Error('FETCH_UNAVAILABLE'));
+  return fetch(API_URL,{method:'POST',body:JSON.stringify(body)})
     .then(function(r){ return r.json(); })
     .then(function(j){
-      ONLINE = true;
-      if(j && j.ok===false && j.error==='INVALID_SESSION'){ TOKEN=null; }
+      /* a session the server no longer honours is dropped here, once */
+      if(j&&j.ok===false&&j.error==='INVALID_SESSION') clearSession();
       return j;
-    })
-    .catch(function(e){ ONLINE=false; throw e; });
+    });
 }
-/* Arabic for the errors the server can return — the user should never see a
-   bare code, and never a stack trace. */
-var API_MSG = {
-  INVALID_CREDENTIALS:['اسم المستخدم أو كلمة المرور غير صحيحة','Incorrect username or password'],
-  ACCOUNT_DISABLED:['هذا الحساب معطَّل','This account is disabled'],
-  INVALID_SESSION:['انتهت الجلسة — سجّل الدخول من جديد','Your session ended — please sign in again'],
-  FORBIDDEN:['هذا الإجراء للمشرف فقط','This action is for administrators only'],
-  INVALID_FY:['السنة المالية غير صالحة','Invalid fiscal year'],
-  FY_CLOSED:['السنة المالية مقفلة','This fiscal year is closed'],
-  ALREADY_EXISTS:['موجود بالفعل','That already exists'],
-  INVALID_YEAR:['سنة غير صالحة','Invalid year'],
-  UNIT_REQUIRED:['الوحدة مطلوبة','A unit is required'],
-  INVALID_PRICE:['سعر غير صالح','Invalid price'],
-  INVALID_MONTHLY_MAX:['حد شهري غير صالح','Invalid monthly maximum'],
-  INVALID_ANNUAL_MAX:['حد سنوي غير صالح','Invalid annual maximum'],
-  MONTHLY_ABOVE_ANNUAL:['الحد الشهري أكبر من السنوي','The monthly maximum exceeds the annual maximum'],
-  ANNUAL_MAX_BELOW_EXECUTED:['الحد السنوي أقل مما نُفِّذ بالفعل','The annual maximum is below what has already been executed'],
-  MONTHLY_EXCEEDS_ANNUAL:['مجموع الشهور يتجاوز الموازنة السنوية','The monthly total exceeds the annual budget'],
-  NO_MONTHLY_BUDGET:['لا توجد موازنة لهذا الشهر','No budget for this month'],
-  NET_DOES_NOT_MATCH_BUDGET:['الصافي لا يطابق موازنة الشهر','The net does not match the monthly budget'],
-  EXCEEDS_MONTHLY_MAX:['يتجاوز الحد الأقصى الشهري','Exceeds the monthly maximum'],
-  EXCEEDS_ANNUAL_MAX:['يتجاوز الحد الأقصى السنوي','Exceeds the annual maximum'],
-  DISCOUNT_EXCEEDS_UNIT_PRICE:['الخصم يساوي وحدة كاملة — ليس تسوية','The discount equals a whole unit — that is not an adjustment'],
-  NOT_APPROVED:['لا تُحفظ إلا العمليات المعتمدة','Only an approved run is persisted'],
-  DUPLICATE_RUN:['هذه العملية محفوظة بالفعل','This run is already saved'],
-  ITEM_NOT_PRICED:['صنف بلا سعر محفوظ','An item has no saved price'],
-  PRICE_MISMATCH:['السعر لا يطابق المحفوظ على الخادم','The price does not match the one stored on the server'],
-  INVALID_QUANTITY:['كمية غير صالحة','Invalid quantity'],
-  REASON_REQUIRED:['اذكر سبب التعديل','A reason is required'],
-  PASSWORD_TOO_SHORT:['كلمة المرور قصيرة (8 أحرف على الأقل)','Password too short (8 characters minimum)'],
-  SERVER_ERROR:['تعذر إتمام العملية على الخادم','The server could not complete the request']
+var ERR={
+  INVALID_CREDENTIALS:'اسم المستخدم أو كلمة المرور غير صحيحة',
+  ACCOUNT_DISABLED:'هذا الحساب معطَّل',
+  INVALID_SESSION:'انتهت الجلسة — سجّل الدخول من جديد',
+  FORBIDDEN:'هذا الإجراء للمشرف فقط',
+  INVALID_FY:'السنة المالية غير صالحة', FY_CLOSED:'السنة المالية مقفلة',
+  ALREADY_EXISTS:'موجود بالفعل', INVALID_YEAR:'سنة غير صالحة',
+  UNIT_REQUIRED:'الوحدة مطلوبة', INVALID_PRICE:'سعر غير صالح',
+  INVALID_MONTHLY_MAX:'حد شهري غير صالح', INVALID_ANNUAL_MAX:'حد سنوي غير صالح',
+  MONTHLY_ABOVE_ANNUAL:'الحد الأقصى الشهري أكبر من السنوي',
+  ANNUAL_MAX_BELOW_EXECUTED:'الحد السنوي أقل مما نُفِّذ بالفعل',
+  MONTHLY_EXCEEDS_ANNUAL:'مجموع الشهور يتجاوز الموازنة السنوية',
+  NO_MONTHLY_BUDGET:'لا توجد موازنة لهذا الشهر',
+  NET_DOES_NOT_MATCH_BUDGET:'الصافي لا يطابق موازنة الشهر',
+  EXCEEDS_MONTHLY_MAX:'يتجاوز الحد الأقصى الشهري',
+  EXCEEDS_ANNUAL_MAX:'يتجاوز الحد الأقصى السنوي',
+  DISCOUNT_EXCEEDS_UNIT_PRICE:'الخصم يساوي وحدة كاملة — ليس تسوية',
+  NOT_APPROVED:'لا تُحفظ إلا العمليات المعتمدة',
+  DUPLICATE_RUN:'هذه العملية محفوظة بالفعل',
+  ITEM_NOT_PRICED:'صنف بلا سعر محفوظ',
+  PRICE_MISMATCH:'السعر لا يطابق المحفوظ على الخادم',
+  INVALID_QUANTITY:'كمية غير صالحة', REASON_REQUIRED:'اذكر سبب التعديل',
+  PASSWORD_TOO_SHORT:'كلمة المرور قصيرة (8 أحرف على الأقل)',
+  USERNAME_REQUIRED:'اسم المستخدم مطلوب', BAD_ROLE:'دور غير صالح',
+  SERVER_ERROR:'تعذر إتمام العملية على الخادم'
 };
-function apiError(r){
-  var code = (r && r.error) || 'SERVER_ERROR';
-  var m = API_MSG[code];
-  return m ? T(m[0],m[1]) : T('تعذر إتمام العملية','The request could not be completed');
+function emsg(r){ return (r&&ERR[r.error])||'تعذر إتمام العملية'; }
+function offline(){ return 'تعذر الوصول إلى الخادم — تحقق من الاتصال ثم أعد المحاولة.'; }
+
+/* ---------- the session, and only the session, is remembered ---------- */
+function storeToken(t){
+  TOKEN=t;
+  try{ window.localStorage.setItem(TOKEN_KEY,t); }catch(e){}
 }
-function offlineMsg(){
-  return T('تعذر الوصول إلى الخادم — تحقق من الاتصال ثم أعد المحاولة.',
-           'The server could not be reached — check the connection and try again.');
+function readToken(){
+  try{ return window.localStorage.getItem(TOKEN_KEY); }catch(e){ return null; }
+}
+function clearSession(){
+  TOKEN=null; USER=null;
+  try{ window.localStorage.removeItem(TOKEN_KEY); }catch(e){}
 }
 
-var D = window.GHS_DATA;
-var LANG = 'ar';
-var PAGE = 'home';
-var USER = null;                    /* the signed-in user, or null */
-
-var FISCAL_START_MONTH = 9;
-var MONTHS_AR = ['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير',
-                 'مارس','أبريل','مايو','يونيو','يوليو','أغسطس'];
-var MONTHS_EN = ['September','October','November','December','January','February',
-                 'March','April','May','June','July','August'];
-
-function T(ar,en){ return LANG==='en' ? en : ar; }
+/* ---------- helpers, identical in behaviour to the prototype's ---------- */
+function adm(){ return !!USER && USER.role==='ADMIN'; }
+function fy(){ return S.currentFy; }
+function fyLabel(){ return S.currentFy?(S.currentFy+'/'+(S.currentFy+1)):'—'; }
+function money(n){
+  n=Number(n)||0;
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function items(t){ return S.items.filter(function(i){ return i.t===t; }); }
+function typeBy(id){ return S.types.filter(function(t){ return t.id===id; })[0]||{n:id,icon:'📦'}; }
+function icon(id){ return TYPE_ICON[id]||'📦'; }
 function el(id){ return document.getElementById(id); }
 function r2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
 function num(v){ if(v===''||v==null) return null; var n=Number(v); return isNaN(n)?null:n; }
-function money(n){
-  if(n==null||isNaN(n)) return '—';
-  return new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+
-         ' '+T('ج.م','EGP');
-}
-function qty(n){ return (n==null||isNaN(n))?'—':new Intl.NumberFormat('en-US').format(n); }
-function monthName(i){ return T(MONTHS_AR[i],MONTHS_EN[i]); }
-function vatRate(){ var v=Number((D.settings||{}).VAT_RATE); return isNaN(v)?0:v; }
-function nowStamp(){
-  var d=new Date();
-  function p(n){ return (n<10?'0':'')+n; }
-  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
-}
 
-/* ---------- authentication ----------
-   A client-side lock, not a security boundary: the credentials live in a file
-   the browser downloads. It records who acted and when, and keeps ordinary
-   users out of admin actions. It does not resist anyone who reads the source. */
-function users(){ return (D.users||[]); }
-function findUser(u){
-  return users().filter(function(x){ return String(x.u).toLowerCase()===String(u).toLowerCase(); })[0]||null;
+function priceOf(id){ return S.prices[id]||null; }
+function limitOf(id){ return S.limits[id]||null; }
+function annual(t){ var a=S.annual[t]; return a?a.amount:0; }
+function annualRec(t){ return S.annual[t]||null; }
+function mb(t,m){ var a=S.monthly[t]; return (a&&a[m]!=null)?Number(a[m]):0; }
+function months(t){ return S.monthly[t]||[null,null,null,null,null,null,null,null,null,null,null,null]; }
+function executedQty(id,upto){
+  var q=0;
+  S.executions.forEach(function(e){
+    if(e.itemId!==id) return;
+    if(upto!=null&&e.month>upto) return;
+    q+=Number(e.quantity)||0; });
+  return q;
 }
-function login(u,p){
-  var f=findUser(u);
-  if(!f) return {ok:false,reason:'NO_USER'};
-  if(f.active===false) return {ok:false,reason:'DISABLED'};
-  if(String(f.p)!==String(p)) return {ok:false,reason:'BAD_PASSWORD'};
-  USER={ u:f.u, role:f.role };
-  return {ok:true,user:USER};
-}
-function logout(){ USER=null; }
-function isAdmin(){ return !!USER && USER.role==='ADMIN'; }
-function requireAdmin(){ return isAdmin(); }
-
-/* ---------- shared master data ---------- */
-function types(){ return (D.types||[]).slice(); }
-function typeById(id){ return (D.types||[]).filter(function(t){ return t.id===id; })[0]||null; }
-function itemsOf(typeId){ return (D.items||[]).filter(function(x){ return x.t===typeId; }); }
-function itemById(id){ return (D.items||[]).filter(function(x){ return x.i===id; })[0]||null; }
-function icon(id){ return TYPE_ICON[id] || '\u{1F4E6}'; }
-
-/* A rename never overwrites history: the outgoing name is stamped with the
-   moment it stopped being current, so an old invoice can still resolve it. */
-function renameType(id,newName){
-  var t=typeById(id); if(!t) return {ok:false,reason:'NOT_FOUND'};
-  newName=String(newName||'').trim();
-  if(!newName) return {ok:false,reason:'EMPTY'};
-  if(newName===t.n) return {ok:false,reason:'UNCHANGED'};
-  t.nameHistory=t.nameHistory||[];
-  t.nameHistory.push({ n:t.n, until:nowStamp(), by:(USER&&USER.u)||'' });
-  t.n=newName;
-  return {ok:true,id:id,from:t.nameHistory[t.nameHistory.length-1].n,to:newName};
-}
-function renameItem(id,newName){
-  var x=itemById(id); if(!x) return {ok:false,reason:'NOT_FOUND'};
-  newName=String(newName||'').trim();
-  if(!newName) return {ok:false,reason:'EMPTY'};
-  if(newName===x.n) return {ok:false,reason:'UNCHANGED'};
-  x.nameHistory=x.nameHistory||[];
-  x.nameHistory.push({ n:x.n, until:nowStamp(), by:(USER&&USER.u)||'' });
-  x.n=newName;
-  return {ok:true,id:id,from:x.nameHistory[x.nameHistory.length-1].n,to:newName};
-}
-/* invoices store the name they were issued with, so history is read from the
-   record itself; this is the fallback when an older record lacks the stamp */
-function itemNameAt(id, stamped){
-  if(stamped) return stamped;
-  var x=itemById(id);
-  return x?x.n:id;
-}
-function nextTypeId(){
-  var max=0;
-  types().forEach(function(t){ var m=/^ET(\d+)$/.exec(t.id); if(m&&+m[1]>max) max=+m[1]; });
-  if(!max) return null;
-  var n=String(max+1); while(n.length<3) n='0'+n;
-  return 'ET'+n;
-}
-function nextItemId(){
-  var max=0;
-  (D.items||[]).forEach(function(x){ var m=/^IT(\d+)$/.exec(x.i); if(m&&+m[1]>max) max=+m[1]; });
-  if(!max) return null;
-  var n=String(max+1); while(n.length<5) n='0'+n;
-  return 'IT'+n;
-}
-function addType(name){
-  name=String(name||'').trim();
-  if(!name) return {ok:false,reason:'EMPTY'};
-  var id=nextTypeId();
-  if(!id) return {ok:false,reason:'NO_PATTERN'};
-  if(typeById(id)) return {ok:false,reason:'DUPLICATE'};
-  D.types.push({id:id,n:name,nameHistory:[]});
-  return {ok:true,id:id};
-}
-function addItem(typeId,name){
-  name=String(name||'').trim();
-  if(!typeById(typeId)) return {ok:false,reason:'NO_TYPE'};
-  if(!name) return {ok:false,reason:'EMPTY'};
-  var id=nextItemId();
-  if(!id) return {ok:false,reason:'NO_PATTERN'};
-  if(itemById(id)) return {ok:false,reason:'DUPLICATE'};
-  D.items.push({i:id,t:typeId,n:name,nameHistory:[]});
-  return {ok:true,id:id};
-}
-
-/* ---------- fiscal years ---------- */
-function years(){ return (D.years||[]).slice().sort(function(a,b){ return a.start-b.start; }); }
-function yearById(id){ return (D.years||[]).filter(function(y){ return y.id===id; })[0]||null; }
-function yearLabel(y){ return y ? (y.start+'/'+(y.start+1)) : '—'; }
-function emptyYear(start){
-  return { id:'FY'+start, start:start,
-           prices:{}, limits:{}, annualBudgets:{}, monthlyBudgets:{},
-           executions:[], invoices:[], approvals:[], audit:[] };
-}
-function addYear(start){
-  start=Number(start);
-  if(!start||start<2000||start>2100) return {ok:false,reason:'INVALID_YEAR'};
-  if(yearById('FY'+start)) return {ok:false,reason:'ALREADY_EXISTS'};
-  D.years.push(emptyYear(start));
-  if(!D.currentYear) D.currentYear='FY'+start;
-  return {ok:true,id:'FY'+start};
-}
-function removeYear(id){
-  if(!requireAdmin()) return {ok:false,reason:'ADMIN_ONLY'};
-  var i=(D.years||[]).map(function(y){return y.id;}).indexOf(id);
-  if(i<0) return {ok:false,reason:'NOT_FOUND'};
-  var tB=(D.types||[]).length, iB=(D.items||[]).length;
-  D.years.splice(i,1);
-  if(D.currentYear===id) D.currentYear=(D.years[0]||{}).id||null;
-  return {ok:true,id:id,typesKept:(D.types||[]).length===tB,itemsKept:(D.items||[]).length===iB};
-}
-function currentYear(){ return yearById(D.currentYear); }
-function setYear(id){
-  if(!yearById(id)) return {ok:false,reason:'NOT_FOUND'};
-  D.currentYear=id; render(); return {ok:true,id:id};
-}
-/* the single door to operational data — it cannot return another year's */
-function Y(key){
-  var y=currentYear(); if(!y) return null;
-  if(y[key]===undefined) y[key]= (key==='executions'||key==='invoices'||key==='approvals'||key==='audit')?[]:{};
-  return y[key];
-}
-function audit(action,detail){
-  var a=Y('audit'); if(!a) return;
-  a.unshift({ when:nowStamp(), who:(USER&&USER.u)||'—', action:action, detail:detail||'' });
-}
-
-/* ---------- prices, units and quantity limits (per year) ---------- */
-function priceOf(itemId){ var p=Y('prices'); return p&&p[itemId]?p[itemId]:null; }
-function limitOf(itemId){ var l=Y('limits'); return l&&l[itemId]?l[itemId]:null; }
-function savePriceRow(itemId,unit,unitCustom,price,monthlyMax,annualMax){
-  if(!currentYear()) return {ok:false,reason:'NO_YEAR'};
-  if(!itemById(itemId)) return {ok:false,reason:'NO_ITEM'};
-  var u = unit==='__OTHER__' ? String(unitCustom||'').trim() : String(unit||'').trim();
-  var p = num(price), mm = num(monthlyMax), am = num(annualMax);
-  if(unit==='__OTHER__' && !u) return {ok:false,reason:'UNIT_REQUIRED'};
-  if(p!==null && p<0) return {ok:false,reason:'NEGATIVE_PRICE'};
-  if(mm!==null && (mm<0||mm!==Math.floor(mm))) return {ok:false,reason:'BAD_MONTHLY_MAX'};
-  if(am!==null && (am<0||am!==Math.floor(am))) return {ok:false,reason:'BAD_ANNUAL_MAX'};
-  if(mm!==null && am!==null && mm>am) return {ok:false,reason:'MONTHLY_ABOVE_ANNUAL'};
-  Y('prices')[itemId]={ unit:u||null, price:p };
-  Y('limits')[itemId]={ monthlyMax:mm, annualMax:am };
-  audit('PRICE_SAVED', itemId+' · '+(u||'—')+' · '+(p==null?'—':p));
-  return {ok:true,itemId:itemId,unit:u||null,price:p,monthlyMax:mm,annualMax:am};
-}
-
-/* ---------- budgets (per year) ---------- */
-function annualBudget(typeId){ var a=Y('annualBudgets'); return a&&a[typeId]?a[typeId]:null; }
-function monthlyBudget(typeId){
-  var m=Y('monthlyBudgets');
-  if(!m) return null;
-  if(!m[typeId]) m[typeId]=[null,null,null,null,null,null,null,null,null,null,null,null];
-  return m[typeId];
-}
-function saveAnnualBudget(typeId,amount){
-  if(!currentYear()) return {ok:false,reason:'NO_YEAR'};
-  if(!typeById(typeId)) return {ok:false,reason:'NO_TYPE'};
-  var v=num(amount);
-  if(v===null||v<0) return {ok:false,reason:'INVALID'};
-  var cur=annualBudget(typeId);
-  /* once saved the figure is locked to ordinary users */
-  if(cur && cur.locked && !isAdmin()) return {ok:false,reason:'ADMIN_ONLY'};
-  var months=monthlyBudget(typeId)||[];
-  var sum=months.reduce(function(a,b){ return a+(b==null?0:Number(b)); },0);
-  if(sum-v>0.005) return {ok:false,reason:'BELOW_DISTRIBUTED',distributed:r2(sum)};
-  var was=cur?cur.amount:null;
-  Y('annualBudgets')[typeId]={ amount:v, locked:true,
-    by:(USER&&USER.u)||'', when:nowStamp() };
-  audit(was===null?'ANNUAL_BUDGET_SET':'ANNUAL_BUDGET_CHANGED',
-        typeId+' · '+(was===null?'—':was)+' → '+v);
-  return {ok:true,typeId:typeId,amount:v,changed:was!==null};
-}
-function saveMonthlyBudget(typeId,arr){
-  if(!currentYear()) return {ok:false,reason:'NO_YEAR'};
-  var ab=annualBudget(typeId);
-  if(!ab) return {ok:false,reason:'NO_ANNUAL_BUDGET'};
-  var vals=[],sum=0;
-  for(var k=0;k<12;k++){
-    var raw=arr[k];
-    if(raw===''||raw==null){ vals.push(null); continue; }
-    var v=num(raw);
-    if(v===null||v<0) return {ok:false,reason:'INVALID_MONTH',month:k};
-    vals.push(v); sum+=v;
-  }
-  if(sum-ab.amount>0.005) return {ok:false,reason:'EXCEEDS_ANNUAL',annual:ab.amount,total:r2(sum)};
-  Y('monthlyBudgets')[typeId]=vals;
-  audit('MONTHLY_BUDGET_SAVED', typeId+' · '+r2(sum)+' / '+ab.amount);
-  return {ok:true,typeId:typeId,total:r2(sum),remaining:r2(ab.amount-sum)};
+function executedAmount(t,m){
+  var a=0;
+  S.invoices.forEach(function(v){
+    if(v.typeId!==t) return;
+    if(m!=null&&v.month!==m) return;
+    a+=Number(v.net)||0; });
+  return r2(a);
 }
 
 /* ============================================================================
-   QUANTITY DISTRIBUTION ENGINE — new, separate, and not DE-1.2.1.
-   engine.js stays frozen and untouched; nothing here calls it.
+   QUANTITY DISTRIBUTION — the production engine, unchanged in behaviour.
+   engine.js (DE-1.2.1) stays frozen and is not called from here.
 
-   The order of operations is fixed and deliberate:
-     1. work out what each item may still take this month — the smaller of its
-        monthly maximum and what is left of its annual ceiling after every
-        previous execution in this year;
-     2. fill the monthly budget with whole units at the stored unit price,
-        rotating through items so the year spreads rather than exhausting the
-        first few;
-     3. if a gap remains, add one more unit of an item that still has room;
-     4. only then, close the last few piastres with the smallest discount that
-        makes the net match the budget exactly.
-
-   A discount never buys a unit that a quantity limit forbids.
+   Ceilings first, whole units only, least-used items first so the year
+   spreads, one filler unit if a gap remains, and only then the smallest
+   discount that closes the amount exactly. A discount never buys a unit a
+   ceiling forbids.
    ========================================================================== */
-function executedQty(itemId, uptoMonthIdx){
-  var ex=Y('executions')||[];
-  var total=0;
-  ex.forEach(function(e){
-    if(e.itemId!==itemId) return;
-    if(uptoMonthIdx!=null && e.month>uptoMonthIdx) return;
-    total+=Number(e.quantity)||0;
-  });
-  return total;
+function headroom(id,m){
+  var l=limitOf(id)||{};
+  if(l.monthlyMax==null&&l.annualMax==null) return null;
+  var usedM=0,usedY=0;
+  S.executions.forEach(function(e){
+    if(e.itemId!==id) return;
+    usedY+=Number(e.quantity)||0;
+    if(e.month===m) usedM+=Number(e.quantity)||0; });
+  var byM=l.monthlyMax==null?Infinity:Math.max(0,l.monthlyMax-usedM);
+  var byY=l.annualMax==null?Infinity:Math.max(0,l.annualMax-usedY);
+  var r=Math.min(byM,byY);
+  return r===Infinity?null:r;
 }
-function executedAmount(typeId, monthIdx){
-  var inv=Y('invoices')||[];
-  var total=0;
-  inv.forEach(function(v){
-    if(v.typeId!==typeId) return;
-    if(monthIdx!=null && v.month!==monthIdx) return;
-    total+=Number(v.net)||0;
+function eligible(t,m){
+  var out=[],skipped=[];
+  items(t).forEach(function(x){
+    var p=priceOf(x.id);
+    if(!p||p.price==null||!(Number(p.price)>0)){ skipped.push({id:x.id,why:'NO_PRICE'}); return; }
+    if(!p.unit){ skipped.push({id:x.id,why:'NO_UNIT'}); return; }
+    var room=headroom(x.id,m);
+    if(room===null){ skipped.push({id:x.id,why:'NO_LIMIT'}); return; }
+    if(room<=0){ skipped.push({id:x.id,why:'NO_HEADROOM'}); return; }
+    out.push({id:x.id,name:x.n,unit:p.unit,price:Number(p.price),
+              room:room,usedYear:executedQty(x.id)});
   });
-  return r2(total);
+  return {eligible:out,skipped:skipped};
 }
-/* how many units of this item may still be taken in this month */
-function headroom(itemId, monthIdx){
-  var lim=limitOf(itemId)||{};
-  var mMax=lim.monthlyMax, aMax=lim.annualMax;
-  if(mMax==null && aMax==null) return null;            /* no ceiling declared */
-  var usedThisMonth=0, usedThisYear=0;
-  (Y('executions')||[]).forEach(function(e){
-    if(e.itemId!==itemId) return;
-    usedThisYear+=Number(e.quantity)||0;
-    if(e.month===monthIdx) usedThisMonth+=Number(e.quantity)||0;
-  });
-  var byMonth = mMax==null ? Infinity : Math.max(0, mMax-usedThisMonth);
-  var byYear  = aMax==null ? Infinity : Math.max(0, aMax-usedThisYear);
-  var room=Math.min(byMonth,byYear);
-  return room===Infinity ? null : room;
-}
-function eligibleItems(typeId, monthIdx){
-  var out=[], skipped=[];
-  itemsOf(typeId).forEach(function(x){
-    var pr=priceOf(x.i);
-    if(!pr || pr.price==null || !(Number(pr.price)>0)){ skipped.push({id:x.i,why:'NO_PRICE'}); return; }
-    if(!pr.unit){ skipped.push({id:x.i,why:'NO_UNIT'}); return; }
-    var room=headroom(x.i, monthIdx);
-    if(room===null){ skipped.push({id:x.i,why:'NO_LIMIT'}); return; }
-    if(room<=0){ skipped.push({id:x.i,why:'NO_HEADROOM'}); return; }
-    if(Number(pr.price)>0)
-      out.push({ id:x.i, name:x.n, unit:pr.unit, price:Number(pr.price), room:room,
-                 usedYear:executedQty(x.i) });
-  });
-  return {eligible:out, skipped:skipped};
-}
-/* the spread rule: items used least so far this year go first */
-function orderForDiversity(list){
-  return list.slice().sort(function(a,b){
-    if(a.usedYear!==b.usedYear) return a.usedYear-b.usedYear;
-    return a.price-b.price;
-  });
-}
-function distribute(typeId, monthIdx, invoiceCount){
-  if(!currentYear()) return {ok:false,reason:'NO_YEAR'};
-  var budgetArr=monthlyBudget(typeId)||[];
-  var budget=budgetArr[monthIdx];
-  if(budget==null||!(budget>0)) return {ok:false,reason:'NO_MONTHLY_BUDGET'};
+function distribute(t,m,invoiceCount){
+  var budget=mb(t,m);
+  if(!(budget>0)) return {ok:false,reason:'NO_MONTHLY_BUDGET'};
   var n=Number(invoiceCount)||0;
   if(n<1||n!==Math.floor(n)) return {ok:false,reason:'BAD_INVOICE_COUNT'};
-
-  var pool=eligibleItems(typeId, monthIdx);
+  var pool=eligible(t,m);
   if(!pool.eligible.length) return {ok:false,reason:'NO_ELIGIBLE_ITEMS',skipped:pool.skipped};
 
-  var ordered=orderForDiversity(pool.eligible);
-  var picked={}, spent=0;
-  var guard=0;
-  /* round-robin one unit at a time: the spread is a consequence of the order,
-     not of a random draw, so the same inputs always give the same result */
-  var progress=true;
-  while(progress && spent<budget && guard<200000){
+  var ordered=pool.eligible.slice().sort(function(a,b){
+    if(a.usedYear!==b.usedYear) return a.usedYear-b.usedYear;
+    return a.price-b.price; });
+  var picked={},spent=0,guard=0,progress=true;
+  while(progress&&spent<budget&&guard<200000){
     progress=false;
     for(var k=0;k<ordered.length;k++){
       guard++;
       var it=ordered[k];
-      var taken=picked[it.id]?picked[it.id].quantity:0;
-      if(taken>=it.room) continue;
-      if(spent+it.price>budget+0.0000001) continue;
-      if(!picked[it.id]) picked[it.id]={ id:it.id, name:it.name, unit:it.unit,
-        price:it.price, quantity:0 };
+      var have=picked[it.id]?picked[it.id].quantity:0;
+      if(have>=it.room) continue;
+      if(spent+it.price>budget+1e-7) continue;
+      if(!picked[it.id]) picked[it.id]={id:it.id,name:it.name,unit:it.unit,price:it.price,quantity:0};
       picked[it.id].quantity++;
       spent=r2(spent+it.price);
       progress=true;
@@ -886,1318 +195,972 @@ function distribute(typeId, monthIdx, invoiceCount){
   var lines=Object.keys(picked).map(function(k){ return picked[k]; });
   if(!lines.length) return {ok:false,reason:'BUDGET_TOO_SMALL',cheapest:ordered[0].price};
 
-  var gap=r2(budget-spent);
-  var discount=0, filler=null;
+  var gap=r2(budget-spent), discount=0, filler=null;
   if(gap>0.004){
-    /* one more unit of an item that still has room, if it gets us closer */
     var cand=null;
     for(var q=0;q<ordered.length;q++){
       var c=ordered[q];
-      var have=picked[c.id]?picked[c.id].quantity:0;
-      if(have>=c.room) continue;
-      if(c.price<=gap+0.0000001) continue;      /* would have been taken already */
+      var hv=picked[c.id]?picked[c.id].quantity:0;
+      if(hv>=c.room) continue;
+      if(c.price<=gap+1e-7) continue;
       if(!cand||c.price<cand.price) cand=c;
     }
     if(cand){
-      if(!picked[cand.id]) picked[cand.id]={ id:cand.id, name:cand.name, unit:cand.unit,
-        price:cand.price, quantity:0 };
+      if(!picked[cand.id]) picked[cand.id]={id:cand.id,name:cand.name,unit:cand.unit,price:cand.price,quantity:0};
       picked[cand.id].quantity++;
       spent=r2(spent+cand.price);
       filler=cand.id;
       lines=Object.keys(picked).map(function(k){ return picked[k]; });
     }
-    /* whatever is still off is closed by the smallest discount, never by a unit
-       the limits forbid */
     discount=r2(spent-budget);
     if(discount<0) discount=0;
   }
   var gross=r2(lines.reduce(function(a,l){ return a+l.price*l.quantity; },0));
   var net=r2(gross-discount);
-  var vr=vatRate();
-  var beforeVat=r2(net/(1+vr));
-  var vat=r2(net-beforeVat);
-
-  /* split across the requested number of invoices, line by line */
-  var invoices=[];
-  for(var v=0;v<n;v++) invoices.push({ seq:v+1, lines:[] });
-  lines.forEach(function(l,idx){ invoices[idx%n].lines.push(l); });
-  invoices=invoices.filter(function(v){ return v.lines.length; });
-
-  return { ok:true, typeId:typeId, month:monthIdx, budget:r2(budget),
-           lines:lines, invoices:invoices,
-           gross:gross, discount:discount, net:net, beforeVat:beforeVat, vat:vat,
-           difference:r2(net-budget), filler:filler, skipped:pool.skipped,
-           itemCount:lines.length, unitCount:lines.reduce(function(a,l){ return a+l.quantity; },0) };
-}
-/* Approval is the only thing that writes executions and invoices. */
-function approveDistribution(res){
-  if(!res||!res.ok) return {ok:false,reason:'NOTHING_TO_APPROVE'};
-  if(!USER) return {ok:false,reason:'NOT_SIGNED_IN'};
-  var y=currentYear(); if(!y) return {ok:false,reason:'NO_YEAR'};
-  var stamp=nowStamp();
-  var made=[];
-  res.invoices.forEach(function(v){
-    var gross=r2(v.lines.reduce(function(a,l){ return a+l.price*l.quantity; },0));
-    /* the discount belongs to the run; give each invoice its share of it */
-    var share = res.gross>0 ? r2(res.discount*(gross/res.gross)) : 0;
-    var net=r2(gross-share);
-    var bv=r2(net/(1+vatRate())), vat=r2(net-bv);
-    var id=res.typeId+'-'+String(res.month+1).padStart(2,'0')+'-'+
-           String((y.invoices.length+made.length+1)).padStart(4,'0');
-    made.push({
-      id:id, typeId:res.typeId, month:res.month, seq:v.seq, when:stamp,
-      /* the name each line was issued with — history is read from here */
-      lines:v.lines.map(function(l){
-        return { itemId:l.id, itemName:l.name, unit:l.unit,
-                 price:l.price, quantity:l.quantity,
-                 gross:r2(l.price*l.quantity) };
-      }),
-      gross:gross, discount:share, net:net, beforeVat:bv, vat:vat,
-      approvedBy:USER.u, approvedAt:stamp, status:'APPROVED', edits:[]
-    });
-  });
-  made.forEach(function(v){ y.invoices.push(v); });
-  res.lines.forEach(function(l){
-    y.executions.push({ itemId:l.id, month:res.month, quantity:l.quantity,
-                        price:l.price, when:stamp, by:USER.u });
-  });
-  y.approvals.push({ typeId:res.typeId, month:res.month, when:stamp, by:USER.u,
-                     invoices:made.length, net:res.net });
-  audit('DISTRIBUTION_APPROVED',
-        res.typeId+' · '+monthName(res.month)+' · '+made.length+' '+T('فاتورة','invoices'));
-  return {ok:true,invoices:made.length,ids:made.map(function(v){return v.id;})};
-}
-function editApprovedInvoice(invoiceId, lineIdx, newQty){
-  if(!isAdmin()) return {ok:false,reason:'ADMIN_ONLY'};
-  var y=currentYear(); if(!y) return {ok:false,reason:'NO_YEAR'};
-  var v=(y.invoices||[]).filter(function(x){ return x.id===invoiceId; })[0];
-  if(!v) return {ok:false,reason:'NOT_FOUND'};
-  var line=v.lines[lineIdx]; if(!line) return {ok:false,reason:'NO_LINE'};
-  var q=num(newQty);
-  if(q===null||q<0||q!==Math.floor(q)) return {ok:false,reason:'BAD_QUANTITY'};
-  /* an admin edit still may not breach a quantity ceiling */
-  var lim=limitOf(line.itemId)||{};
-  var otherYear=0,otherMonth=0;
-  (y.executions||[]).forEach(function(e){
-    if(e.itemId!==line.itemId) return;
-    otherYear+=Number(e.quantity)||0;
-    if(e.month===v.month) otherMonth+=Number(e.quantity)||0;
-  });
-  var deltaQ=q-line.quantity;
-  if(lim.monthlyMax!=null && otherMonth+deltaQ>lim.monthlyMax)
-    return {ok:false,reason:'EXCEEDS_MONTHLY_MAX',max:lim.monthlyMax};
-  if(lim.annualMax!=null && otherYear+deltaQ>lim.annualMax)
-    return {ok:false,reason:'EXCEEDS_ANNUAL_MAX',max:lim.annualMax};
-
-  var was=line.quantity;
-  line.quantity=q;
-  line.gross=r2(line.price*q);
-  v.gross=r2(v.lines.reduce(function(a,l){ return a+l.gross; },0));
-  v.net=r2(v.gross-v.discount);
-  v.beforeVat=r2(v.net/(1+vatRate()));
-  v.vat=r2(v.net-v.beforeVat);
-  v.edits.push({ when:nowStamp(), by:USER.u,
-                 what:line.itemName+': '+was+' → '+q });
-  /* keep the execution ledger in step so the ceilings stay truthful */
-  var ex=(y.executions||[]).filter(function(e){
-    return e.itemId===line.itemId && e.month===v.month; })[0];
-  if(ex) ex.quantity=Number(ex.quantity)+deltaQ;
-  audit('INVOICE_EDITED', invoiceId+' · '+line.itemName+' '+was+' → '+q);
-  return {ok:true,invoiceId:invoiceId,was:was,now:q};
+  var before=r2(net/(1+S.vat)), tax=r2(net-before);
+  var invs=[];
+  for(var v=0;v<n;v++) invs.push({seq:v+1,lines:[]});
+  lines.forEach(function(l,i){ invs[i%n].lines.push(l); });
+  invs=invs.filter(function(x){ return x.lines.length; });
+  return {ok:true,typeId:t,month:m,budget:r2(budget),lines:lines,invoices:invs,
+    gross:gross,discount:discount,net:net,tax:tax,before:before,
+    difference:r2(net-budget),filler:filler,skipped:pool.skipped,
+    itemCount:lines.length,unitCount:lines.reduce(function(a,l){ return a+l.quantity; },0)};
 }
 
 /* ============================================================================
-   EXPORTS — the workbook writer carried over from the approved build.
+   LOADING — one round trip per screen, as the backend's bootstrap provides
    ========================================================================== */
-function crc32(bytes){ var c=0xFFFFFFFF;
-  for(var i=0;i<bytes.length;i++) c=CRC_TBL[(c^bytes[i])&0xFF]^(c>>>8);
-  return (c^0xFFFFFFFF)>>>0; }
-
-function zipStore(files){
-  var parts=[], central=[], offset=0;
-  function u16(n){ return [n&255,(n>>8)&255]; }
-  function u32(n){ return [n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255]; }
-  files.forEach(function(f){
-    var name=utf8Bytes(f.name), data=f.data, crc=crc32(data);
-    var lh=[].concat([0x50,0x4B,0x03,0x04],u16(20),u16(0x0800),u16(0),u16(0),u16(0),
-                     u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0));
-    parts.push(new Uint8Array(lh)); parts.push(name); parts.push(data);
-    central.push({name:name,crc:crc,size:data.length,offset:offset});
-    offset+=lh.length+name.length+data.length;
-  });
-  var cdStart=offset, cd=[];
-  central.forEach(function(c){
-    var h=[].concat([0x50,0x4B,0x01,0x02],u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0),
-                    u32(c.crc),u32(c.size),u32(c.size),u16(c.name.length),
-                    u16(0),u16(0),u16(0),u16(0),u32(0),u32(c.offset));
-    cd.push(new Uint8Array(h)); cd.push(c.name);
-    offset+=h.length+c.name.length;
-  });
-  var end=[].concat([0x50,0x4B,0x05,0x06],u16(0),u16(0),u16(central.length),u16(central.length),
-                    u32(offset-cdStart),u32(cdStart),u16(0));
-  var all=parts.concat(cd,[new Uint8Array(end)]);
-  var total=0; all.forEach(function(a){ total+=a.length; });
-  var buf=new Uint8Array(total), p=0;
-  all.forEach(function(a){ buf.set(a,p); p+=a.length; });
-  return buf;
-}
-
-function sheetXml(sh){
-  var rows=sh.rows.map(function(row,ri){
-    var cells=row.map(function(v,ci){
-      var ref=colRef(ci)+(ri+1);
-      if(ri===0) return '<c r="'+ref+'" s="1" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>';
-      if(v&&typeof v==='object'&&typeof v.n==='number'){
-        /* 2 = money (#,##0.00) · 3 = qty (#,##0) · 4 = percent (#,##0.00"%")
-           The percent format appends a literal % sign, so the stored value stays
-           25 (not 0.25) and Excel displays 25.00%. */
-        var st=(v.f==='money')?2:((v.f==='percent')?4:3);
-        return '<c r="'+ref+'" s="'+st+'"><v>'+v.n+'</v></c>'; }
-      if(typeof v==='number') return '<c r="'+ref+'"><v>'+v+'</v></c>';
-      if(v==='') return '';
-      return '<c r="'+ref+'" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>';
-    }).join('');
-    return '<row r="'+(ri+1)+'">'+cells+'</row>';
-  }).join('');
-  var cols=sh.widths?('<cols>'+sh.widths.map(function(w,i){
-    return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'; }).join('')+'</cols>'):'';
-  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-    '<sheetViews><sheetView rightToLeft="1" workbookViewId="0">'+
-    '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'+
-    '</sheetView></sheetViews>'+cols+'<sheetData>'+rows+'</sheetData></worksheet>';
-}
-
-function xlsxBytes(model){
-  var n=model.sheets.length, i;
-  var ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
-    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
-    '<Default Extension="xml" ContentType="application/xml"/>'+
-    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
-    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
-  for(i=0;i<n;i++) ct+='<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
-  ct+='</Types>';
-  var rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
-    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'+
-    '</Relationships>';
-  var wbSheets='',wbRels='';
-  for(i=0;i<n;i++){
-    wbSheets+='<sheet name="'+xmlEsc(model.sheets[i].name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>';
-    wbRels+='<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>';
+function applyBoot(r){
+  if(r.settings&&r.settings.vat_rate!=null){
+    var v=Number(r.settings.vat_rate); if(!isNaN(v)) S.vat=v;
   }
-  wbRels+='<Relationship Id="rId'+(n+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
-  var wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
-    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
-    '<sheets>'+wbSheets+'</sheets></workbook>';
-  var wbr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+wbRels+'</Relationships>';
-  var styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-    '<numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="#,##0"/>'+
-    '<numFmt numFmtId="166" formatCode="#,##0.00&quot;%&quot;"/></numFmts>'+
-    '<fonts count="2"><font><sz val="11"/><name val="Arial"/></font>'+
-    '<font><b/><sz val="11"/><name val="Arial"/></font></fonts>'+
-    '<fills count="2"><fill><patternFill patternType="none"/></fill>'+
-    '<fill><patternFill patternType="gray125"/></fill></fills>'+
-    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
-    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-    '<cellXfs count="5">'+
-    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
-    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+
-    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
-    '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
-    '<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
-    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
-  var files=[
-    {name:'[Content_Types].xml',data:utf8Bytes(ct)},
-    {name:'_rels/.rels',data:utf8Bytes(rels)},
-    {name:'xl/workbook.xml',data:utf8Bytes(wb)},
-    {name:'xl/_rels/workbook.xml.rels',data:utf8Bytes(wbr)},
-    {name:'xl/styles.xml',data:utf8Bytes(styles)}
-  ];
-  for(i=0;i<n;i++) files.push({name:'xl/worksheets/sheet'+(i+1)+'.xml',data:utf8Bytes(sheetXml(model.sheets[i]))});
-  return zipStore(files);
+  S.fy=(r.fiscalYears||[]).map(function(f){ return f.startYear; }).sort(function(a,b){ return a-b; });
+  if(S.currentFy&&S.fy.indexOf(S.currentFy)<0) S.currentFy=null;
+  if(!S.currentFy&&S.fy.length) S.currentFy=S.fy[0];
+  (r.types||[]).forEach(function(t){
+    if(!S.types.some(function(x){ return x.id===t.id; }))
+      S.types.push({id:t.id,n:t.n,icon:icon(t.id)});
+  });
+  S.prices={}; S.limits={};
+  (r.prices||[]).forEach(function(p){
+    S.prices[p.itemId]={unit:p.unit,price:p.price};
+    S.limits[p.itemId]={monthlyMax:p.monthlyMax,annualMax:p.annualMax};
+  });
+  S.annual={}; S.monthly={};
+  (r.budgets||[]).forEach(function(b){
+    if(b.annual!=null) S.annual[b.typeId]={amount:b.annual,locked:true,when:b.updatedAt||''};
+    S.monthly[b.typeId]=(b.months||[]).slice();
+  });
+  S.executions=(r.executions||[]).map(function(e){
+    return {itemId:e.itemId,month:e.month,quantity:e.quantity,
+            price:e.unitPrice,by:e.approvedBy,when:e.approvedAt}; });
+  S.invoices=(r.invoices||[]).map(function(v){
+    return {id:v.invoiceId,typeId:v.typeId,month:v.month,lines:v.lines||[],
+            gross:v.gross,tax:v.vat,discount:v.discount,net:v.net,
+            approvedBy:v.approvedBy,approvedAt:v.approvedAt,
+            status:v.status,edits:v.edits||[]}; });
 }
-
-function downloadBlobFile(bytes,fileName){
-  if(!bytes||!bytes.length) return {ok:false,reason:'EMPTY_FILE_BYTES'};
-  /* check and construct through the same reference so the guard cannot be
-     bypassed by a differing global/window binding */
-  var BlobCtor=(typeof window!=='undefined')?window.Blob:(typeof Blob==='function'?Blob:undefined);
-  if(typeof BlobCtor!=='function') return {ok:false,reason:'BLOB_API_UNAVAILABLE'};
-  var blob;
-  try{ blob=new BlobCtor([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); }
-  catch(e){ return {ok:false,reason:'BLOB_CREATE_FAILED: '+e.message}; }
-
-  /* legacy Edge / IE path */
-  if(window.navigator&&typeof window.navigator.msSaveOrOpenBlob==='function'){
-    try{ window.navigator.msSaveOrOpenBlob(blob,fileName); return {ok:true,via:'msSaveOrOpenBlob'}; }
-    catch(e){ return {ok:false,reason:'MS_SAVE_FAILED: '+e.message}; }
-  }
-  if(!window.URL||typeof window.URL.createObjectURL!=='function')
-    return {ok:false,reason:'OBJECT_URL_UNAVAILABLE'};
-
-  var url;
-  try{ url=window.URL.createObjectURL(blob); }
-  catch(e){ return {ok:false,reason:'OBJECT_URL_FAILED: '+e.message}; }
-  if(!url) return {ok:false,reason:'OBJECT_URL_EMPTY'};
-
-  var a=document.createElement('a');
-  if(!('download' in a)){ window.URL.revokeObjectURL(url);
-    return {ok:false,reason:'DOWNLOAD_ATTRIBUTE_UNSUPPORTED'}; }
-  a.href=url; a.download=fileName; a.rel='noopener';
-  a.style.position='fixed'; a.style.left='-9999px';
-  document.body.appendChild(a);
-  try{ a.click(); }
-  catch(e){ document.body.removeChild(a); window.URL.revokeObjectURL(url);
-    return {ok:false,reason:'ANCHOR_CLICK_FAILED: '+e.message}; }
-  /* detach the node immediately but keep the object URL alive long enough
-     for Chrome to start writing the file */
-  setTimeout(function(){ if(a.parentNode) a.parentNode.removeChild(a); },0);
-  setTimeout(function(){ window.URL.revokeObjectURL(url); },60000);
-  return {ok:true,via:'anchor'};
-}
-
-function sheetFrom(rows){ return rows; }
-function exportXlsx(name, sheets){
-  try{
-    var bytes=xlsxBytes(sheets);
-    downloadBlobFile(name+'.xlsx', bytes,
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    return {ok:true,name:name};
-  }catch(e){ return {ok:false,reason:String(e&&e.message||e)}; }
-}
-function printNow(){
-  if(typeof window.print!=='function') return {ok:false,reason:'UNAVAILABLE'};
-  try{ window.print(); return {ok:true}; }catch(e){ return {ok:false,reason:String(e)}; }
+function reload(){
+  return api('bootstrap',{fyId:S.currentFy?('FY'+S.currentFy):''})
+    .then(function(r){
+      if(!r||r.ok!==true) return r;
+      applyBoot(r);
+      return r;
+    });
 }
 
 /* ============================================================================
-   SCREENS
+   SCREENS — every one returns HTML in the prototype's own vocabulary:
+   .panel · .title · .cards · .type · .icon · .muted · .table · .stat ·
+   .statgrid · .toolbar · .actions · .notice · .sub
    ========================================================================== */
-var PAGES={
-  home:['الرئيسية','Home'], settings:['إعدادات النظام','System settings'],
-  types:['أنواع المصروفات','Expense types'], prices:['الأسعار والكميات','Prices and quantities'],
-  budgets:['توزيع الميزانيات شهريًا','Monthly budget distribution'],
-  qtydist:['توزيع الكميات','Quantity distribution'],
-  invoices:['طباعة الفواتير','Invoice printing'], reports:['التقارير','Reports'],
-  users:['المستخدمين','Users']
-};
-var SUBS={
-  home:['نظرة عامة على السنة المالية المختارة.','Overview of the selected fiscal year.'],
-  settings:['السنوات المالية وإعدادات النظام.','Fiscal years and system settings.'],
-  types:['أنواع المصروفات وبنودها — مشتركة بين كل السنوات.','Expense types and items — shared across every year.'],
-  prices:['الوحدة وسعر الوحدة والحد الأقصى الشهري والسنوي.','Unit, unit price and the monthly and annual maximums.'],
-  budgets:['الموازنة السنوية وتوزيعها على شهور السنة.','The annual budget and its distribution across the year.'],
-  qtydist:['توزيع كميات الأصناف على فواتير الشهر.','Distributing item quantities across the invoices of a month.'],
-  invoices:['عرض وطباعة الفواتير المعتمدة.','Viewing and printing approved invoices.'],
-  reports:['تقارير التنفيذ والموازنات والكميات.','Execution, budget and quantity reports.'],
-  users:['المستخدمون وأدوارهم.','Users and their roles.']
-};
-function go(page){
-  if(!PAGES[page]) return;
-  if(page==='users' && !isAdmin()) page='home';
-  PAGE=page;
-  Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
-    b.classList.toggle('active', b.getAttribute('data-page')===page); });
-  Array.prototype.forEach.call(document.querySelectorAll('.page'),function(s){
-    s.classList.toggle('hidden', s.id!==page); });
-  el('pgTitle').textContent=T(PAGES[page][0],PAGES[page][1]);
-  el('pgSub').textContent=T(SUBS[page][0],SUBS[page][1]);
-  paint(page);
+function tbl(head,rows){
+  return '<div class="table"><table><thead><tr>'+
+    head.map(function(x){ return '<th>'+esc(x)+'</th>'; }).join('')+
+    '</tr></thead><tbody>'+
+    (rows.length?rows.map(function(r){
+      return '<tr>'+r.map(function(x){
+        return '<td>'+(typeof x==='number'?money(x):esc(x))+'</td>'; }).join('')+'</tr>';
+    }).join(''):'<tr><td colspan="'+head.length+'" class="muted">لا توجد بيانات</td></tr>')+
+    '</tbody></table></div>';
 }
-function card(typeId,name,sub,attr){
-  return '<button class="type" '+attr+'="'+esc(typeId)+'">'+
-    '<div class="icon">'+icon(typeId)+'</div><h3>'+esc(name)+'</h3>'+
-    (sub?('<div class="amt">'+sub+'</div>'):'')+'</button>';
+function card(id,name,sub,attr){
+  return '<button class="type" '+attr+'="'+esc(id)+'"><div class="icon">'+icon(id)+
+    '</div><h3>'+esc(name)+'</h3>'+(sub?'<div class="muted">'+sub+'</div>':'')+'</button>';
 }
-function bindCards(host,attr,fn){
-  Array.prototype.forEach.call(host.querySelectorAll('['+attr+']'),function(b){
-    b.onclick=function(){ fn(b.getAttribute(attr)); };
-  });
-}
-function kv(label,value,cls){
-  return '<div class="appr-kv'+(cls?' '+cls:'')+'">'+esc(label)+'<b>'+value+'</b></div>';
-}
-function warn(id,msg){ el(id).innerHTML='<div class="mi-warn">'+esc(msg)+'</div>'; }
-function okmsg(id,msg){ el(id).innerHTML='<div class="mi-ok">'+esc(msg)+'</div>'; }
-function noYear(id){
-  el(id).innerHTML='<div class="mi-warn">'+esc(T(
-    'اختر سنة مالية من الإعدادات أولًا.','Create or select a fiscal year in System settings first.'))+'</div>';
+function note(t){ return '<div class="notice">'+esc(t)+'</div>'; }
+function noYear(){ return '<div class="panel">'+note('أضف سنة مالية من «إعدادات النظام» للبدء.')+'</div>'; }
+
+function home(){
+  if(!fy()) return noYear();
+  var a=0,m=0,ex=0;
+  S.types.forEach(function(t){ a+=annual(t.id); m+=mb(t.id,month); ex+=executedAmount(t.id,month); });
+  return '<div class="statgrid">'+
+    '<div class="stat"><small>الموازنة السنوية</small><b>'+money(a)+'</b></div>'+
+    '<div class="stat"><small>موازنة الشهر — '+esc(M[month])+'</small><b>'+money(m)+'</b></div>'+
+    '<div class="stat"><small>البنود</small><b>'+S.items.length+'</b></div>'+
+    '<div class="stat"><small>الضريبة المضمَّنة</small><b>'+money(r2(a-a/(1+S.vat)))+'</b></div>'+
+    '</div>'+
+    '<div class="statgrid" style="margin-top:12px">'+
+    '<div class="stat"><small>المنفَّذ في الشهر</small><b>'+money(ex)+'</b></div>'+
+    '<div class="stat"><small>المتبقي من الشهر</small><b>'+money(r2(m-ex))+'</b></div>'+
+    '<div class="stat"><small>السنة المالية</small><b>'+esc(fyLabel())+'</b></div>'+
+    '<div class="stat"><small>الفواتير المعتمدة</small><b>'+S.invoices.length+'</b></div>'+
+    '</div>'+
+    '<div class="panel" style="margin-top:14px"><div class="title"><h2>أنواع المصروفات</h2>'+
+    '<div><label class="lbl">الشهر</label><select id="hm" class="field">'+
+    M.map(function(x,i){ return '<option value="'+i+'"'+(i===month?' selected':'')+'>'+esc(x)+'</option>'; }).join('')+
+    '</select></div></div><div class="cards">'+
+    S.types.map(function(t){ return card(t.id,t.n,'موازنة سنوية: '+money(annual(t.id)),'data-t'); }).join('')+
+    '</div></div>';
 }
 
-/* ---------- home ---------- */
-function paintHome(){
-  var host=el('hoCards'); if(!host) return;
-  var y=currentYear();
-  if(!y){ host.innerHTML=''; noYear('hoMsg'); return; }
-  el('hoMsg').innerHTML='';
-  var mIdx=Number(el('hoMonth').value||0);
-  var annual=0, monthly=0, executed=0;
-  types().forEach(function(t){
-    var ab=annualBudget(t.id); if(ab) annual+=ab.amount;
-    var mb=monthlyBudget(t.id)||[];
-    if(mb[mIdx]!=null) monthly+=Number(mb[mIdx]);
-    executed+=executedAmount(t.id,mIdx);
-  });
-  var vr=vatRate();
-  host.innerHTML=
-    kv(T('إجمالي الموازنة السنوية','Total annual budget'), money(r2(annual)))+
-    kv(T('موازنة الشهر المختار','Selected month budget'), money(r2(monthly)))+
-    kv(T('عدد بنود المصروفات','Expense items'), qty((D.items||[]).length))+
-    kv(T('إجمالي الضريبة المضمَّنة','VAT included'), money(r2(annual-annual/(1+vr))))+
-    kv(T('المنفَّذ في الشهر','Executed this month'), money(executed))+
-    kv(T('المتبقي من الشهر','Remaining this month'), money(r2(monthly-executed)),
-       (monthly-executed)<0?'bad':'');
-  el('hoPill').textContent=yearLabel(y)+'  ·  '+T('ضريبة','VAT')+' '+(vr*100).toFixed(0)+'%';
+function settings(){
+  return '<div class="panel"><div class="title"><h2>إعدادات النظام</h2>'+
+    '<span class="muted">السنة المالية سبتمبر → أغسطس</span></div>'+
+    '<div class="toolbar"><div><label class="lbl">السنة الحالية</label>'+
+    '<select id="fysel" class="field">'+
+    (S.fy.length?S.fy.map(function(x){
+      return '<option value="'+x+'"'+(x===fy()?' selected':'')+'>'+x+'/'+(x+1)+'</option>'; }).join('')
+      :'<option value="">لا توجد سنة</option>')+'</select></div>'+
+    (adm()?'<div><label class="lbl">إضافة سنة</label><input id="newfy" class="field" type="number" placeholder="2026"></div>'+
+      '<button class="btn" id="addfy">إضافة</button>'+
+      '<button class="btn danger" id="delfy">حذف السنة الحالية</button>':'')+
+    '</div><div id="fymsg"></div>'+
+    note('كل البيانات التشغيلية مستقلة لكل سنة. المشترك فقط أنواع المصروفات والبنود. حذف سنة يحذف بياناتها التشغيلية وحدها.')+
+    '</div>'+
+    '<div class="panel"><div class="title"><h2>إعدادات ثابتة</h2></div>'+
+    tbl(['الإعداد','القيمة'],[
+      ['نسبة ضريبة القيمة المضافة',(S.vat*100).toFixed(0)+'%'],
+      ['العملة','ج.م'],
+      ['بداية السنة المالية','سبتمبر'],
+      ['اتجاه الواجهة','من اليمين إلى اليسار'],
+      ['أنواع المصروفات',String(S.types.length)],
+      ['البنود',String(S.items.length)]
+    ])+'</div>';
 }
 
-/* ---------- system settings ---------- */
-function paintSettings(){
-  var tb=el('fyRows'); if(!tb) return;
-  var ys=years();
-  tb.innerHTML = ys.length ? ys.map(function(y){
-    var cur=y.id===D.currentYear;
-    return '<tr><td><span class="sub-id" style="margin:0">'+esc(y.id)+'</span> '+esc(yearLabel(y))+'</td>'+
-      '<td>'+esc(T('سبتمبر '+y.start+' — أغسطس '+(y.start+1),'September '+y.start+' — August '+(y.start+1)))+'</td>'+
-      '<td>'+qty((y.invoices||[]).length)+'</td>'+
-      '<td>'+(cur?'<span class="pill ok">'+esc(T('مختارة','selected'))+'</span>':'<span class="pill neutral">—</span>')+'</td>'+
-      '<td><div class="rowacts">'+
-        (cur?'':'<button class="srcbtn" data-use="'+esc(y.id)+'">'+esc(T('اختيار','select'))+'</button>')+
-        (isAdmin()?'<button class="srcbtn" data-del="'+esc(y.id)+'">'+esc(T('حذف','delete'))+'</button>':'')+
-      '</div></td></tr>';
-  }).join('') : '<tr><td colspan="5" class="unconstrained" style="text-align:center;padding:24px">'+
-    esc(T('لا توجد سنوات مالية — أضف سنة للبدء.','No fiscal years yet — add one to begin.'))+'</td></tr>';
-  bindCards(tb,'data-use',function(id){ setYear(id); });
-  bindCards(tb,'data-del',function(id){
-    apiCall('deleteFiscalYear',{fyId:id})
-      .then(function(r){
-        if(!r||r.ok!==true){ warn('fyMsg',apiError(r)); return; }
-        okmsg('fyMsg',T('حُذفت بيانات السنة ','Removed the operational data of ')+id+
-          T(' — الأنواع والبنود لم تتأثر.',' — types and items were not affected.'));
-        if(D.currentYear===id) D.currentYear=null;
-        return bootstrap();
-      })
-      .catch(function(){ warn('fyMsg',offlineMsg()); });
-  });
-  var sel=el('fyNew'), now=new Date().getFullYear(), out=[];
-  for(var k=now-1;k<=now+3;k++) if(!yearById('FY'+k)) out.push(k);
-  sel.innerHTML=out.length?out.map(function(k){ return '<option value="'+k+'">'+k+'/'+(k+1)+'</option>'; }).join('')
-    :'<option value="">'+esc(T('لا يوجد خيار','none'))+'</option>';
-  el('fyAdd').disabled=!out.length;
-  el('fyPill').textContent=ys.length+' '+T('سنة','years');
-  var st=D.settings||{};
-  el('stRows').innerHTML=Object.keys(st).map(function(k){
-    return '<tr><td><span class="sub-id" style="margin:0">'+esc(k)+'</span></td><td>'+esc(st[k])+'</td></tr>';
+function types(){
+  return '<div class="panel"><div class="title"><h2>أنواع المصروفات</h2>'+
+    (adm()?'<div class="actions"><button class="btn" id="addtype">➕ إضافة نوع مصروف</button>'+
+      '<button class="btn secondary" id="additem">➕ إضافة بند جديد</button></div>':'')+
+    '</div><div id="tymsg"></div><div class="cards">'+
+    S.types.map(function(t){ return card(t.id,t.n,items(t.id).length+' بند','data-t'); }).join('')+
+    '</div>'+
+    (type?'<div class="sub"><div class="title"><h2>'+icon(type)+' '+esc(typeBy(type).n)+'</h2>'+
+      (adm()?'<button class="btn secondary" id="edittype">✏️ تعديل الاسم</button>':'')+'</div>'+
+      '<div class="toolbar"><div><label class="lbl">بحث</label>'+
+      '<input id="tysearch" class="field" placeholder="اسم البند أو كوده"></div></div>'+
+      '<div class="table"><table><thead><tr><th>كود البند</th><th>اسم البند</th>'+
+      '<th>الأسماء السابقة</th><th>إجراء</th></tr></thead><tbody id="tyrows">'+
+      typeRows('')+'</tbody></table></div></div>':'')+
+    '</div>';
+}
+function typeRows(q){
+  q=String(q||'').trim().toLowerCase();
+  var rows=items(type).filter(function(i){
+    return !q||String(i.n).toLowerCase().indexOf(q)>-1||String(i.id).toLowerCase().indexOf(q)>-1; });
+  if(!rows.length) return '<tr><td colspan="4" class="muted">لا توجد بنود مطابقة</td></tr>';
+  return rows.map(function(i){
+    var hist=(i.nameHistory||[]).length;
+    return '<tr><td>'+esc(i.id)+'</td><td>'+esc(i.n)+'</td>'+
+      '<td>'+(hist?('<span class="muted">'+hist+' اسم سابق: '+
+        esc((i.nameHistory||[]).map(function(x){return x.n;}).join(' ← '))+'</span>'):'—')+'</td>'+
+      '<td>'+(adm()?'<button class="btn secondary" data-ei="'+esc(i.id)+'">تعديل</button>':'—')+'</td></tr>';
   }).join('');
 }
 
-/* ---------- expense types and items ---------- */
-var tyOpen=null;
-function paintTypes(){
-  var host=el('tyCards'); if(!host) return;
-  host.innerHTML=types().map(function(t){
-    return card(t.id,t.n,itemsOf(t.id).length+' '+T('بند','items'),'data-ty');
+function unitSelect(id,sel){
+  var custom=sel&&UNITS.indexOf(sel)<0;
+  return '<select class="field" data-u="'+esc(id)+'">'+
+    '<option value=""'+(!sel?' selected':'')+'>—</option>'+
+    UNITS.map(function(u){ return '<option value="'+esc(u)+'"'+(u===sel?' selected':'')+'>'+esc(u)+'</option>'; }).join('')+
+    '<option value="__OTHER__"'+(custom?' selected':'')+'>أخرى</option></select>'+
+    '<input class="field" data-ux="'+esc(id)+'" value="'+esc(custom?sel:'')+'" placeholder="وحدة مخصصة" '+
+    'style="margin-top:5px;'+(custom?'':'display:none')+'">';
+}
+function prices(){
+  if(!fy()) return noYear();
+  return '<div class="panel"><div class="title"><h2>الأسعار والكميات</h2>'+
+    '<span class="muted">'+esc(fyLabel())+'</span></div><div id="prmsg"></div>'+
+    '<div class="cards">'+
+    S.types.map(function(t){
+      var it=items(t.id),done=0;
+      it.forEach(function(x){ var p=priceOf(x.id); if(p&&p.price!=null&&p.unit) done++; });
+      return card(t.id,t.n,done+' / '+it.length+' مُسعَّر','data-t');
+    }).join('')+'</div>'+
+    (type?'<div class="sub"><div class="table"><table><thead><tr><th>البند</th><th>الوحدة</th>'+
+      '<th>سعر الوحدة</th><th>الحد الأقصى الشهري</th><th>الحد الأقصى السنوي</th>'+
+      '<th>المنفَّذ</th><th>حفظ</th></tr></thead><tbody>'+
+      items(type).map(function(i){
+        var p=priceOf(i.id)||{},l=limitOf(i.id)||{};
+        return '<tr><td>'+esc(i.n)+'<div class="muted">'+esc(i.id)+'</div></td>'+
+          '<td>'+unitSelect(i.id,p.unit||'')+'</td>'+
+          '<td><input class="field" data-p="'+esc(i.id)+'" type="number" step=".01" value="'+(p.price==null?'':p.price)+'"></td>'+
+          '<td><input class="field" data-m="'+esc(i.id)+'" type="number" value="'+(l.monthlyMax==null?'':l.monthlyMax)+'"></td>'+
+          '<td><input class="field" data-a="'+esc(i.id)+'" type="number" value="'+(l.annualMax==null?'':l.annualMax)+'"></td>'+
+          '<td class="muted">'+executedQty(i.id)+'</td>'+
+          '<td><button class="btn" data-sp="'+esc(i.id)+'">حفظ</button></td></tr>';
+      }).join('')+'</tbody></table></div></div>':'')+
+    '</div>';
+}
+
+function budgets(){
+  if(!fy()) return noYear();
+  var locked=!adm();
+  return '<div class="panel"><div class="title"><h2>توزيع الميزانيات شهريًا</h2>'+
+    '<span class="muted">'+esc(fyLabel())+'</span></div><div id="bumsg"></div>'+
+    '<div class="table"><table><thead><tr><th>نوع المصروف</th><th>الموازنة السنوية</th>'+
+    M.map(function(x){ return '<th>'+esc(x)+'</th>'; }).join('')+
+    '<th>الإجمالي</th><th>المتبقي</th></tr></thead><tbody>'+
+    S.types.map(function(t){
+      var mm=months(t.id);
+      var total=mm.reduce(function(a,b){ return a+(b==null?0:Number(b)); },0);
+      var rec=annualRec(t.id);
+      var ro=(rec&&rec.locked&&locked)?' disabled':'';
+      return '<tr><td><b>'+icon(t.id)+' '+esc(t.n)+'</b></td>'+
+        '<td><input class="field" data-ab="'+esc(t.id)+'" type="number" step=".01" value="'+
+        (rec?rec.amount:'')+'"'+ro+'></td>'+
+        mm.map(function(v,m){
+          return '<td><input class="field" data-b="'+esc(t.id)+'|'+m+'" type="number" step=".01" value="'+
+            (v==null?'':v)+'"></td>'; }).join('')+
+        '<td>'+money(total)+'</td><td>'+money(r2(annual(t.id)-total))+'</td></tr>';
+    }).join('')+'</tbody></table></div>'+
+    (locked?note('الموازنة السنوية المحفوظة لا يعدّلها إلا المشرف. التوزيع الشهري متاح لك.'):'')+
+    '<div class="actions no-print" style="margin-top:10px">'+
+    '<button class="btn" id="saveb">💾 حفظ</button>'+
+    '<button class="btn secondary" id="printb">🖨️ طباعة</button>'+
+    '<button class="btn secondary" id="xlb">📊 Excel</button></div></div>';
+}
+
+var runResult=null;
+function distribution(){
+  if(!fy()) return noYear();
+  var avail=S.types.filter(function(t){ return mb(t.id,month)>0; });
+  return '<div class="panel"><div class="toolbar"><div><label class="lbl">الشهر</label>'+
+    '<select id="dm" class="field">'+
+    M.map(function(x,m){ return '<option value="'+m+'"'+(m===month?' selected':'')+'>'+esc(x)+'</option>'; }).join('')+
+    '</select></div></div></div>'+
+    '<div class="panel"><div id="dmsg"></div><div class="cards">'+
+    (avail.length?avail.map(function(t){
+      return card(t.id,t.n,'موازنة الشهر: '+money(mb(t.id,month)),'data-t'); }).join('')
+      :'<div class="muted">لا توجد موازنات لهذا الشهر.</div>')+
+    '</div>'+
+    (type?'<div class="sub"><div class="title"><h2>'+icon(type)+' '+esc(typeBy(type).n)+'</h2>'+
+      '<span>موازنة الشهر: '+money(mb(type,month))+' · المنفَّذ: '+money(executedAmount(type,month))+'</span></div>'+
+      '<div class="toolbar"><div><label class="lbl">عدد الفواتير</label>'+
+      '<input id="ic" class="field" type="number" min="1" value="1"></div>'+
+      '<button class="btn" id="start">▶ بدء التوزيع</button>'+
+      (runResult?'<button class="btn" id="approve">✔ اعتماد</button>':'')+
+      '</div><div id="dr">'+(runResult?reviewHtml():'')+'</div></div>':'')+
+    '</div>';
+}
+function reviewHtml(){
+  var r=runResult;
+  return '<div class="statgrid" style="margin:12px 0">'+
+    '<div class="stat"><small>موازنة الشهر</small><b>'+money(r.budget)+'</b></div>'+
+    '<div class="stat"><small>إجمالي المبلغ</small><b>'+money(r.gross)+'</b></div>'+
+    '<div class="stat"><small>الخصم المسموح به</small><b>'+money(r.discount)+'</b></div>'+
+    '<div class="stat"><small>صافي المبلغ</small><b>'+money(r.net)+'</b></div></div>'+
+    r.invoices.map(function(v,k){
+      var g=r2(v.lines.reduce(function(a,l){ return a+l.price*l.quantity; },0));
+      return '<div class="title" style="margin-top:10px"><h2>فاتورة '+(k+1)+'</h2>'+
+        '<span class="muted">'+money(g)+'</span></div>'+
+        tbl(['البند','الوحدة','سعر الوحدة','الكمية','إجمالي المبلغ'],
+          v.lines.map(function(l){ return [l.name,l.unit,l.price,l.quantity,r2(l.price*l.quantity)]; }));
+    }).join('')+
+    (Math.abs(r.difference)>0.005?note('الفرق '+money(r.difference)+' — راجع الحدود قبل الاعتماد.')
+      :note('الصافي يطابق موازنة الشهر بالضبط. لا يُسجَّل شيء قبل الاعتماد.'));
+}
+
+function invoices(){
+  if(!fy()) return noYear();
+  var ts=S.types.filter(function(t){
+    return S.invoices.some(function(v){ return v.month===month&&v.typeId===t.id; })||mb(t.id,month)>0; });
+  return '<div class="panel"><div class="toolbar"><div><label class="lbl">الشهر</label>'+
+    '<select id="im" class="field">'+
+    M.map(function(x,m){ return '<option value="'+m+'"'+(m===month?' selected':'')+'>'+esc(x)+'</option>'; }).join('')+
+    '</select></div></div></div>'+
+    '<div class="panel"><div id="ivmsg"></div><div class="cards">'+
+    (ts.length?ts.map(function(t){
+      var a=S.invoices.filter(function(v){ return v.month===month&&v.typeId===t.id; });
+      return card(t.id,t.n,a.length+' فاتورة — '+money(a.reduce(function(s,v){ return s+v.net; },0)),'data-t');
+    }).join(''):'<div class="muted">لا توجد فواتير أو موازنات لهذا الشهر.</div>')+
+    '</div>'+(type?invlist():'')+'</div>';
+}
+function invlist(){
+  var a=S.invoices.filter(function(v){ return v.month===month&&v.typeId===type; });
+  return '<div class="sub"><div class="title"><h2>'+icon(type)+' '+esc(typeBy(type).n)+'</h2></div>'+
+    '<div class="table"><table><thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>الصافي</th>'+
+    '<th>اعتمدها</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>'+
+    (a.length?a.map(function(v){
+      return '<tr><td>'+esc(v.id)+'</td><td>'+esc(String(v.approvedAt||'').slice(0,10))+'</td>'+
+        '<td>'+money(v.net)+'</td><td>'+esc(v.approvedBy)+'</td>'+
+        '<td>'+(v.edits&&v.edits.length?('<span class="muted">'+v.edits.length+' تعديل</span>'):'معتمدة')+'</td>'+
+        '<td><button class="btn secondary" data-oi="'+esc(v.id)+'">عرض</button></td></tr>';
+    }).join(''):'<tr><td colspan="6" class="muted">لا توجد فواتير معتمدة في هذا الشهر</td></tr>')+
+    '</tbody></table></div></div>';
+}
+function invoiceHtml(v){
+  var rows=v.lines.map(function(l){
+    var g=r2(l.price*l.quantity);
+    var share=v.gross>0?r2(v.discount*(g/v.gross)):0;
+    var before=r2(g/(1+S.vat));
+    return '<tr><td>'+esc(l.itemName)+'</td><td>'+esc(l.unit)+'</td>'+
+      '<td>'+money(l.price)+'</td>'+
+      '<td>'+(adm()?('<input class="field" data-iq="'+esc(l.itemId)+'" type="number" value="'+l.quantity+'" style="max-width:90px">'):l.quantity)+'</td>'+
+      '<td>'+money(g)+'</td><td>'+money(r2(g-before))+'</td>'+
+      '<td>'+money(share)+'</td><td>'+money(r2(g-share))+'</td></tr>';
   }).join('');
-  bindCards(host,'data-ty',function(id){ tyOpen=id; paintTypes(); });
-  el('tyPill').textContent=types().length+' '+T('نوع','types')+'  ·  '+(D.items||[]).length+' '+T('بند','items');
-
-  var panel=el('tyPanel');
-  if(!tyOpen){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
-  var t=typeById(tyOpen);
-  el('tyName').value=t.n;
-  el('tyPanelPill').textContent=icon(t.id)+'  '+t.id;
-  var q=String(el('tySearch').value||'').trim().toLowerCase();
-  var rows=itemsOf(tyOpen).filter(function(x){
-    return !q || String(x.n).toLowerCase().indexOf(q)>-1 || String(x.i).toLowerCase().indexOf(q)>-1; });
-  el('tyRows').innerHTML=rows.length?rows.map(function(x){
-    var hist=(x.nameHistory||[]).length;
-    return '<tr><td><span class="sub-id" style="margin:0">'+esc(x.i)+'</span></td>'+
-      '<td><input class="mi-in" data-iname="'+esc(x.i)+'" value="'+esc(x.n)+'" style="text-align:start"></td>'+
-      '<td>'+(hist?('<span class="pill warn" title="'+esc((x.nameHistory||[]).map(function(hh){return hh.n;}).join(' ← '))+'">'+
-        hist+' '+esc(T('اسم سابق','former'))+'</span>'):'<span class="pill neutral">—</span>')+'</td>'+
-      '<td><div class="rowacts"><button class="srcbtn" data-isave="'+esc(x.i)+'">'+esc(T('حفظ','save'))+'</button></div></td></tr>';
-  }).join('') : '<tr><td colspan="4" class="unconstrained" style="text-align:center;padding:24px">'+
-    esc(T('لا توجد بنود مطابقة','No matching items'))+'</td></tr>';
-  bindCards(el('tyRows'),'data-isave',function(id){
-    var inp=el('tyRows').querySelector('[data-iname="'+id+'"]');
-    var r=renameItem(id, inp?inp.value:'');
-    if(r.ok){ okmsg('tyMsg',T('تم تعديل الاسم — الاسم السابق محفوظ للتاريخ.',
-      'Name changed — the former name is kept for history.')); audit('ITEM_RENAMED',id+': '+r.from+' → '+r.to); }
-    else warn('tyMsg', r.reason==='EMPTY'?T('الاسم مطلوب','A name is required'):T('لا تغيير','No change'));
-    paintTypes();
-  });
-  el('tyItemCount').textContent=rows.length+' '+T('بند','items');
+  return '<div class="statgrid" style="margin-bottom:12px">'+
+    '<div class="stat"><small>نوع المصروف</small><b>'+esc(typeBy(v.typeId).n)+'</b></div>'+
+    '<div class="stat"><small>الشهر</small><b>'+esc(M[v.month])+'</b></div>'+
+    '<div class="stat"><small>اعتمدها</small><b>'+esc(v.approvedBy)+'</b></div>'+
+    '<div class="stat"><small>التاريخ</small><b>'+esc(String(v.approvedAt||'').slice(0,16).replace('T',' '))+'</b></div></div>'+
+    '<div class="table"><table><thead><tr><th>البند</th><th>الوحدة</th><th>سعر الوحدة</th>'+
+    '<th>الكمية</th><th>إجمالي المبلغ</th><th>الضريبة</th><th>الخصم المسموح به</th>'+
+    '<th>صافي المبلغ</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="statgrid" style="margin-top:12px">'+
+    '<div class="stat"><small>إجمالي المبلغ</small><b>'+money(v.gross)+'</b></div>'+
+    '<div class="stat"><small>الضريبة</small><b>'+money(v.tax)+'</b></div>'+
+    '<div class="stat"><small>الخصم</small><b>'+money(v.discount)+'</b></div>'+
+    '<div class="stat"><small>صافي المبلغ</small><b>'+money(v.net)+'</b></div></div>'+
+    (adm()?'<div class="sub no-print"><div><label class="lbl">سبب التعديل — يُسجَّل مع التغيير</label>'+
+      '<input id="ireason" class="field"></div>'+
+      '<div class="actions" style="margin-top:8px">'+
+      '<button class="btn" id="isave">حفظ تعديل الكميات</button></div><div id="iemsg"></div></div>'
+      :note('الفاتورة معتمدة — التعديل للمشرف فقط.'))+
+    ((v.edits&&v.edits.length)?'<div class="sub"><div class="muted">'+
+      v.edits.map(function(e){
+        return esc(String(e.at||'').slice(0,16).replace('T',' ')+' · '+e.by+' · '+
+          e.itemId+': '+e.oldValue+' → '+e.newValue+' · '+e.reason); }).join('<br>')+'</div></div>':'')+
+    '<div class="actions no-print" style="margin-top:12px">'+
+    '<button class="btn secondary" id="iprint">🖨️ طباعة</button>'+
+    '<button class="btn secondary" id="ipdf">📄 PDF</button>'+
+    '<button class="btn secondary" id="ixl">📊 Excel</button></div>';
 }
 
-/* ---------- prices and quantities ---------- */
-var prOpen=null;
-function unitOptions(sel){
-  var list=(D.units||[]).slice();
-  var html=list.map(function(u){
-    return '<option value="'+esc(u)+'"'+(u===sel?' selected':'')+'>'+esc(u)+'</option>'; }).join('');
-  var custom = sel && list.indexOf(sel)<0;
-  html='<option value=""'+(!sel?' selected':'')+'>—</option>'+html+
-    '<option value="__OTHER__"'+(custom?' selected':'')+'>'+esc(T('أخرى','Other'))+'</option>';
-  return html;
+function reports(){
+  if(!fy()) return noYear();
+  return '<div class="panel"><div class="cards">'+
+    '<button class="type" data-r="item"><div class="icon">📊</div><h3>تنفيذ البنود شهريًا</h3></button>'+
+    '<button class="type" data-r="budget"><div class="icon">💰</div><h3>إجمالي الموازنة</h3></button>'+
+    '<button class="type" data-r="qty"><div class="icon">📦</div><h3>الكميات والأسعار</h3></button>'+
+    '<button class="type" data-r="exec"><div class="icon">📈</div><h3>تنفيذ المبالغ</h3></button>'+
+    '</div></div><div id="ra">'+(report?reportHtml():'')+'</div>';
 }
-function paintPrices(){
-  var host=el('prCards'); if(!host) return;
-  if(!currentYear()){ host.innerHTML=''; el('prPanel').classList.add('hidden'); noYear('prMsg'); return; }
-  el('prMsg').innerHTML='';
-  host.innerHTML=types().map(function(t){
-    var items=itemsOf(t.id), done=0;
-    items.forEach(function(x){ var p=priceOf(x.i); if(p&&p.price!=null&&p.unit) done++; });
-    return card(t.id,t.n,done+' / '+items.length+' '+T('مُسعَّر','priced'),'data-pr');
-  }).join('');
-  bindCards(host,'data-pr',function(id){ prOpen=id; paintPrices(); });
-
-  var panel=el('prPanel');
-  if(!prOpen){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
-  var t=typeById(prOpen);
-  el('prPanelPill').textContent=icon(t.id)+'  '+t.n;
-  var q=String(el('prSearch').value||'').trim().toLowerCase();
-  var rows=itemsOf(prOpen).filter(function(x){
-    return !q || String(x.n).toLowerCase().indexOf(q)>-1 || String(x.i).toLowerCase().indexOf(q)>-1; });
-  el('prRows').innerHTML=rows.length?rows.map(function(x){
-    var p=priceOf(x.i)||{}, l=limitOf(x.i)||{};
-    var custom = p.unit && (D.units||[]).indexOf(p.unit)<0;
-    return '<tr><td><span class="sub-id" style="margin:0">'+esc(x.i)+'</span></td>'+
-      '<td style="white-space:normal">'+esc(x.n)+'</td>'+
-      '<td><select class="field" data-f="unit" data-id="'+esc(x.i)+'">'+unitOptions(p.unit||'')+'</select>'+
-        '<input class="mi-in" data-f="unitx" data-id="'+esc(x.i)+'" value="'+esc(custom?p.unit:'')+'" '+
-        'placeholder="'+esc(T('وحدة مخصصة','custom unit'))+'" style="margin-top:6px;'+(custom?'':'display:none')+'"></td>'+
-      '<td><input class="mi-in" data-f="price" data-id="'+esc(x.i)+'" inputmode="decimal" value="'+
-        (p.price==null?'':esc(p.price))+'"></td>'+
-      '<td><input class="mi-in" data-f="mmax" data-id="'+esc(x.i)+'" inputmode="numeric" value="'+
-        (l.monthlyMax==null?'':esc(l.monthlyMax))+'"></td>'+
-      '<td><input class="mi-in" data-f="amax" data-id="'+esc(x.i)+'" inputmode="numeric" value="'+
-        (l.annualMax==null?'':esc(l.annualMax))+'"></td>'+
-      '<td>'+qty(executedQty(x.i))+'</td>'+
-      '<td><div class="rowacts"><button class="srcbtn" data-psave="'+esc(x.i)+'">'+esc(T('حفظ','save'))+'</button></div></td></tr>';
-  }).join('') : '<tr><td colspan="8" class="unconstrained" style="text-align:center;padding:24px">'+
-    esc(T('لا توجد بنود مطابقة','No matching items'))+'</td></tr>';
-
-  Array.prototype.forEach.call(el('prRows').querySelectorAll('[data-f="unit"]'),function(s){
-    s.onchange=function(){
-      var x=el('prRows').querySelector('[data-f="unitx"][data-id="'+s.getAttribute('data-id')+'"]');
-      if(x) x.style.display = s.value==='__OTHER__' ? '' : 'none';
-    };
-  });
-  bindCards(el('prRows'),'data-psave',function(id){
-    function g(f){ return el('prRows').querySelector('[data-f="'+f+'"][data-id="'+id+'"]'); }
-    /* the client checks first so the user gets an instant answer, but the
-       server checks again and its answer is the one that counts */
-    var local=savePriceRow(id, g('unit').value, g('unitx').value,
-      g('price').value, g('mmax').value, g('amax').value);
-    if(!local.ok){
-      warn('prMsg',
-        local.reason==='UNIT_REQUIRED'?T('أدخل الوحدة المخصصة','Enter the custom unit'):
-        local.reason==='MONTHLY_ABOVE_ANNUAL'?T('الحد الشهري أكبر من السنوي','The monthly max exceeds the annual max'):
-        local.reason==='NEGATIVE_PRICE'?T('سعر غير صالح','Invalid price'):T('قيمة غير صالحة','Invalid value'));
-      return;
-    }
-    apiCall('savePrice',{ fyId:D.currentYear, price:{
-        itemId:id, unit:local.unit, price:local.price,
-        monthlyMax:local.monthlyMax, annualMax:local.annualMax } })
-      .then(function(r){
-        if(!r||r.ok!==true){ warn('prMsg',apiError(r)); return bootstrap(); }
-        okmsg('prMsg',T('تم الحفظ الدائم — ','Saved — ')+id);
-        paintPrices();
-      })
-      .catch(function(){ warn('prMsg',offlineMsg()+' '+T('لم يُحفظ.','Not saved.')); });
-  });
-  el('prCount').textContent=rows.length+' '+T('بند','items');
-}
-
-/* ---------- monthly budget distribution ---------- */
-var buOpen=null;
-function paintBudgets(){
-  var host=el('buCards'); if(!host) return;
-  if(!currentYear()){ host.innerHTML=''; el('buPanel').classList.add('hidden'); noYear('buMsg'); return; }
-  el('buMsg').innerHTML='';
-  host.innerHTML=types().map(function(t){
-    var ab=annualBudget(t.id);
-    var mb=monthlyBudget(t.id)||[];
-    var sum=mb.reduce(function(a,b){ return a+(b==null?0:Number(b)); },0);
-    var sub=ab?(money(ab.amount)+'<br><small>'+esc(T('موزَّع','distributed'))+' '+money(r2(sum))+'</small>')
-              :('<small>'+esc(T('بلا موازنة','no budget'))+'</small>');
-    return card(t.id,t.n,sub,'data-bu');
-  }).join('');
-  bindCards(host,'data-bu',function(id){ buOpen=id; paintBudgets(); });
-
-  var panel=el('buPanel');
-  if(!buOpen){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
-  var t=typeById(buOpen), ab=annualBudget(buOpen), mb=monthlyBudget(buOpen);
-  el('buPanelPill').textContent=icon(t.id)+'  '+t.n;
-  el('buAnnual').value = ab?ab.amount:'';
-  el('buAnnual').disabled = !!(ab&&ab.locked&&!isAdmin());
-  el('buLock').textContent = ab&&ab.locked
-    ? T('محفوظة — التعديل للمشرف فقط','Saved — admin only')+
-      (ab.by?('  ·  '+ab.by+'  ·  '+ab.when):'')
-    : T('لم تُحفظ بعد','Not saved yet');
-  el('buRows').innerHTML='<tr>'+
-    '<td>'+esc(t.n)+'</td>'+
-    MONTHS_AR.map(function(_,k){
-      return '<td><input class="mi-in" data-bm="'+k+'" inputmode="decimal" value="'+
-        (mb[k]==null?'':esc(mb[k]))+'" style="min-width:82px"></td>'; }).join('')+
-    '<td class="num" id="buTotal">—</td><td class="num">'+(ab?money(ab.amount):'—')+'</td>'+
-    '<td class="num" id="buRemain">—</td></tr>';
-  function recalc(){
-    var s=0,any=false;
-    Array.prototype.forEach.call(el('buRows').querySelectorAll('[data-bm]'),function(i){
-      var v=num(i.value); if(v!==null){ s+=v; any=true; } });
-    el('buTotal').textContent=any?money(r2(s)):'—';
-    var rem=ab?r2(ab.amount-s):null;
-    el('buRemain').textContent=rem==null?'—':money(rem);
-    el('buRemain').style.color=(rem!=null&&rem<0)?'var(--danger)':'';
-  }
-  Array.prototype.forEach.call(el('buRows').querySelectorAll('[data-bm]'),function(i){ i.oninput=recalc; });
-  recalc();
-}
-
-/* ---------- quantity distribution ---------- */
-var qdOpen=null, qdResult=null;
-function paintQtyDist(){
-  var host=el('qdCards'); if(!host) return;
-  if(!currentYear()){ host.innerHTML=''; el('qdPanel').classList.add('hidden'); noYear('qdMsg'); return; }
-  el('qdMsg').innerHTML='';
-  var m=Number(el('qdMonth').value||0);
-  host.innerHTML=types().map(function(t){
-    var mb=(monthlyBudget(t.id)||[])[m];
-    return card(t.id,t.n, mb==null?('<small>'+esc(T('بلا موازنة للشهر','no budget this month'))+'</small>'):money(mb),'data-qd');
-  }).join('');
-  bindCards(host,'data-qd',function(id){ qdOpen=id; qdResult=null; paintQtyDist(); });
-
-  var panel=el('qdPanel');
-  if(!qdOpen){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
-  var t=typeById(qdOpen);
-  var mb=(monthlyBudget(qdOpen)||[])[m];
-  el('qdPanelPill').textContent=icon(t.id)+'  '+t.n+'  ·  '+monthName(m);
-  el('qdBudget').textContent=mb==null?'—':money(mb);
-  el('qdDone').textContent=money(executedAmount(qdOpen,m));
-  paintReview();
-}
-function paintReview(){
-  var host=el('qdReview');
-  if(!qdResult){ host.innerHTML=''; el('qdTotals').innerHTML=''; el('qdApprove').disabled=true; return; }
-  el('qdApprove').disabled=false;
-  host.innerHTML='<tr>'+['البند','الوحدة','سعر الوحدة','الكمية','إجمالي المبلغ']
-    .map(function(_,i){ return ''; }).join('')+'</tr>';
-  host.innerHTML=qdResult.lines.map(function(l){
-    return '<tr><td style="white-space:normal">'+esc(l.name)+'</td>'+
-      '<td>'+esc(l.unit)+'</td><td class="num">'+money(l.price)+'</td>'+
-      '<td class="num">'+qty(l.quantity)+'</td>'+
-      '<td class="num">'+money(r2(l.price*l.quantity))+'</td></tr>';
-  }).join('');
-  el('qdTotals').innerHTML=
-    kv(T('موازنة الشهر','Monthly budget'), money(qdResult.budget))+
-    kv(T('إجمالي المبلغ','Gross'), money(qdResult.gross))+
-    kv(T('الضريبة المضمَّنة','VAT included'), money(qdResult.vat))+
-    kv(T('الخصم المسموح به','Discount'), money(qdResult.discount))+
-    kv(T('صافي المبلغ','Net'), money(qdResult.net))+
-    kv(T('الفرق','Difference'), money(qdResult.difference),
-       Math.abs(qdResult.difference)>0.005?'bad':'');
-}
-
-/* ---------- invoices ---------- */
-var ivType=null, ivOpen=null;
-function paintInvoices(){
-  var host=el('ivCards'); if(!host) return;
-  if(!currentYear()){ host.innerHTML=''; el('ivListPanel').classList.add('hidden');
-    el('ivDocPanel').classList.add('hidden'); noYear('ivMsg'); return; }
-  el('ivMsg').innerHTML='';
-  var m=Number(el('ivMonth').value||0);
-  /* only types that have a budget for the month or approved invoices in it */
-  var shown=types().filter(function(t){
-    var mb=(monthlyBudget(t.id)||[])[m];
-    var has=(Y('invoices')||[]).some(function(v){ return v.typeId===t.id && v.month===m; });
-    return mb!=null || has;
-  });
-  host.innerHTML=shown.length?shown.map(function(t){
-    var n=(Y('invoices')||[]).filter(function(v){ return v.typeId===t.id&&v.month===m; }).length;
-    return card(t.id,t.n,n+' '+T('فاتورة','invoices'),'data-iv');
-  }).join('') : '<div class="repnote">'+esc(T(
-    'لا يوجد نوع مصروف له موازنة أو فواتير في هذا الشهر.',
-    'No expense type has a budget or invoices in this month.'))+'</div>';
-  bindCards(host,'data-iv',function(id){ ivType=id; ivOpen=null; paintInvoices(); });
-
-  var lp=el('ivListPanel');
-  if(!ivType){ lp.classList.add('hidden'); el('ivDocPanel').classList.add('hidden'); return; }
-  lp.classList.remove('hidden');
-  var list=(Y('invoices')||[]).filter(function(v){ return v.typeId===ivType&&v.month===m; });
-  el('ivListPill').textContent=icon(ivType)+'  '+typeById(ivType).n+'  ·  '+monthName(m);
-  el('ivRows').innerHTML=list.length?list.map(function(v){
-    return '<tr><td><span class="sub-id" style="margin:0">'+esc(v.id)+'</span></td>'+
-      '<td>'+esc(v.when)+'</td><td class="num">'+money(v.net)+'</td>'+
-      '<td>'+esc(v.approvedBy)+'</td>'+
-      '<td>'+(v.edits&&v.edits.length?'<span class="pill warn">'+v.edits.length+' '+esc(T('تعديل','edits'))+'</span>':'<span class="pill ok">'+esc(T('معتمدة','approved'))+'</span>')+'</td>'+
-      '<td><div class="rowacts"><button class="srcbtn" data-ivopen="'+esc(v.id)+'">'+esc(T('عرض','open'))+'</button></div></td></tr>';
-  }).join('') : '<tr><td colspan="6" class="unconstrained" style="text-align:center;padding:24px">'+
-    esc(T('لا توجد فواتير معتمدة في هذا الشهر','No approved invoices in this month'))+'</td></tr>';
-  bindCards(el('ivRows'),'data-ivopen',function(id){ ivOpen=id; paintInvoices(); });
-
-  var dp=el('ivDocPanel');
-  if(!ivOpen){ dp.classList.add('hidden'); return; }
-  dp.classList.remove('hidden');
-  var v=(Y('invoices')||[]).filter(function(x){ return x.id===ivOpen; })[0];
-  if(!v){ dp.classList.add('hidden'); return; }
-  el('ivDocPill').textContent=v.id;
-  el('ivDocHead').innerHTML=
-    kv(T('نوع المصروف','Expense type'), esc(typeById(v.typeId)?typeById(v.typeId).n:v.typeId))+
-    kv(T('الشهر','Month'), esc(monthName(v.month)))+
-    kv(T('التاريخ','Date'), esc(v.when))+
-    kv(T('اعتمدها','Approved by'), esc(v.approvedBy));
-  el('ivDocRows').innerHTML=v.lines.map(function(l,idx){
-    var bv=r2(l.gross/(1+vatRate())), vt=r2(l.gross-bv);
-    var share=v.gross>0?r2(v.discount*(l.gross/v.gross)):0;
-    return '<tr><td style="white-space:normal">'+esc(l.itemName)+'</td>'+
-      '<td>'+esc(l.unit)+'</td><td class="num">'+money(l.price)+'</td>'+
-      '<td class="num">'+(isAdmin()
-        ? '<input class="mi-in" data-ivq="'+idx+'" inputmode="numeric" value="'+esc(l.quantity)+'" style="max-width:80px">'
-        : qty(l.quantity))+'</td>'+
-      '<td class="num">'+money(l.gross)+'</td><td class="num">'+money(vt)+'</td>'+
-      '<td class="num">'+money(share)+'</td><td class="num">'+money(r2(l.gross-share))+'</td></tr>';
-  }).join('');
-  el('ivDocTotals').innerHTML=
-    kv(T('إجمالي المبلغ','Gross'), money(v.gross))+
-    kv(T('الضريبة','VAT'), money(v.vat))+
-    kv(T('الخصم المسموح به','Discount'), money(v.discount))+
-    kv(T('صافي المبلغ','Net'), money(v.net));
-  el('ivEditBox').innerHTML = isAdmin()
-    ? '<div class="dist-f"><div class="rep-f"><label class="lbl">'+
-      esc(T('سبب التعديل','Reason for the change'))+'</label>'+
-      '<input class="field" id="ivReason" placeholder="'+
-      esc(T('يُسجَّل مع التغيير','Recorded with the change'))+'"></div>'+
-      '<div class="rep-f rowacts"><button class="btn" id="ivSaveEdit">'+
-      esc(T('حفظ تعديل الكميات','Save quantity edits'))+'</button></div></div>'
-    : '<div class="repnote">'+esc(T('الفاتورة معتمدة — التعديل للمشرف فقط.','This invoice is approved — only an admin may edit it.'))+'</div>';
-  if(isAdmin()) el('ivSaveEdit').onclick=function(){
-    var reason=String((el('ivReason')||{}).value||'').trim();
-    if(!reason){ warn('ivMsg',T('اذكر سبب التعديل — يُسجَّل مع التغيير.',
-      'Give a reason — it is recorded with the change.')); return; }
-    var inputs=el('ivDocRows').querySelectorAll('[data-ivq]');
-    var pending=[];
-    Array.prototype.forEach.call(inputs,function(inp){
-      var idx=Number(inp.getAttribute('data-ivq'));
-      var line=v.lines[idx];
-      if(!line || Number(inp.value)===line.quantity) return;
-      pending.push({ itemId:line.itemId, quantity:Number(inp.value) });
-    });
-    if(!pending.length){ warn('ivMsg',T('لا تغيير','No change')); return; }
-    el('ivSaveEdit').disabled=true;
-    /* one call per changed line; the server re-checks the ceilings each time
-       and records who, when, the old value, the new value and the reason */
-    var chain=Promise.resolve(), failed=null, done=0;
-    pending.forEach(function(ch){
-      chain=chain.then(function(){
-        if(failed) return;
-        return apiCall('saveInvoiceAdminOverride',{ fyId:D.currentYear,
-            invoiceId:v.id, itemId:ch.itemId, quantity:ch.quantity, reason:reason })
-          .then(function(r){ if(!r||r.ok!==true) failed=r; else done++; });
-      });
-    });
-    chain.then(function(){
-      el('ivSaveEdit').disabled=false;
-      if(failed) warn('ivMsg',apiError(failed));
-      else okmsg('ivMsg',done+' '+T('تعديل محفوظ ومسجَّل في سجل التدقيق','edit(s) saved and recorded in the audit log'));
-      return bootstrap();
-    }).catch(function(){
-      el('ivSaveEdit').disabled=false;
-      warn('ivMsg',offlineMsg()+' '+T('لم يُحفظ.','Not saved.'));
-    });
-  };
-  el('ivAudit').innerHTML=(v.edits&&v.edits.length)
-    ? '<div class="runmeta">'+v.edits.map(function(e){
-        return esc(e.when+' · '+e.by+' · '+e.what); }).join('<br>')+'</div>' : '';
-}
-
-/* ---------- reports ---------- */
-function reportRows(kind){
-  var m=Number(el('rpTo').value||0), from=Number(el('rpFrom').value||0);
-  if(kind==='items'){
-    var head=[T('الصنف','Item')].concat(MONTHS_AR.map(function(_,k){ return monthName(k); }));
+function reportData(kind){
+  if(kind==='item'){
+    var head=['الصنف'].concat(M).concat(['الإجمالي']);
     var body=[];
-    (D.items||[]).forEach(function(x){
-      var row=[x.n], any=false;
-      for(var k=0;k<12;k++){
+    S.items.forEach(function(x){
+      var row=[x.n],tot=0,any=false;
+      for(var m=0;m<12;m++){
         var amt=0;
-        (Y('invoices')||[]).forEach(function(v){
-          if(v.month!==k) return;
-          v.lines.forEach(function(l){ if(l.itemId===x.i) amt+=l.gross; });
+        S.invoices.forEach(function(v){
+          if(v.month!==m) return;
+          v.lines.forEach(function(l){ if(l.itemId===x.id) amt+=r2(l.price*l.quantity); });
         });
-        if(k<from||k>m){ row.push(''); continue; }
         if(amt) any=true;
-        row.push(amt?r2(amt):'');
+        tot+=amt; row.push(amt?r2(amt):'');
       }
+      row.push(r2(tot));
       if(any) body.push(row);
     });
-    return {head:head,body:body};
+    return {title:'تنفيذ البنود شهريًا',head:head,body:body};
   }
   if(kind==='budget'){
-    var head2=[T('نوع المصروف','Expense type'),T('موازنة الشهر','Monthly budget'),
-      T('الموازنة السنوية','Annual budget'),T('المنفَّذ','Executed'),T('المتبقي','Remaining')];
-    var body2=types().map(function(t){
-      var ab=annualBudget(t.id), mb=(monthlyBudget(t.id)||[])[m];
-      var ex=0; for(var k=from;k<=m;k++) ex+=executedAmount(t.id,k);
-      return [t.n, mb==null?'':mb, ab?ab.amount:'', r2(ex), ab?r2(ab.amount-ex):''];
-    });
-    return {head:head2,body:body2};
+    return {title:'إجمالي الموازنة',
+      head:['نوع المصروف','موازنة الشهر','الموازنة السنوية','المنفَّذ','المتبقي'],
+      body:S.types.map(function(t){
+        var ex=0; for(var m=0;m<12;m++) ex+=executedAmount(t.id,m);
+        return [t.n,mb(t.id,month),annual(t.id),r2(ex),r2(annual(t.id)-ex)];
+      })};
   }
   if(kind==='qty'){
-    var tid=el('rpType').value;
-    var head3=[T('الصنف','Item'),T('الوحدة','Unit'),T('سعر الوحدة','Unit price'),
-      T('الحد الأقصى الشهري','Monthly max'),T('الحد الأقصى السنوي','Annual max'),
-      T('المنفَّذ','Executed'),T('المتبقي','Remaining')];
-    var body3=itemsOf(tid).map(function(x){
-      var p=priceOf(x.i)||{}, l=limitOf(x.i)||{};
-      var ex=executedQty(x.i,m);
-      return [x.n, p.unit||'', p.price==null?'':p.price,
-        l.monthlyMax==null?'':l.monthlyMax, l.annualMax==null?'':l.annualMax,
-        ex, l.annualMax==null?'':(l.annualMax-ex)];
-    });
-    return {head:head3,body:body3};
+    var t0=type||(S.types[0]||{}).id;
+    return {title:'الكميات والأسعار — '+esc(typeBy(t0).n),
+      head:['الصنف','الوحدة','سعر الوحدة','الحد الأقصى الشهري','الحد الأقصى السنوي','المنفَّذ','المتبقي'],
+      body:items(t0).map(function(i){
+        var p=priceOf(i.id)||{},l=limitOf(i.id)||{};
+        var ex=executedQty(i.id,month);
+        return [i.n,p.unit||'—',p.price==null?'—':p.price,
+          l.monthlyMax==null?'—':String(l.monthlyMax),
+          l.annualMax==null?'—':String(l.annualMax),
+          String(ex), l.annualMax==null?'—':String(l.annualMax-ex)];
+      })};
   }
-  var head4=[T('نوع المصروف','Expense type')]
-    .concat(MONTHS_AR.map(function(_,k){ return monthName(k); }))
-    .concat([T('إجمالي المنفَّذ','Total executed'),T('إجمالي الموازنة','Total budget'),T('المتبقي','Remaining')]);
-  var body4=types().map(function(t){
-    var row=[t.n], tot=0;
-    for(var k=0;k<12;k++){ var a=executedAmount(t.id,k); tot+=a; row.push(a?r2(a):''); }
-    var ab=annualBudget(t.id);
-    row.push(r2(tot)); row.push(ab?ab.amount:''); row.push(ab?r2(ab.amount-tot):'');
-    return row;
-  });
-  return {head:head4,body:body4};
+  return {title:'تنفيذ المبالغ',
+    head:['نوع المصروف'].concat(M).concat(['إجمالي المنفَّذ','إجمالي الموازنة','المتبقي']),
+    body:S.types.map(function(t){
+      var row=[t.n],tot=0;
+      for(var m=0;m<12;m++){ var a=executedAmount(t.id,m); tot+=a; row.push(a?a:''); }
+      row.push(r2(tot)); row.push(annual(t.id)); row.push(r2(annual(t.id)-tot));
+      return row;
+    })};
 }
-function paintReports(){
-  if(!currentYear()){ el('rpRows').innerHTML=''; noYear('rpMsg'); return; }
-  el('rpMsg').innerHTML='';
-  var kind=el('rpKind').value;
-  el('rpTypeBox').style.display = kind==='qty' ? '' : 'none';
-  el('rpFromBox').style.display = (kind==='items'||kind==='budget') ? '' : 'none';
-  var r=reportRows(kind);
-  el('rpHead').innerHTML='<tr>'+r.head.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')+'</tr>';
-  el('rpRows').innerHTML=r.body.length?r.body.map(function(row){
-    return '<tr>'+row.map(function(c,i){
-      var isNum=typeof c==='number';
-      return '<td'+(isNum?' class="num"':'')+'>'+(c===''?'':(isNum?(i===0?c:money(c)):esc(c)))+'</td>';
-    }).join('')+'</tr>';
-  }).join('') : '<tr><td colspan="'+r.head.length+'" class="unconstrained" style="text-align:center;padding:24px">'+
-    esc(T('لا توجد بيانات تنفيذ بعد','No execution data yet'))+'</td></tr>';
-  el('rpPill').textContent=r.body.length+' '+T('صف','rows');
+function reportHtml(){
+  var d=reportData(report);
+  return '<div class="panel"><div class="title"><h2>'+d.title+'</h2>'+
+    '<span class="muted">'+esc(fyLabel())+'</span></div>'+
+    (report==='qty'?'<div class="toolbar"><div><label class="lbl">نوع المصروف</label>'+
+      '<select id="rt" class="field">'+S.types.map(function(t){
+        return '<option value="'+esc(t.id)+'"'+(t.id===(type||S.types[0].id)?' selected':'')+'>'+
+          esc(t.n)+'</option>'; }).join('')+'</select></div></div>':'')+
+    tbl(d.head,d.body)+
+    '<div class="actions no-print" style="margin-top:10px">'+
+    '<button class="btn secondary" id="rprint">🖨️ طباعة</button>'+
+    '<button class="btn secondary" id="rxl">📊 Excel</button></div></div>';
 }
 
-/* ---------- users ---------- */
-var usLoaded=false;
-function paintUsers(){
-  var tb=el('usRows'); if(!tb) return;
-  if(!isAdmin()){ tb.innerHTML=''; warn('usMsg',T('هذه الشاشة للمشرف فقط.','This screen is for admins only.')); return; }
-  if(!usLoaded){
-    usLoaded=true;
-    apiCall('loadUsers',{}).then(function(r){
-      if(r&&r.ok===true){
-        D.users=(r.users||[]).map(function(x){
-          return { u:x.username, role:x.role, active:x.active!==false,
-                   created:x.createdAt, lastLogin:x.lastLogin }; });
-        paintUsers();
-      }
-    }).catch(function(){ warn('usMsg',offlineMsg()); });
-  }
-  el('usMsg').innerHTML='';
-  tb.innerHTML=users().map(function(u,idx){
-    return '<tr><td>'+esc(u.u)+'</td>'+
-      '<td><select class="field" data-urole="'+idx+'">'+
+function users(){
+  if(!adm()) return '<div class="panel">'+note('هذه الشاشة للمشرف فقط.')+'</div>';
+  return '<div class="panel"><div class="title"><h2>المستخدمين</h2>'+
+    '<button class="btn" id="au">➕ إنشاء مستخدم</button></div><div id="usmsg"></div>'+
+    '<div class="table"><table><thead><tr><th>اسم المستخدم</th><th>الدور</th>'+
+    '<th>الحالة</th><th>آخر دخول</th><th>إجراء</th></tr></thead><tbody>'+
+    (S.users.length?S.users.map(function(u){
+      return '<tr><td>'+esc(u.username)+'</td>'+
+        '<td><select class="field" data-ur="'+esc(u.username)+'">'+
         '<option value="ADMIN"'+(u.role==='ADMIN'?' selected':'')+'>Admin</option>'+
         '<option value="USER"'+(u.role!=='ADMIN'?' selected':'')+'>User</option></select></td>'+
-      '<td>'+(u.active!==false?'<span class="pill ok">'+esc(T('مفعَّل','active'))+'</span>'
-        :'<span class="pill neutral">'+esc(T('معطَّل','disabled'))+'</span>')+'</td>'+
-      '<td><div class="rowacts">'+
-        '<button class="srcbtn" data-usave="'+idx+'">'+esc(T('حفظ','save'))+'</button>'+
-        (u.u===(USER&&USER.u)?'':'<button class="srcbtn" data-utog="'+idx+'">'+
-          esc(u.active!==false?T('تعطيل','disable'):T('تفعيل','enable'))+'</button>')+
-      '</div></td></tr>';
-  }).join('');
-  bindCards(tb,'data-usave',function(i){
-    var u=users()[Number(i)];
-    var sel=tb.querySelector('[data-urole="'+i+'"]');
-    apiCall('upsertUser',{ user:{ username:u.u, role:sel.value, active:u.active!==false } })
-      .then(function(r){
-        if(!r||r.ok!==true){ warn('usMsg',apiError(r)); return; }
-        u.role=sel.value;
-        okmsg('usMsg',T('تم الحفظ','Saved')); paintUsers();
-      })
-      .catch(function(){ warn('usMsg',offlineMsg()); });
-  });
-  bindCards(tb,'data-utog',function(i){
-    var u=users()[Number(i)];
-    var next = u.active===false;
-    apiCall('upsertUser',{ user:{ username:u.u, role:u.role, active:next } })
-      .then(function(r){
-        if(!r||r.ok!==true){ warn('usMsg',apiError(r)); return; }
-        u.active=next; paintUsers();
-      })
-      .catch(function(){ warn('usMsg',offlineMsg()); });
-  });
+        '<td>'+(u.active?'نشط':'موقوف')+'</td>'+
+        '<td class="muted">'+esc(String(u.lastLogin||'—').slice(0,16).replace('T',' '))+'</td>'+
+        '<td class="actions"><button class="btn secondary" data-us="'+esc(u.username)+'">حفظ الدور</button>'+
+        (u.username===(USER&&USER.username)?'':
+          '<button class="btn secondary" data-ut="'+esc(u.username)+'">'+(u.active?'تعطيل':'تفعيل')+'</button>')+
+        '</td></tr>';
+    }).join(''):'<tr><td colspan="5" class="muted">جارٍ التحميل…</td></tr>')+
+    '</tbody></table></div></div>';
 }
 
 /* ============================================================================
-   WIRING AND BOOT
+   RENDER AND WIRING — the prototype's own cycle: build HTML, inject, wire.
    ========================================================================== */
-function paint(page){
-  if(page==='home') paintHome();
-  else if(page==='settings') paintSettings();
-  else if(page==='types') paintTypes();
-  else if(page==='prices') paintPrices();
-  else if(page==='budgets') paintBudgets();
-  else if(page==='qtydist') paintQtyDist();
-  else if(page==='invoices') paintInvoices();
-  else if(page==='reports') paintReports();
-  else if(page==='users') paintUsers();
-}
-function fillMonths(id){
-  var s=el(id); if(!s) return;
-  var keep=s.value;
-  s.innerHTML=MONTHS_AR.map(function(_,k){
-    return '<option value="'+k+'">'+esc(monthName(k))+'</option>'; }).join('');
-  if(keep!=='') s.value=keep;
-}
-function fillYearSelect(){
-  var sel=el('ycSel'); if(!sel) return;
-  var ys=years();
-  sel.innerHTML=ys.length?ys.map(function(y){
-    return '<option value="'+esc(y.id)+'">'+esc(yearLabel(y))+'</option>'; }).join('')
-    :'<option value="">'+esc(T('لا توجد سنة','No year'))+'</option>';
-  sel.value=D.currentYear||''; sel.disabled=!ys.length;
-}
-function fillTypeSelect(id){
-  var s=el(id); if(!s) return;
-  var keep=s.value;
-  s.innerHTML=types().map(function(t){
-    return '<option value="'+esc(t.id)+'">'+esc(t.n)+'</option>'; }).join('');
-  if(keep) s.value=keep;
-}
-function labels(){
-  var L=[
-   ['ycLbl','السنة المالية','Fiscal year'],
-   ['hoTitle','ملخص السنة','Year summary'],['hoLMonth','الشهر','Month'],
-   ['fyTitle','السنوات المالية','Fiscal years'],['fyLNew','سنة مالية جديدة','New fiscal year'],
-   ['fyAdd','إضافة','Add'],['fyC1','السنة المالية','Fiscal year'],['fyC2','المدى','Range'],
-   ['fyC3','الفواتير','Invoices'],['fyC4','الحالة','Status'],['fyC5','الإجراء','Action'],
-   ['stTitle','إعدادات النظام','System settings'],['stC1','الإعداد','Setting'],['stC2','القيمة','Value'],
-   ['tyTitle','أنواع المصروفات','Expense types'],['tyLName','اسم النوع','Type name'],
-   ['tySave','حفظ الاسم','Save name'],['tyLSearch','بحث','Search'],
-   ['tyC1','كود البند','Item code'],['tyC2','اسم البند','Item name'],
-   ['tyC3','الأسماء السابقة','Former names'],['tyC4','الإجراء','Action'],
-   ['tyLNewType','نوع مصروف جديد','New expense type'],['tyAddType','إضافة نوع','Add type'],
-   ['tyLNewItem','بند جديد','New item'],['tyAddItem','إضافة بند','Add item'],
-   ['prTitle','الأسعار والكميات','Prices and quantities'],['prLSearch','بحث','Search'],
-   ['prC1','الكود','Code'],['prC2','اسم البند','Item'],['prC3','الوحدة','Unit'],
-   ['prC4','سعر الوحدة','Unit price'],['prC5','الحد الأقصى الشهري','Monthly max'],
-   ['prC6','الحد الأقصى السنوي','Annual max'],['prC7','المنفَّذ','Executed'],['prC8','الإجراء','Action'],
-   ['buTitle','توزيع الميزانيات شهريًا','Monthly budget distribution'],
-   ['buLAnnual','الموازنة السنوية','Annual budget'],['buSaveAnnual','حفظ الموازنة السنوية','Save annual budget'],
-   ['buSaveMonthly','حفظ التوزيع الشهري','Save monthly distribution'],
-   ['qdTitle','توزيع الكميات','Quantity distribution'],['qdLMonth','الشهر','Month'],
-   ['qdLInv','عدد الفواتير','Number of invoices'],['qdStart','بدء التوزيع','Start distribution'],
-   ['qdApprove','اعتماد','Approve'],
-   ['qdC1','البند','Item'],['qdC2','الوحدة','Unit'],['qdC3','سعر الوحدة','Unit price'],
-   ['qdC4','الكمية','Quantity'],['qdC5','إجمالي المبلغ','Gross'],
-   ['ivTitle','طباعة الفواتير','Invoice printing'],['ivLMonth','الشهر','Month'],
-   ['ivL1','رقم الفاتورة','Invoice'],['ivL2','التاريخ','Date'],['ivL3','الصافي','Net'],
-   ['ivL4','اعتمدها','Approved by'],['ivL5','الحالة','Status'],['ivL6','الإجراء','Action'],
-   ['ivD1','البند','Item'],['ivD2','الوحدة','Unit'],['ivD3','سعر الوحدة','Unit price'],
-   ['ivD4','الكمية','Quantity'],['ivD5','إجمالي المبلغ','Gross'],['ivD6','الضريبة','VAT'],
-   ['ivD7','الخصم المسموح به','Discount'],['ivD8','صافي المبلغ','Net'],
-   ['ivPrint','طباعة','Print'],['ivPdf','حفظ PDF','Save PDF'],['ivExcel','Excel','Excel'],
-   ['rpTitle','التقارير','Reports'],['rpLKind','التقرير','Report'],['rpLFrom','من شهر','From month'],
-   ['rpLTo','إلى شهر','To month'],['rpLType','نوع المصروف','Expense type'],
-   ['rpPrint','طباعة','Print'],['rpExcel','Excel','Excel'],
-   ['usTitle','المستخدمين','Users'],['usC1','اسم المستخدم','Username'],['usC2','الدور','Role'],
-   ['usC3','الحالة','Status'],['usC4','الإجراء','Action'],
-   ['usLName','اسم مستخدم جديد','New username'],['usLPass','كلمة المرور','Password'],
-   ['usAdd','إضافة مستخدم','Add user'],
-   ['lgTitle','تسجيل الدخول','Sign in'],['lgLUser','اسم المستخدم','Username'],
-   ['lgLPass','كلمة المرور','Password'],['lgBtn','دخول','Sign in']
-  ];
-  L.forEach(function(x){ var e=el(x[0]); if(e) e.textContent=T(x[1],x[2]); });
-  Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
-    var p=b.getAttribute('data-page'); if(!PAGES[p]) return;
-    var parts=String(b.textContent||'').trim().split(' ');
-    b.textContent=parts[0]+' '+T(PAGES[p][0],PAGES[p][1]);
-  });
-  var opts=el('rpKind');
-  if(opts) opts.innerHTML=
-    '<option value="items">'+esc(T('تنفيذ الأصناف','Item execution'))+'</option>'+
-    '<option value="budget">'+esc(T('إجمالي الموازنة','Total budget'))+'</option>'+
-    '<option value="qty">'+esc(T('الكميات والأسعار','Quantities and prices'))+'</option>'+
-    '<option value="amount">'+esc(T('تنفيذ المبالغ','Amount execution'))+'</option>';
-}
+var NAMES={home:'الرئيسية',settings:'إعدادات النظام',types:'أنواع المصروفات',
+  prices:'الأسعار والكميات',budgets:'توزيع الميزانيات شهريًا',
+  distribution:'توزيع الكميات',invoices:'طباعة الفواتير',reports:'التقارير',
+  users:'المستخدمين'};
+var VIEWS={home:home,settings:settings,types:types,prices:prices,budgets:budgets,
+  distribution:distribution,invoices:invoices,reports:reports,users:users};
+
+function go(p){ if(!VIEWS[p]) return; page=p; type=null; runResult=null; report=null; render(); }
 function render(){
-  labels();
-  fillYearSelect();
-  ['hoMonth','qdMonth','ivMonth','rpFrom','rpTo'].forEach(fillMonths);
-  fillTypeSelect('rpType');
-  el('whoami').textContent = USER ? (USER.u+' · '+(USER.role==='ADMIN'?T('مشرف','Admin'):T('مستخدم','User'))) : '—';
-  Array.prototype.forEach.call(document.querySelectorAll('[data-adminonly]'),function(n){
-    n.style.display = isAdmin() ? '' : 'none'; });
-  go(PAGE);
+  Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
+    b.classList.toggle('active', b.getAttribute('data-p')===page); });
+  el('title').textContent=NAMES[page]+(fy()?('  ·  '+fyLabel()):'');
+  el('who').textContent=USER?(USER.username+' ('+(USER.role==='ADMIN'?'مشرف':'مستخدم')+')'):'—';
+  el('content').innerHTML=VIEWS[page]();
+  wire();
+}
+function msg(id,text,bad){
+  var n=el(id); if(!n) return;
+  n.innerHTML=text?('<div class="notice"'+(bad?' style="border-right-color:#b42318;background:#fef3f2"':'')+'>'+
+    esc(text)+'</div>'):'';
+}
+function each(sel,fn){ Array.prototype.forEach.call(document.querySelectorAll(sel),fn); }
+function on(id,ev,fn){ var n=el(id); if(n) n[ev]=fn; }
+
+function wire(){
+  each('[data-t]',function(b){ b.onclick=function(){ type=b.getAttribute('data-t'); runResult=null; render(); }; });
+  each('[data-ei]',function(b){ b.onclick=function(){ editItem(b.getAttribute('data-ei')); }; });
+  each('[data-sp]',function(b){ b.onclick=function(){ savePrice(b.getAttribute('data-sp')); }; });
+  each('[data-u]',function(s){ s.onchange=function(){
+    var x=document.querySelector('[data-ux="'+s.getAttribute('data-u')+'"]');
+    if(x) x.style.display = s.value==='__OTHER__' ? '' : 'none'; }; });
+  each('[data-oi]',function(b){ b.onclick=function(){ openInvoice(b.getAttribute('data-oi')); }; });
+  each('[data-r]',function(b){ b.onclick=function(){ report=b.getAttribute('data-r'); render(); }; });
+  each('[data-us]',function(b){ b.onclick=function(){ saveUserRole(b.getAttribute('data-us')); }; });
+  each('[data-ut]',function(b){ b.onclick=function(){ toggleUser(b.getAttribute('data-ut')); }; });
+
+  on('hm','onchange',function(e){ month=+e.target.value; render(); });
+  on('dm','onchange',function(e){ month=+e.target.value; type=null; runResult=null; render(); });
+  on('im','onchange',function(e){ month=+e.target.value; type=null; render(); });
+  on('rt','onchange',function(e){ type=e.target.value; render(); });
+  on('fysel','onchange',function(e){
+    S.currentFy=Number(e.target.value)||null;
+    reload().then(render).catch(function(){ msg('fymsg',offline(),1); });
+  });
+  on('tysearch','oninput',function(e){
+    var tb=el('tyrows'); if(tb) tb.innerHTML=typeRows(e.target.value);
+    each('[data-ei]',function(b){ b.onclick=function(){ editItem(b.getAttribute('data-ei')); }; });
+  });
+  on('addfy','onclick',addFy); on('delfy','onclick',delFy);
+  on('addtype','onclick',addType); on('additem','onclick',addItem);
+  on('edittype','onclick',function(){ editType(type); });
+  on('saveb','onclick',saveBudgets);
+  on('printb','onclick',function(){ window.print(); });
+  on('xlb','onclick',exportBudgets);
+  on('start','onclick',startRun); on('approve','onclick',approveRun);
+  on('au','onclick',addUser);
+  on('rprint','onclick',function(){ window.print(); });
+  on('rxl','onclick',exportReport);
+  on('iprint','onclick',function(){ window.print(); });
+  on('ipdf','onclick',function(){ window.print(); });
+  on('ixl','onclick',exportInvoice);
+  on('isave','onclick',saveInvoiceEdits);
 }
 
-/* ---------- login gate ---------- */
-function showApp(on){
-  el('loginScreen').classList.toggle('hidden', !!on);
-  el('appRoot').classList.toggle('hidden', !on);
+/* ---------- modal, the prototype's own ---------- */
+function modal(title,body){
+  el('modal').innerHTML='<div class="modal"><div class="modalhead"><h3>'+esc(title)+'</h3>'+
+    '<button class="close" id="mclose">إغلاق</button></div>'+body+'</div>';
+  el('modalback').classList.remove('hidden');
+  on('mclose','onclick',closeM);
 }
-el('lgBtn').onclick=function(){
-  var btn=el('lgBtn');
-  btn.disabled=true;
-  el('lgMsg').innerHTML='<div class="repnote">'+esc(T('جارٍ التحقق…','Signing in…'))+'</div>';
-  apiCall('login',{username:el('lgUser').value, password:el('lgPass').value})
+function closeM(){ el('modalback').classList.add('hidden'); el('modal').innerHTML=''; }
+
+/* ============================================================================
+   ACTIONS — every write goes to the server and the screen follows the answer
+   ========================================================================== */
+function addFy(){
+  var v=Number(el('newfy').value);
+  if(!v){ msg('fymsg','أدخل سنة البداية، مثل 2026',1); return; }
+  api('createFiscalYear',{startYear:v}).then(function(r){
+    if(!r||r.ok!==true){ msg('fymsg',emsg(r),1); return; }
+    S.currentFy=v;
+    return reload().then(function(){ render(); msg('fymsg','تمت إضافة السنة '+v+'/'+(v+1)); });
+  }).catch(function(){ msg('fymsg',offline(),1); });
+}
+function delFy(){
+  if(!fy()) return;
+  var y=fy();
+  modal('حذف السنة المالية',
+    '<p>سيحذف هذا البيانات التشغيلية للسنة '+y+'/'+(y+1)+' وحدها: الأسعار والحدود والموازنات والفواتير والتنفيذ.</p>'+
+    '<p><b>أنواع المصروفات والبنود لا تتأثر.</b></p>'+
+    '<div class="actions"><button class="btn danger" id="dok">تأكيد الحذف</button></div>');
+  on('dok','onclick',function(){
+    api('deleteFiscalYear',{fyId:'FY'+y}).then(function(r){
+      closeM();
+      if(!r||r.ok!==true){ msg('fymsg',emsg(r),1); return; }
+      S.currentFy=null;
+      return reload().then(function(){ render(); msg('fymsg','حُذفت بيانات السنة '+y+'/'+(y+1)+' — الأنواع والبنود لم تتأثر.'); });
+    }).catch(function(){ closeM(); msg('fymsg',offline(),1); });
+  });
+}
+function nextId(list,prefix,width){
+  var max=0;
+  list.forEach(function(x){
+    var m=new RegExp('^'+prefix+'(\\d+)$').exec(x);
+    if(m&&+m[1]>max) max=+m[1]; });
+  if(!max) return null;
+  var n=String(max+1); while(n.length<width) n='0'+n;
+  return prefix+n;
+}
+function addType(){
+  var id=nextId(S.types.map(function(t){ return t.id; }),'ET',3);
+  if(!id){ msg('tymsg','تعذر توليد كود جديد',1); return; }
+  modal('إضافة نوع مصروف',
+    '<div class="formrow"><label class="lbl">الكود</label><input class="field" value="'+id+'" disabled></div>'+
+    '<div class="formrow"><label class="lbl">اسم النوع</label><input id="ntn" class="field"></div>'+
+    '<div class="actions"><button class="btn" id="nok">حفظ</button></div>');
+  on('nok','onclick',function(){
+    var n=String(el('ntn').value||'').trim();
+    if(!n) return;
+    api('upsertType',{source:'LIVE',type:{id:id,n:n}}).then(function(r){
+      closeM();
+      if(!r||r.ok!==true){ msg('tymsg',emsg(r),1); return; }
+      S.types.push({id:id,n:n,icon:icon(id)});
+      render(); msg('tymsg','أُضيف النوع '+id);
+    }).catch(function(){ closeM(); msg('tymsg',offline(),1); });
+  });
+}
+function addItem(){
+  var t=type||(S.types[0]||{}).id;
+  if(!t){ msg('tymsg','أضف نوع مصروف أولًا',1); return; }
+  var id=nextId(S.items.map(function(x){ return x.id; }),'IT',5);
+  modal('إضافة بند جديد',
+    '<div class="formrow"><label class="lbl">النوع</label><select id="nit" class="field">'+
+    S.types.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===t?' selected':'')+'>'+esc(x.n)+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="formrow"><label class="lbl">الكود</label><input class="field" value="'+id+'" disabled></div>'+
+    '<div class="formrow"><label class="lbl">اسم البند</label><input id="nin" class="field"></div>'+
+    '<div class="actions"><button class="btn" id="iok">حفظ</button></div>');
+  on('iok','onclick',function(){
+    var n=String(el('nin').value||'').trim();
+    if(!n) return;
+    var tid=el('nit').value;
+    api('upsertItem',{source:'LIVE',item:{i:id,t:tid,n:n}}).then(function(r){
+      closeM();
+      if(!r||r.ok!==true){ msg('tymsg',emsg(r),1); return; }
+      S.items.push({id:id,t:tid,n:n,nameHistory:[]});
+      type=tid; render(); msg('tymsg','أُضيف البند '+id);
+    }).catch(function(){ closeM(); msg('tymsg',offline(),1); });
+  });
+}
+function editType(id){
+  var t=typeBy(id);
+  modal('تعديل اسم النوع',
+    '<div class="formrow"><label class="lbl">الاسم الحالي</label><input class="field" value="'+esc(t.n)+'" disabled></div>'+
+    '<div class="formrow"><label class="lbl">الاسم الجديد</label><input id="etn" class="field" value="'+esc(t.n)+'"></div>'+
+    '<div class="notice">الاسم السابق يبقى محفوظًا، والفواتير القديمة تحتفظ بالاسم الذي صدرت به.</div>'+
+    '<div class="actions"><button class="btn" id="eok">حفظ</button></div>');
+  on('eok','onclick',function(){
+    var n=String(el('etn').value||'').trim();
+    if(!n||n===t.n){ closeM(); return; }
+    api('upsertType',{source:'LIVE',type:{id:id,n:n}}).then(function(r){
+      closeM();
+      if(!r||r.ok!==true){ msg('tymsg',emsg(r),1); return; }
+      t.nameHistory=t.nameHistory||[]; t.nameHistory.push({n:t.n});
+      t.n=n; render(); msg('tymsg','تم تعديل الاسم — الاسم السابق محفوظ.');
+    }).catch(function(){ closeM(); msg('tymsg',offline(),1); });
+  });
+}
+function editItem(id){
+  var x=S.items.filter(function(i){ return i.id===id; })[0];
+  if(!x) return;
+  modal('تعديل اسم البند',
+    '<div class="formrow"><label class="lbl">الكود</label><input class="field" value="'+esc(x.id)+'" disabled></div>'+
+    '<div class="formrow"><label class="lbl">الاسم الجديد</label><input id="ein" class="field" value="'+esc(x.n)+'"></div>'+
+    '<div class="notice">الاسم السابق يبقى محفوظًا للتاريخ، والفواتير القديمة لا تتغير.</div>'+
+    '<div class="actions"><button class="btn" id="iok2">حفظ</button></div>');
+  on('iok2','onclick',function(){
+    var n=String(el('ein').value||'').trim();
+    if(!n||n===x.n){ closeM(); return; }
+    api('upsertItem',{source:'LIVE',item:{i:x.id,t:x.t,n:n}}).then(function(r){
+      closeM();
+      if(!r||r.ok!==true){ msg('tymsg',emsg(r),1); return; }
+      x.nameHistory=x.nameHistory||[]; x.nameHistory.push({n:x.n});
+      x.n=n; render(); msg('tymsg','تم تعديل الاسم — الاسم السابق محفوظ.');
+    }).catch(function(){ closeM(); msg('tymsg',offline(),1); });
+  });
+}
+function savePrice(id){
+  function g(a){ return document.querySelector('['+a+'="'+id+'"]'); }
+  var uSel=g('data-u'), uCustom=g('data-ux');
+  var unit = uSel.value==='__OTHER__' ? String(uCustom.value||'').trim() : uSel.value;
+  if(!unit){ msg('prmsg','اختر الوحدة — ولا تتركها فارغة',1); return; }
+  var price=num(g('data-p').value), mm=num(g('data-m').value), am=num(g('data-a').value);
+  if(price===null||price<0){ msg('prmsg','سعر غير صالح',1); return; }
+  if(mm!==null&&am!==null&&mm>am){ msg('prmsg','الحد الأقصى الشهري أكبر من السنوي',1); return; }
+  api('savePrice',{fyId:'FY'+fy(),price:{itemId:id,unit:unit,price:price,monthlyMax:mm,annualMax:am}})
     .then(function(r){
-      btn.disabled=false;
-      if(!r||r.ok!==true){
-        el('lgMsg').innerHTML='<div class="mi-warn">'+esc(apiError(r))+'</div>';
+      if(!r||r.ok!==true){ msg('prmsg',emsg(r),1); return; }
+      S.prices[id]={unit:unit,price:price};
+      S.limits[id]={monthlyMax:mm,annualMax:am};
+      render(); msg('prmsg','تم الحفظ الدائم — '+id);
+    }).catch(function(){ msg('prmsg',offline()+' لم يُحفظ.',1); });
+}
+function saveBudgets(){
+  var jobs=[];
+  S.types.forEach(function(t){
+    var ab=document.querySelector('[data-ab="'+t.id+'"]');
+    var annualV=ab?num(ab.value):null;
+    var mm=[];
+    for(var m=0;m<12;m++){
+      var n=document.querySelector('[data-b="'+t.id+'|'+m+'"]');
+      mm.push(n?num(n.value):null);
+    }
+    var sum=mm.reduce(function(a,b){ return a+(b==null?0:b); },0);
+    var had=annualRec(t.id);
+    if(annualV===null&&!mm.some(function(x){ return x!=null; })&&!had) return;
+    if(annualV!==null&&sum-annualV>0.005){
+      jobs.push({fail:'«'+t.n+'»: مجموع الشهور '+money(sum)+' يتجاوز الموازنة السنوية '+money(annualV)});
+      return;
+    }
+    jobs.push({typeId:t.id,annual:annualV,months:mm});
+  });
+  var bad=jobs.filter(function(j){ return j.fail; });
+  if(bad.length){ msg('bumsg',bad[0].fail,1); return; }
+  var chain=Promise.resolve(), failed=null, done=0;
+  jobs.forEach(function(j){
+    chain=chain.then(function(){
+      if(failed) return;
+      return api('upsertBudget',{source:'LIVE',budget:{fyId:'FY'+fy(),typeId:j.typeId,
+        annual:j.annual,months:j.months}})
+        .then(function(r){ if(!r||r.ok!==true) failed=r; else done++; });
+    });
+  });
+  chain.then(function(){
+    if(failed){ msg('bumsg',emsg(failed),1); return; }
+    return reload().then(function(){ render(); msg('bumsg','حُفظ '+done+' نوع مصروف.'); });
+  }).catch(function(){ msg('bumsg',offline()+' لم يُحفظ.',1); });
+}
+function startRun(){
+  var n=Number(el('ic').value)||1;
+  var r=distribute(type,month,n);
+  if(!r.ok){
+    runResult=null; render();
+    msg('dmsg',
+      r.reason==='NO_MONTHLY_BUDGET'?'لا توجد موازنة لهذا الشهر':
+      r.reason==='NO_ELIGIBLE_ITEMS'?'لا توجد أصناف مؤهلة — أدخل الوحدة والسعر والحدود من «الأسعار والكميات»':
+      r.reason==='BUDGET_TOO_SMALL'?'الموازنة أقل من سعر أرخص وحدة':
+      r.reason==='BAD_INVOICE_COUNT'?'عدد فواتير غير صالح':'تعذر التوزيع',1);
+    return;
+  }
+  runResult=r; render();
+  msg('dmsg',r.itemCount+' صنف · '+r.unitCount+' وحدة · '+r.invoices.length+' فاتورة — راجع ثم اعتمد.');
+}
+function approveRun(){
+  if(!runResult) return;
+  var r=runResult;
+  api('saveApprovedRun',{
+    fyId:'FY'+fy(),
+    run:{typeId:r.typeId,month:r.month,status:'APPROVED'},
+    invoices:r.invoices.map(function(v){
+      var g=v.lines.reduce(function(a,l){ return a+l.price*l.quantity; },0);
+      return {seq:v.seq, discount:(r.gross>0?r2(r.discount*(g/r.gross)):0),
+        lines:v.lines.map(function(l){
+          return {itemId:l.id,itemName:l.name,price:l.price,quantity:l.quantity}; })};
+    }),
+    masterSnapshot:r.lines.map(function(l){
+      return {itemId:l.id,itemName:l.name,unit:l.unit,price:l.price,quantity:l.quantity}; })
+  }).then(function(res){
+    if(!res||res.ok!==true){ msg('dmsg',emsg(res),1); return; }
+    runResult=null;
+    return reload().then(function(){
+      render();
+      msg('dmsg','تم الاعتماد والحفظ — '+res.invoices.length+' فاتورة · صافي '+money(res.net));
+    });
+  }).catch(function(){ msg('dmsg',offline()+' لم يُعتمد.',1); });
+}
+var openInv=null;
+function openInvoice(id){
+  var v=S.invoices.filter(function(x){ return x.id===id; })[0];
+  if(!v) return;
+  openInv=v;
+  modal('فاتورة '+v.id, invoiceHtml(v));
+  wire();
+}
+function saveInvoiceEdits(){
+  var v=openInv; if(!v) return;
+  var reason=String((el('ireason')||{}).value||'').trim();
+  if(!reason){ msg('iemsg','اذكر سبب التعديل — يُسجَّل مع التغيير.',1); return; }
+  var pend=[];
+  each('[data-iq]',function(i){
+    var id=i.getAttribute('data-iq');
+    var line=v.lines.filter(function(l){ return l.itemId===id; })[0];
+    if(line&&Number(i.value)!==line.quantity) pend.push({itemId:id,quantity:Number(i.value)});
+  });
+  if(!pend.length){ msg('iemsg','لا تغيير'); return; }
+  var chain=Promise.resolve(), failed=null, done=0;
+  pend.forEach(function(c){
+    chain=chain.then(function(){
+      if(failed) return;
+      return api('saveInvoiceAdminOverride',{fyId:'FY'+fy(),invoiceId:v.id,
+        itemId:c.itemId,quantity:c.quantity,reason:reason})
+        .then(function(r){ if(!r||r.ok!==true) failed=r; else done++; });
+    });
+  });
+  chain.then(function(){
+    if(failed){ msg('iemsg',emsg(failed),1); return; }
+    return reload().then(function(){
+      closeM(); render();
+      msg('ivmsg',done+' تعديل محفوظ ومسجَّل في سجل التدقيق.');
+    });
+  }).catch(function(){ msg('iemsg',offline()+' لم يُحفظ.',1); });
+}
+function addUser(){
+  modal('إنشاء مستخدم',
+    '<div class="formrow"><label class="lbl">اسم المستخدم</label><input id="nu" class="field"></div>'+
+    '<div class="formrow"><label class="lbl">كلمة المرور — 8 أحرف على الأقل</label>'+
+    '<input id="np" class="field" type="password"></div>'+
+    '<div class="formrow"><label class="lbl">الدور</label><select id="nr" class="field">'+
+    '<option value="USER">User</option><option value="ADMIN">Admin</option></select></div>'+
+    '<div class="notice">كلمة المرور تُرسل إلى الخادم وتُخزَّن مجزَّأة بملح. لا تُحفظ في المتصفح.</div>'+
+    '<div class="actions"><button class="btn" id="uok">حفظ</button></div>');
+  on('uok','onclick',function(){
+    var u=String(el('nu').value||'').trim(), p=String(el('np').value||'');
+    if(!u||p.length<8){ return; }
+    api('upsertUser',{user:{username:u,password:p,role:el('nr').value,active:true}})
+      .then(function(r){
+        closeM();
+        if(!r||r.ok!==true){ msg('usmsg',emsg(r),1); return; }
+        loadUsers().then(function(){ render(); msg('usmsg','أُضيف المستخدم '+u); });
+      }).catch(function(){ closeM(); msg('usmsg',offline(),1); });
+  });
+}
+function saveUserRole(username){
+  var sel=document.querySelector('[data-ur="'+username+'"]');
+  var u=S.users.filter(function(x){ return x.username===username; })[0];
+  api('upsertUser',{user:{username:username,role:sel.value,active:u?u.active!==false:true}})
+    .then(function(r){
+      if(!r||r.ok!==true){ msg('usmsg',emsg(r),1); return; }
+      loadUsers().then(function(){ render(); msg('usmsg','تم حفظ الدور'); });
+    }).catch(function(){ msg('usmsg',offline(),1); });
+}
+function toggleUser(username){
+  var u=S.users.filter(function(x){ return x.username===username; })[0];
+  var next=!(u&&u.active);
+  api('upsertUser',{user:{username:username,role:u?u.role:'USER',active:next}})
+    .then(function(r){
+      if(!r||r.ok!==true){ msg('usmsg',emsg(r),1); return; }
+      loadUsers().then(function(){ render(); });
+    }).catch(function(){ msg('usmsg',offline(),1); });
+}
+function loadUsers(){
+  return api('loadUsers',{}).then(function(r){
+    if(r&&r.ok===true) S.users=r.users||[];
+    return r;
+  });
+}
+
+/* ---------- exports, using a CSV the spreadsheet opens cleanly ---------- */
+function download(name,text,mime){
+  try{
+    var blob=new Blob(['\ufeff'+text],{type:mime||'text/csv;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    return true;
+  }catch(e){ return false; }
+}
+function csv(head,rows){
+  function cell(x){ return '"'+String(x==null?'':x).replace(/"/g,'""')+'"'; }
+  return [head.map(cell).join(',')].concat(rows.map(function(r){
+    return r.map(cell).join(','); })).join('\r\n');
+}
+function exportBudgets(){
+  var head=['نوع المصروف','الموازنة السنوية'].concat(M).concat(['الإجمالي','المتبقي']);
+  var rows=S.types.map(function(t){
+    var mm=months(t.id);
+    var tot=mm.reduce(function(a,b){ return a+(b==null?0:Number(b)); },0);
+    return [t.n,annual(t.id)].concat(mm.map(function(v){ return v==null?'':v; }))
+      .concat([r2(tot),r2(annual(t.id)-tot)]);
+  });
+  download('budgets-'+fyLabel().replace('/','-')+'.csv',csv(head,rows));
+}
+function exportReport(){
+  var d=reportData(report);
+  download('report-'+report+'-'+fyLabel().replace('/','-')+'.csv',csv(d.head,d.body));
+}
+function exportInvoice(){
+  var v=openInv; if(!v) return;
+  var head=['البند','الوحدة','سعر الوحدة','الكمية','إجمالي المبلغ','الضريبة','الخصم المسموح به','صافي المبلغ'];
+  var rows=v.lines.map(function(l){
+    var g=r2(l.price*l.quantity);
+    var share=v.gross>0?r2(v.discount*(g/v.gross)):0;
+    return [l.itemName,l.unit,l.price,l.quantity,g,r2(g-r2(g/(1+S.vat))),share,r2(g-share)];
+  });
+  rows.push(['','','','',v.gross,v.tax,v.discount,v.net]);
+  download(v.id+'.csv',csv(head,rows));
+}
+
+/* ============================================================================
+   BOOT AND PERSISTENT LOGIN
+
+   The token is the only thing that survives a refresh, and it is not trusted
+   on its own: the page asks the server who it belongs to before showing
+   anything. The role that comes back is the role that applies — a token
+   edited by hand in the browser's storage gets a refusal, not an upgrade.
+
+   #app starts hidden and #login starts hidden too, so a returning user never
+   sees the sign-in box flash before the dashboard appears.
+   ========================================================================== */
+function showLogin(){
+  el('login').classList.remove('hidden');
+  el('app').classList.add('hidden');
+  var p=el('lp'); if(p) p.value='';
+}
+function showApp(){
+  el('login').classList.add('hidden');
+  el('app').classList.remove('hidden');
+}
+function startSession(){
+  /* the fiscal year is restored from the server's list, not from the browser */
+  return reload().then(function(r){
+    if(!r||r.ok!==true){
+      if(r&&r.error==='INVALID_SESSION'){ showLogin(); return; }
+      showApp(); page='home'; render();
+      msg('fymsg',emsg(r),1);
+      return;
+    }
+    showApp();
+    page='home'; type=null;
+    render();
+    if(adm()) loadUsers().then(function(){ if(page==='users') render(); });
+  });
+}
+function boot(){
+  var saved=readToken();
+  if(!saved){ showLogin(); return Promise.resolve(); }
+  /* a stored token is a claim, not a credential: the server confirms it */
+  TOKEN=saved;
+  return api('session',{token:saved})
+    .then(function(r){
+      if(!r||r.ok!==true||!r.user){
+        clearSession();
+        showLogin();
         return;
       }
-      /* the token is held in memory for this tab only; the password is dropped */
-      TOKEN=r.token;
-      USER={ u:r.user.username, role:r.user.role, id:r.user.userId };
-      el('lgPass').value='';
-      el('lgMsg').innerHTML='';
-      showApp(true);
-      PAGE='home';
-      return bootstrap();
+      USER={username:r.user.username,role:r.user.role,id:r.user.userId};
+      return startSession();
     })
     .catch(function(){
-      btn.disabled=false;
-      el('lgMsg').innerHTML='<div class="mi-warn">'+esc(offlineMsg())+'</div>';
+      /* the network failed — the token is kept, but nothing is shown as
+         authenticated until the server has actually answered */
+      showLogin();
+      el('le').textContent='تعذر الوصول إلى الخادم — أعد المحاولة.';
     });
-};
-el('lgPass').onkeydown=function(e){ if(e.key==='Enter') el('lgBtn').onclick(); };
-el('logoutBtn').onclick=function(){
+}
+function doLogin(){
+  var b=el('loginBtn');
+  b.disabled=true;
+  el('le').textContent='جارٍ التحقق…';
+  api('login',{username:el('lu').value,password:el('lp').value})
+    .then(function(r){
+      b.disabled=false;
+      if(!r||r.ok!==true){ el('le').textContent=emsg(r); return; }
+      storeToken(r.token);                 /* the token, and nothing else */
+      USER={username:r.user.username,role:r.user.role,id:r.user.userId};
+      el('lp').value='';                   /* the password is dropped at once */
+      el('le').textContent='';
+      return startSession();
+    })
+    .catch(function(){ b.disabled=false; el('le').textContent=offline(); });
+}
+function doLogout(){
   var t=TOKEN;
-  TOKEN=null; logout(); showApp(false);
-  if(t) apiCall('logout',{token:t}).catch(function(){});
-};
-
-/* ---------- one round trip per screen ----------
-   Reads settings, fiscal years, expense types and, for the selected year, its
-   prices, budgets, executions and invoices. The 653 master items are not sent:
-   they ship with the page and never change per year. */
-function bootstrap(){
-  return apiCall('bootstrap',{ fyId: D.currentYear || '' })
-    .then(function(r){
-      if(!r||r.ok!==true){ showServerNote(apiError(r)); return r; }
-      applyBootstrap(r);
-      render();
-      return r;
-    })
-    .catch(function(){ showServerNote(offlineMsg()); });
-}
-/* Rebuilds the client's year container from what the server actually holds.
-   Nothing is invented: a year the server does not know simply has no data. */
-function applyBootstrap(r){
-  if(r.settings && r.settings.vat_rate!=null)
-    D.settings.VAT_RATE = String(r.settings.vat_rate);
-  /* fiscal years */
-  D.years = (r.fiscalYears||[]).map(function(f){
-    var ex = (D.years||[]).filter(function(y){ return y.id===f.fyId; })[0];
-    return ex || { id:f.fyId, start:f.startYear, label:f.label, status:f.status,
-      prices:{}, limits:{}, annualBudgets:{}, monthlyBudgets:{},
-      executions:[], invoices:[], approvals:[], audit:[] };
-  });
-  if(D.currentYear && !D.years.some(function(y){ return y.id===D.currentYear; }))
-    D.currentYear=null;
-  if(!D.currentYear && D.years.length) D.currentYear=D.years[0].id;
-  /* expense types the user added on the server */
-  (r.types||[]).forEach(function(t){
-    if(!(D.types||[]).some(function(x){ return x.id===t.id; }))
-      D.types.push({id:t.id,n:t.n,nameHistory:[]});
-  });
-  var y=currentYear();
-  if(!y || !r.fyId || r.fyId!==y.id) return;
-  /* year-scoped data, replacing whatever the client held */
-  y.prices={}; y.limits={};
-  (r.prices||[]).forEach(function(p){
-    y.prices[p.itemId]={ unit:p.unit, price:p.price };
-    y.limits[p.itemId]={ monthlyMax:p.monthlyMax, annualMax:p.annualMax };
-  });
-  y.annualBudgets={}; y.monthlyBudgets={};
-  (r.budgets||[]).forEach(function(b){
-    if(b.annual!=null) y.annualBudgets[b.typeId]={ amount:b.annual, locked:true,
-      by:'', when:b.updatedAt||'' };
-    y.monthlyBudgets[b.typeId]=(b.months||[]).slice();
-  });
-  y.executions=(r.executions||[]).map(function(e){
-    return { itemId:e.itemId, month:e.month, quantity:e.quantity,
-             price:e.unitPrice, when:e.approvedAt, by:e.approvedBy }; });
-  y.invoices=(r.invoices||[]).map(function(v){
-    return { id:v.invoiceId, typeId:v.typeId, month:v.month, when:v.approvedAt,
-             lines:(v.lines||[]).map(function(l){
-               return { itemId:l.itemId, itemName:l.itemName, unit:l.unit,
-                        price:l.price, quantity:l.quantity, gross:l.lineTotal }; }),
-             gross:v.gross, vat:v.vat, discount:v.discount, net:v.net,
-             approvedBy:v.approvedBy, approvedAt:v.approvedAt,
-             status:v.status, edits:v.edits||[] }; });
-}
-function showServerNote(msg){
-  var n=el('srvNote');
-  if(!n) return;
-  n.innerHTML = msg ? '<div class="mi-warn">'+esc(msg)+'</div>' : '';
+  clearSession();
+  S.currentFy=null; S.prices={}; S.limits={}; S.annual={}; S.monthly={};
+  S.invoices=[]; S.executions=[]; S.users=[];
+  page='home'; type=null; runResult=null;
+  showLogin();
+  if(t) api('logout',{token:t}).catch(function(){});
 }
 
-/* ---------- page wiring ---------- */
+/* ---------- wiring that lives outside the rendered content ---------- */
 Array.prototype.forEach.call(document.querySelectorAll('.nav button'),function(b){
-  b.onclick=function(){ go(b.getAttribute('data-page')); };
+  b.onclick=function(){ go(b.getAttribute('data-p')); };
 });
-el('ycSel').onchange=function(e){
-  if(!e.target.value) return;
-  D.currentYear=e.target.value;
-  bootstrap();          /* the new year's data comes from the server, not memory */
-};
-el('hoMonth').onchange=paintHome;
-el('fyAdd').onclick=function(){
-  var v=el('fyNew').value;
-  el('fyAdd').disabled=true;
-  apiCall('createFiscalYear',{startYear:Number(v)})
-    .then(function(r){
-      el('fyAdd').disabled=false;
-      if(!r||r.ok!==true){ warn('fyMsg',apiError(r)); return; }
-      okmsg('fyMsg',T('تمت إضافة السنة ','Added ')+r.fyId);
-      if(!D.currentYear) D.currentYear=r.fyId;
-      return bootstrap();
-    })
-    .catch(function(){ el('fyAdd').disabled=false; warn('fyMsg',offlineMsg()); });
-};
-el('tySave').onclick=function(){
-  if(!tyOpen) return;
-  var r=renameType(tyOpen, el('tyName').value);
-  if(r.ok){ okmsg('tyMsg',T('تم تعديل اسم النوع — الاسم السابق محفوظ.','Type renamed — the former name is kept.'));
-    audit('TYPE_RENAMED',tyOpen+': '+r.from+' → '+r.to); }
-  else warn('tyMsg', r.reason==='EMPTY'?T('الاسم مطلوب','A name is required'):T('لا تغيير','No change'));
-  render();
-};
-el('tySearch').oninput=paintTypes;
-el('tyAddType').onclick=function(){
-  var r=addType(el('tyNewType').value);
-  if(r.ok){ el('tyNewType').value=''; okmsg('tyMsg',T('أُضيف النوع ','Added ')+r.id); audit('TYPE_ADDED',r.id); }
-  else warn('tyMsg',T('اسم غير صالح','Invalid name'));
-  render();
-};
-el('tyAddItem').onclick=function(){
-  if(!tyOpen){ warn('tyMsg',T('اختر نوع مصروف أولًا','Pick an expense type first')); return; }
-  var r=addItem(tyOpen, el('tyNewItem').value);
-  if(r.ok){ el('tyNewItem').value=''; okmsg('tyMsg',T('أُضيف البند ','Added ')+r.id); audit('ITEM_ADDED',r.id); }
-  else warn('tyMsg',T('اسم غير صالح','Invalid name'));
-  render();
-};
-el('prSearch').oninput=paintPrices;
-function pushBudget(typeId, okText){
-  var ab=annualBudget(typeId);
-  var months=(monthlyBudget(typeId)||[]).slice();
-  return apiCall('upsertBudget',{ source:'LIVE', budget:{
-      fyId:D.currentYear, typeId:typeId,
-      annual: ab?ab.amount:null, months:months } })
-    .then(function(r){
-      if(!r||r.ok!==true){ warn('buMsg',apiError(r)); return bootstrap(); }
-      okmsg('buMsg',okText);
-      paintBudgets();
-    })
-    .catch(function(){ warn('buMsg',offlineMsg()+' '+T('لم يُحفظ.','Not saved.')); });
-}
-el('buSaveAnnual').onclick=function(){
-  if(!buOpen) return;
-  var r=saveAnnualBudget(buOpen, el('buAnnual').value);
-  if(!r.ok){
-    warn('buMsg',
-      r.reason==='ADMIN_ONLY'?T('الموازنة محفوظة — التعديل للمشرف فقط','Saved already — admin only'):
-      r.reason==='BELOW_DISTRIBUTED'?T('أقل من المبالغ الشهرية الموزَّعة','Lower than the distributed monthly total'):
-      T('قيمة غير صالحة','Invalid value'));
-    return;
-  }
-  pushBudget(buOpen, T('حُفظت الموازنة السنوية','Annual budget saved'));
-};
-el('buSaveMonthly').onclick=function(){
-  if(!buOpen) return;
-  var arr=[];
-  Array.prototype.forEach.call(el('buRows').querySelectorAll('[data-bm]'),function(i){ arr.push(i.value); });
-  var r=saveMonthlyBudget(buOpen, arr);
-  if(!r.ok){
-    warn('buMsg',
-      r.reason==='EXCEEDS_ANNUAL'?T('المجموع يتجاوز الموازنة السنوية','The total exceeds the annual budget'):
-      r.reason==='NO_ANNUAL_BUDGET'?T('احفظ الموازنة السنوية أولًا','Save the annual budget first'):
-      T('قيمة شهر غير صالحة','Invalid monthly value'));
-    return;
-  }
-  pushBudget(buOpen, T('حُفظ التوزيع — المتبقي ','Saved — remaining ')+money(r.remaining));
-};
-el('qdMonth').onchange=function(){ qdResult=null; paintQtyDist(); };
-el('qdStart').onclick=function(){
-  if(!qdOpen){ warn('qdMsg',T('اختر نوع مصروف','Pick an expense type')); return; }
-  var r=distribute(qdOpen, Number(el('qdMonth').value||0), el('qdInv').value);
-  if(!r.ok){
-    qdResult=null;
-    warn('qdMsg',
-      r.reason==='NO_MONTHLY_BUDGET'?T('لا توجد موازنة لهذا الشهر','No budget for this month'):
-      r.reason==='NO_ELIGIBLE_ITEMS'?T('لا توجد أصناف مؤهلة — أدخل السعر والوحدة والحدود أولًا','No eligible items — enter unit, price and limits first'):
-      r.reason==='BUDGET_TOO_SMALL'?T('الموازنة أقل من سعر أرخص صنف','The budget is below the cheapest unit price'):
-      r.reason==='BAD_INVOICE_COUNT'?T('عدد فواتير غير صالح','Invalid invoice count'):
-      T('تعذر التوزيع','Could not distribute'));
-  } else {
-    qdResult=r;
-    okmsg('qdMsg',r.itemCount+' '+T('صنف','items')+'  ·  '+r.unitCount+' '+T('وحدة','units')+
-      '  ·  '+r.invoices.length+' '+T('فاتورة','invoices'));
-  }
-  paintQtyDist();
-};
-el('qdApprove').onclick=function(){
-  if(!qdResult){ return; }
-  var btn=el('qdApprove'); btn.disabled=true;
-  var res=qdResult;
-  /* the server rebuilds the totals from its own prices and re-checks every
-     ceiling before it writes anything; nothing is stored locally first */
-  apiCall('saveApprovedRun',{
-      fyId: D.currentYear,
-      run:{ typeId:res.typeId, month:res.month, status:'APPROVED' },
-      invoices: res.invoices.map(function(v){
-        var gross=v.lines.reduce(function(a,l){ return a+l.price*l.quantity; },0);
-        var share = res.gross>0 ? Math.round(res.discount*(gross/res.gross)*100)/100 : 0;
-        return { seq:v.seq, discount:share,
-          lines:v.lines.map(function(l){
-            return { itemId:l.id, itemName:l.name, price:l.price, quantity:l.quantity }; }) };
-      }),
-      masterSnapshot: res.lines.map(function(l){
-        return { itemId:l.id, itemName:l.name, unit:l.unit, price:l.price, quantity:l.quantity }; })
-    })
-    .then(function(r){
-      btn.disabled=false;
-      if(!r||r.ok!==true){ warn('qdMsg',apiError(r)); return; }
-      qdResult=null;
-      okmsg('qdMsg',T('تم الاعتماد والحفظ — ','Approved and saved — ')+
-        r.invoices.length+' '+T('فاتورة','invoices')+'  ·  '+T('صافي','net')+' '+money(r.net));
-      return bootstrap();
-    })
-    .catch(function(){ btn.disabled=false;
-      warn('qdMsg',offlineMsg()+' '+T('لم يُعتمد.','Not approved.')); });
-};
-el('ivMonth').onchange=function(){ ivType=null; ivOpen=null; paintInvoices(); };
-el('ivPrint').onclick=function(){ printNow(); };
-el('ivPdf').onclick=function(){ printNow(); };
-el('ivExcel').onclick=function(){
-  var v=(Y('invoices')||[]).filter(function(x){ return x.id===ivOpen; })[0];
-  if(!v) return;
-  var rows=[[T('البند','Item'),T('الوحدة','Unit'),T('سعر الوحدة','Unit price'),T('الكمية','Quantity'),
-             T('إجمالي المبلغ','Gross'),T('الخصم','Discount'),T('صافي المبلغ','Net')]];
-  v.lines.forEach(function(l){
-    var share=v.gross>0?r2(v.discount*(l.gross/v.gross)):0;
-    rows.push([l.itemName,l.unit,l.price,l.quantity,l.gross,share,r2(l.gross-share)]);
-  });
-  rows.push(['','','','',v.gross,v.discount,v.net]);
-  exportXlsx(v.id,[{name:'Invoice',rows:rows}]);
-};
-el('rpKind').onchange=paintReports;
-el('rpFrom').onchange=paintReports;
-el('rpTo').onchange=paintReports;
-el('rpType').onchange=paintReports;
-el('rpPrint').onclick=function(){ printNow(); };
-el('rpExcel').onclick=function(){
-  var r=reportRows(el('rpKind').value);
-  exportXlsx('report-'+el('rpKind').value,[{name:'Report',rows:[r.head].concat(r.body)}]);
-};
-el('usAdd').onclick=function(){
-  if(!isAdmin()) return;
-  var u=String(el('usName').value||'').trim(), p=String(el('usPass').value||'');
-  if(!u||p.length<8){ warn('usMsg',T('اسم مستخدم وكلمة مرور (8 أحرف على الأقل)','A username and a password of at least 8 characters')); return; }
-  el('usAdd').disabled=true;
-  /* the password goes to the server and is hashed there; it is never stored
-     in this file and never written into the audit log */
-  apiCall('upsertUser',{ user:{ username:u, password:p, role:el('usRole').value, active:true } })
-    .then(function(r){
-      el('usAdd').disabled=false;
-      if(!r||r.ok!==true){ warn('usMsg',apiError(r)); return; }
-      D.users.push({u:u,role:el('usRole').value,active:true,created:nowStamp()});
-      el('usName').value=''; el('usPass').value='';
-      okmsg('usMsg',T('أُضيف المستخدم','User added')); paintUsers();
-    })
-    .catch(function(){ el('usAdd').disabled=false; warn('usMsg',offlineMsg()); });
-};
-Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(b){
-  b.onclick=function(){
-    LANG=b.getAttribute('data-lang');
-    document.documentElement.setAttribute('dir', LANG==='en'?'ltr':'rtl');
-    document.documentElement.setAttribute('lang', LANG);
-    Array.prototype.forEach.call(document.querySelectorAll('#langsw button'),function(o){
-      o.classList.toggle('active', o===b); });
-    render();
-  };
-});
+el('loginBtn').onclick=doLogin;
+el('lp').onkeydown=function(e){ if(e.key==='Enter') doLogin(); };
+el('lu').onkeydown=function(e){ if(e.key==='Enter') doLogin(); };
+el('logout').onclick=doLogout;
+el('modalback').onclick=function(e){ if(e.target===el('modalback')) closeM(); };
 
-showApp(false);
-labels();
-
-window.GHS_APP={
-  login:login, logout:logout, isAdmin:isAdmin, user:function(){ return USER; },
-  types:types, itemsOf:itemsOf, itemById:itemById, typeById:typeById,
-  addType:addType, addItem:addItem, renameType:renameType, renameItem:renameItem,
-  years:years, addYear:addYear, removeYear:removeYear, setYear:setYear,
-  currentYear:currentYear, Y:Y, yearLabel:yearLabel,
-  savePriceRow:savePriceRow, priceOf:priceOf, limitOf:limitOf,
-  saveAnnualBudget:saveAnnualBudget, saveMonthlyBudget:saveMonthlyBudget,
-  annualBudget:annualBudget, monthlyBudget:monthlyBudget,
-  distribute:distribute, approveDistribution:approveDistribution,
-  editApprovedInvoice:editApprovedInvoice,
-  headroom:headroom, executedQty:executedQty, executedAmount:executedAmount,
-  eligibleItems:eligibleItems, reportRows:reportRows,
-  exportXlsx:exportXlsx, render:render, go:go,
-  months:function(){ return (LANG==='en'?MONTHS_EN:MONTHS_AR).slice(); },
-  vatRate:vatRate, setLang:function(l){ LANG=l; }
-};
-})();
-
-</script>
-
-<script>
-/* ============================================================================
-   S7 — PWA layer.  Installation/runtime only: it registers a service worker and
-   nothing else. It adds no business logic, no storage, no network dependency
-   for startup, and never touches the distribution, budget, export or approval
-   systems. Every path is relative so it resolves correctly under /GHS-Exp/.
-   ========================================================================== */
-window.GHS_PWA={
-  productName:'GHIS EXP',
-  shortName:'GHIS EXP',
-  display:'standalone',
-  manifestHref:'manifest.json',
-  swPath:'./sw.js',
-  swScope:'./',
-  cacheVersion:'ghis-exp-v1',
-  requiredIconSizes:['192x192','512x512'],
-  neverCached:['data.js','fixtures.js'],
-  registered:false,
-  lastError:null
-};
+/* master data ships with the page: 10 types, 653 items, their ids and their
+   relationships. It is shared across every fiscal year and is not re-fetched. */
 (function(){
-  'use strict';
-  if(!('serviceWorker' in navigator)){ window.GHS_PWA.lastError='UNSUPPORTED'; return; }
-  window.addEventListener('load',function(){
-    /* relative path => /GHS-Exp/sw.js on GitHub Pages */
-    navigator.serviceWorker.register(window.GHS_PWA.swPath,{scope:window.GHS_PWA.swScope})
-      .then(function(reg){ window.GHS_PWA.registered=true; window.GHS_PWA.scope=reg.scope; })
-      .catch(function(err){
-        /* registration must never break the app or alarm a normal user */
-        window.GHS_PWA.registered=false;
-        window.GHS_PWA.lastError=String(err&&err.message||err);
-        console.info('[PWA] service worker not registered:',window.GHS_PWA.lastError);
-      });
-  });
+  var D=window.GHS_DATA||{};
+  S.types=(D.types||[]).map(function(t){
+    return {id:t.id,n:t.n,icon:icon(t.id),nameHistory:t.nameHistory||[]}; });
+  S.items=(D.items||[]).map(function(i){
+    return {id:i.i||i.id,t:i.t,n:i.n,nameHistory:i.nameHistory||[]}; });
 })();
+
+boot();
+
+/* the app is exposed for testing only; nothing here grants any authority */
+window.GHIS={ go:go, render:render, state:S,
+  user:function(){ return USER; }, isAdmin:adm,
+  token:function(){ return TOKEN; },
+  login:doLogin, logout:doLogout, boot:boot,
+  distribute:distribute, month:function(m){ if(m!=null) month=m; return month; },
+  setType:function(t){ type=t; }, page:function(){ return page; } };
+})();
+
 </script>
-</body></html>
+<script>
+/* the service worker is registered after load so a failed registration can
+   never block the sign-in path */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
