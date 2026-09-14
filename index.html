@@ -10,6 +10,47 @@
    from leaking into another invoice's file.
    ========================================================================== */
 #printRoot{display:none}
+
+/* ---------------------------------------------------------------------------
+   LOADING — shown from the first painted frame until the application or the
+   sign-in screen is ready. It uses the approved palette and the existing
+   .login / .loginbox / .logo / .muted classes, so it is the same visual
+   language, not a new one. Its side effect matters as much as its purpose:
+   the page now shows something immediately, so a blank screen is impossible
+   even before any script has run.
+   --------------------------------------------------------------------------- */
+#booting .bar{height:4px;background:#edf3f8;border-radius:3px;overflow:hidden;margin:14px 0 10px}
+#booting .bar i{display:block;height:100%;width:40%;background:#123166;border-radius:3px;
+  animation:ghisbar 1.1s ease-in-out infinite}
+@keyframes ghisbar{0%{margin-right:-40%}100%{margin-right:100%}}
+#booting p{color:#667788;margin:6px 0 0}
+#bootHint{margin-top:8px;min-height:16px}
+/* a small inline indicator for work that happens inside a screen */
+.busy{display:inline-block;width:13px;height:13px;border:2px solid #d9e1e8;
+  border-top-color:#123166;border-radius:50%;vertical-align:-2px;margin-left:6px;
+  animation:ghisspin .7s linear infinite}
+@keyframes ghisspin{to{transform:rotate(360deg)}}
+@media print{#booting{display:none!important}}
+/* ----------------------------------------------------------------------------
+   LOADING — built from the approved vocabulary: the same .login centring, the
+   same .loginbox card, the same #123166 and #667788. Nothing about the running
+   application changes; this only fills the gap where the screen used to sit
+   blank while the server was being waited on.
+   -------------------------------------------------------------------------- */
+
+#loading.hidden{display:none!important}
+
+
+
+
+
+@keyframes sp{to{transform:rotate(360deg)}}
+/* a quiet bar along the top whenever a request is in flight */
+
+#busy.on{display:block}
+#busy i{display:block;height:3px;width:40%;background:#123166;
+  animation:slide 1.1s ease-in-out infinite}
+@keyframes slide{0%{margin-right:-40%}100%{margin-right:100%}}
 @media print{
   @page{size:A4;margin:14mm}
   /* hide the application entirely, then reveal only the invoice */
@@ -46,7 +87,7 @@
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#123166">
-</head><body><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><form id="loginForm" autocomplete="on" onsubmit="return false"><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" name="username" class="field" type="text" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" name="password" class="field" type="password" value="" autocomplete="current-password"></div></form><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button><button data-p="settings">⚙️ إعدادات النظام</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><div id="printRoot"></div>
+</head><body><div id="booting" class="login"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p id="bootMsg">جارٍ تحميل النظام…</p><div class="bar"><i></i></div><div id="bootHint" class="muted"></div></div></div><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><form id="loginForm" autocomplete="on" onsubmit="return false"><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" name="username" class="field" type="text" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" name="password" class="field" type="password" value="" autocomplete="current-password"></div></form><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button><button data-p="settings">⚙️ إعدادات النظام</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><div id="printRoot"></div>
 <script>
 /* ============================================================================
    FAIL-SAFE BOOT — runs before everything else.
@@ -63,11 +104,23 @@
    ========================================================================== */
 (function(){
   var shown=false;
+  function hideBoot(){
+    var b=document.getElementById('booting');
+    if(b) b.classList.add('hidden');
+  }
   function reveal(){
     if(shown) return; shown=true;
+    hideBoot();
     var l=document.getElementById('login');
     if(l) l.classList.remove('hidden');
   }
+  /* a word about why the wait is happening, so it never feels stuck */
+  setTimeout(function(){
+    var h=document.getElementById('bootHint');
+    var b=document.getElementById('booting');
+    if(h&&b&&!b.classList.contains('hidden'))
+      h.textContent='الاتصال بالخادم… أول طلب بعد فترة خمول يكون أبطأ.';
+  },3000);
   var token=null;
   try{ token=window.localStorage.getItem('ghis_exp_token'); }catch(e){}
   /* no stored session: nothing to restore, so show the sign-in screen at once */
@@ -1010,6 +1063,12 @@ function msg(id,text,bad){
   n.innerHTML=text?('<div class="notice"'+(bad?' style="border-right-color:#b42318;background:#fef3f2"':'')+'>'+
     esc(text)+'</div>'):'';
 }
+/* An inline "working" line for anything that happens inside a screen, so a
+   slow request never looks like a frozen page. */
+function busy(id,text){
+  var n=el(id); if(!n) return;
+  n.innerHTML='<div class="notice"><span class="busy"></span>'+esc(text||'جارٍ التنفيذ…')+'</div>';
+}
 function each(sel,fn){ Array.prototype.forEach.call(document.querySelectorAll(sel),fn); }
 function on(id,ev,fn){ var n=el(id); if(n) n[ev]=fn; }
 
@@ -1033,7 +1092,8 @@ function wire(){
   on('fysel','onchange',function(e){
     S.currentFy=Number(e.target.value)||null;
     rememberYear(S.currentFy);
-    reload().then(render).catch(function(){ msg('fymsg',offline(),1); });
+    busy('fymsg','جارٍ تحميل بيانات السنة…');
+    reload().then(function(){ render(); }).catch(function(){ msg('fymsg',offline(),1); });
   });
   on('tysearch','oninput',function(e){
     var tb=el('tyrows'); if(tb) tb.innerHTML=typeRows(e.target.value);
@@ -1189,6 +1249,7 @@ function savePrice(id){
   var price=num(g('data-p').value), mm=num(g('data-m').value), am=num(g('data-a').value);
   if(price===null||price<0){ msg('prmsg','سعر غير صالح',1); return; }
   if(mm!==null&&am!==null&&mm>am){ msg('prmsg','الحد الأقصى الشهري أكبر من السنوي',1); return; }
+  busy('prmsg','جارٍ حفظ السعر…');
   api('savePrice',{fyId:'FY'+fy(),price:{itemId:id,unit:unit,price:price,monthlyMax:mm,annualMax:am}})
     .then(function(r){
       if(!r||r.ok!==true){ msg('prmsg',emsg(r),1); return; }
@@ -1210,6 +1271,7 @@ function saveTypeAnnual(){
     msg('tyabmsg','الموزَّع شهريًا '+money(sum)+' يتجاوز هذه الموازنة — عدّل التوزيع أولًا.',1);
     return;
   }
+  busy('tyabmsg','جارٍ حفظ الموازنة السنوية…');
   el('tyabsave').disabled=true;
   api('upsertBudget',{source:'LIVE',budget:{fyId:'FY'+fy(),typeId:type,
       annual:v,months:mm}})
@@ -1250,6 +1312,7 @@ function saveBudgets(){
   });
   var bad=jobs.filter(function(j){ return j.fail; });
   if(bad.length){ msg('bumsg',bad[0].fail,1); return; }
+  busy('bumsg','جارٍ حفظ التوزيع الشهري…');
   var chain=Promise.resolve(), failed=null, done=0;
   jobs.forEach(function(j){
     chain=chain.then(function(){
@@ -1289,6 +1352,7 @@ function startRun(){
 function approveRun(){
   if(!runResult) return;
   var r=runResult;
+  busy('dmsg','جارٍ الاعتماد والحفظ…');
   api('saveApprovedRun',{
     fyId:'FY'+fy(),
     run:{typeId:r.typeId,month:r.month,status:'APPROVED'},
@@ -1445,19 +1509,28 @@ function exportInvoice(){
    #app starts hidden and #login starts hidden too, so a returning user never
    sees the sign-in box flash before the dashboard appears.
    ========================================================================== */
+function hideBooting(){
+  var b=el('booting'); if(b) b.classList.add('hidden');
+}
+function bootMsg(t){
+  var m=el('bootMsg'); if(m) m.textContent=t;
+}
 function showLogin(){
+  hideBooting();
   el('login').classList.remove('hidden');
   el('app').classList.add('hidden');
   var p=el('lp'); if(p) p.value='';
   var box=el('le'); if(box && box.textContent.indexOf('تعذّر تحميل')===0) box.textContent='';
 }
 function showApp(){
+  hideBooting();
   el('login').classList.add('hidden');
   el('app').classList.remove('hidden');
 }
 function startSession(){
   /* the fiscal year is restored from the server's list, not from the browser */
   return reload().then(function(r){
+    hideBooting();
     if(!r||r.ok!==true){
       if(r&&r.error==='INVALID_SESSION'){ showLogin(); return; }
       showApp(); page='home'; render();
@@ -1476,6 +1549,7 @@ function boot(){
      refuses an invalid one and returns the confirmed user with it, so asking
      the server twice only doubled the wait. One request now does both. */
   TOKEN=saved;
+  bootMsg('جارٍ استعادة الجلسة…');
   if(!S.currentFy){ var y=recallYear(); if(y) S.currentFy=y; }
   return api('bootstrap',{fyId:S.currentFy?('FY'+S.currentFy):''})
     .then(function(r){
@@ -1519,6 +1593,11 @@ function doLogin(){
       USER={username:r.user.username,role:r.user.role,id:r.user.userId};
       el('lp').value='';                   /* the password is dropped at once */
       el('le').textContent='';
+      /* the sign-in screen steps aside and the loading screen carries the
+         remaining wait, so the user always sees progress, never a dead form */
+      el('login').classList.add('hidden');
+      var bt=el('booting'); if(bt) bt.classList.remove('hidden');
+      bootMsg('جارٍ تحميل بيانات السنة المالية…');
       return startSession();
     })
     .catch(function(){ clearSlow(); b.disabled=false; el('le').textContent=offline(); });
