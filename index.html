@@ -1,6 +1,6 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GHIS EXP</title><style>*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial;background:#f4f7fa;color:#17212b;direction:rtl}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center}.loginbox,.panel{background:#fff;border:1px solid #d9e1e8;border-radius:14px;box-shadow:0 5px 18px #12316612;padding:20px}.loginbox{width:380px}.logo{width:48px;height:48px;background:#123166;color:#fff;border-radius:12px;display:grid;place-items:center;font-weight:bold;margin:auto auto 10px}.loginbox{text-align:center}.field{border:1px solid #d9e1e8;border-radius:8px;padding:9px;width:100%;background:#fff}.formrow{text-align:right;margin:12px 0}.lbl{font-size:12px;font-weight:bold;color:#667788;display:block;margin-bottom:5px}.btn{border:0;border-radius:8px;padding:9px 12px;background:#123166;color:#fff;cursor:pointer;font-weight:bold}.btn.secondary{background:#fff;color:#123166;border:1px solid #d9e1e8}.btn.danger{background:#b42318}.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.sidebar{background:#fff;border-left:1px solid #d9e1e8;padding:16px;position:sticky;top:0;height:100vh}.brand{display:flex;gap:9px;align-items:center;border-bottom:1px solid #d9e1e8;padding-bottom:15px;margin-bottom:12px}.brand .logo{margin:0;width:40px;height:40px}.brand b{color:#123166}.brand small{display:block;color:#667788}.nav{display:grid;gap:4px}.nav button{border:0;background:none;text-align:right;padding:10px;border-radius:8px;cursor:pointer;color:#405a73;font-weight:bold}.nav button.active,.nav button:hover{background:#edf3f8;color:#123166}.main{min-width:0}.top{height:76px;background:#fff;border-bottom:1px solid #d9e1e8;padding:0 22px;display:flex;align-items:center}.top h1{margin:0;color:#123166}.content{padding:20px;max-width:1600px;margin:auto}.title{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px}.type{background:#fff;border:1px solid #d9e1e8;border-radius:12px;padding:15px;text-align:center;cursor:pointer}.type:hover{border-color:#7890a8}.icon{font-size:32px}.type h3{font-size:13px;margin:7px 0}.muted{font-size:11px;color:#667788}.table{overflow:auto;border:1px solid #d9e1e8;border-radius:9px}table{width:100%;border-collapse:collapse;min-width:700px}th,td{padding:8px;border-bottom:1px solid #d9e1e8;font-size:12px;text-align:right}th{background:#f7f9fb}.actions{display:flex;gap:6px;flex-wrap:wrap}.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{background:#fff;border:1px solid #d9e1e8;border-radius:10px;padding:13px}.stat small{color:#667788}.stat b{display:block;color:#123166;font-size:18px;margin-top:5px;direction:ltr}.toolbar{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.toolbar>div{min-width:160px;flex:1}.notice{padding:10px;background:#eff6ff;border-right:4px solid #123166;border-radius:7px;font-size:12px;margin:10px 0}.modalback{position:fixed;inset:0;background:#10203366;display:grid;place-items:center;padding:20px;z-index:20}.modal{background:#fff;border-radius:13px;padding:18px;width:min(850px,95vw);max-height:90vh;overflow:auto}.modalhead{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#eee;padding:7px;border-radius:7px}.sub{margin-top:15px;border-top:1px solid #d9e1e8;padding-top:15px}@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.statgrid{grid-template-columns:1fr 1fr}}@media print{.sidebar,.top,.no-print{display:none!important}.content{padding:0}.panel{box-shadow:none;border:0}}</style><link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#123166">
-</head><body><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" class="field" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" class="field" type="password" value="" autocomplete="current-password"></div><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="settings">⚙️ إعدادات النظام</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><script src="data.js"></script>
+</head><body><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><form id="loginForm" autocomplete="on" onsubmit="return false"><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" name="username" class="field" type="text" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" name="password" class="field" type="password" value="" autocomplete="current-password"></div></form><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="settings">⚙️ إعدادات النظام</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><script src="data.js"></script>
 <script>
 /* ============================================================================
    GHIS EXP — production frontend.
@@ -26,7 +26,10 @@ var TOKEN=null, USER=null;
 var page='home', type=null, month=0, report=null;
 var S={ types:[], items:[], units:[], fy:[], currentFy:null,
         prices:{}, limits:{}, annual:{}, monthly:{},
-        invoices:[], executions:[], users:[], vat:0.14 };
+        invoices:[], executions:[], users:[], vat:0.14,
+        fyStartMonth:'سبتمبر', fyEndMonth:'أغسطس' };
+var GREG=['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+          'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 var TYPE_ICON={ET001:'🎭',ET002:'⚽',ET003:'🎨',ET004:'✏️',ET005:'🌱',
   ET006:'🔧',ET007:'📚',ET008:'🖨️',ET009:'🧹',ET010:'📋'};
 var M=['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير',
@@ -235,6 +238,15 @@ function applyBoot(r){
   if(r.settings&&r.settings.vat_rate!=null){
     var v=Number(r.settings.vat_rate); if(!isNaN(v)) S.vat=v;
   }
+  /* the end month is the month before the start, wrapping round the year —
+     derived, so the two can never contradict each other */
+  if(r.settings&&r.settings.fiscal_start_month!=null){
+    var sm=Number(r.settings.fiscal_start_month);
+    if(sm>=1&&sm<=12){
+      S.fyStartMonth=GREG[sm-1];
+      S.fyEndMonth=GREG[(sm+10)%12];
+    }
+  }
   S.fy=(r.fiscalYears||[]).map(function(f){ return f.startYear; }).sort(function(a,b){ return a-b; });
   if(S.currentFy&&S.fy.indexOf(S.currentFy)<0) S.currentFy=null;
   if(!S.currentFy&&S.fy.length) S.currentFy=S.fy[0];
@@ -242,6 +254,11 @@ function applyBoot(r){
     if(!S.types.some(function(x){ return x.id===t.id; }))
       S.types.push({id:t.id,n:t.n,icon:icon(t.id)});
   });
+  /* The year-scoped half of the response is only present when the request
+     named a year. Clearing it on a reply that carries no year would blank the
+     screen while the sheet still holds the data — which is exactly how a
+     refresh appeared to lose everything. */
+  if(!r.fyId) return;
   S.prices={}; S.limits={};
   (r.prices||[]).forEach(function(p){
     S.prices[p.itemId]={unit:p.unit,price:p.price};
@@ -262,10 +279,19 @@ function applyBoot(r){
             status:v.status,edits:v.edits||[]}; });
 }
 function reload(){
+  /* On a refresh S.currentFy starts empty, so the first call cannot name a
+     year and the server rightly returns none of the year-scoped data. Asking
+     once more, now that the year list has arrived, is what makes a reload show
+     the same figures the sheet holds. */
   return api('bootstrap',{fyId:S.currentFy?('FY'+S.currentFy):''})
     .then(function(r){
       if(!r||r.ok!==true) return r;
       applyBoot(r);
+      if(S.currentFy && r.fyId!==('FY'+S.currentFy))
+        return api('bootstrap',{fyId:'FY'+S.currentFy}).then(function(r2){
+          if(r2&&r2.ok===true) applyBoot(r2);
+          return r2||r;
+        });
       return r;
     });
 }
@@ -324,7 +350,7 @@ function settings(){
     (S.fy.length?S.fy.map(function(x){
       return '<option value="'+x+'"'+(x===fy()?' selected':'')+'>'+x+'/'+(x+1)+'</option>'; }).join('')
       :'<option value="">لا توجد سنة</option>')+'</select></div>'+
-    (adm()?'<div><label class="lbl">إضافة سنة</label><input id="newfy" class="field" type="number" placeholder="2026"></div>'+
+    (adm()?'<div><label class="lbl">إضافة سنة</label><input id="newfy" class="field" type="number" inputmode="numeric" name="newfy" autocomplete="off" data-lpignore="true" data-form-type="other" placeholder="2026"></div>'+
       '<button class="btn" id="addfy">إضافة</button>'+
       '<button class="btn danger" id="delfy">حذف السنة الحالية</button>':'')+
     '</div><div id="fymsg"></div>'+
@@ -334,7 +360,11 @@ function settings(){
     tbl(['الإعداد','القيمة'],[
       ['نسبة ضريبة القيمة المضافة',(S.vat*100).toFixed(0)+'%'],
       ['العملة','ج.م'],
-      ['بداية السنة المالية','سبتمبر'],
+      /* start and end are two halves of one fact, so both are stated and both
+         come from the server's settings rather than being assumed here */
+      ['بداية السنة المالية',S.fyStartMonth],
+      ['نهاية السنة المالية',S.fyEndMonth],
+      ['مدة السنة المالية','12 شهرًا'+(fy()?('  ·  سبتمبر '+fy()+' → أغسطس '+(fy()+1)):'')],
       ['اتجاه الواجهة','من اليمين إلى اليسار'],
       ['أنواع المصروفات',String(S.types.length)],
       ['البنود',String(S.items.length)]
@@ -350,8 +380,28 @@ function types(){
     '</div>'+
     (type?'<div class="sub"><div class="title"><h2>'+icon(type)+' '+esc(typeBy(type).n)+'</h2>'+
       (adm()?'<button class="btn secondary" id="edittype">✏️ تعديل الاسم</button>':'')+'</div>'+
+      /* The annual budget is a property of the expense type within one fiscal
+         year. It is entered here, once, and every other screen reads it. */
+      (fy()?('<div class="toolbar"><div><label class="lbl">إجمالي الموازنة السنوية — '+
+        esc(fyLabel())+'</label>'+
+        '<input id="tyab" class="field" type="number" inputmode="decimal" step=".01" '+
+        'name="typeannual" autocomplete="off" data-lpignore="true" data-form-type="other" '+
+        'value="'+(annualRec(type)?annualRec(type).amount:'')+'"'+
+        ((annualRec(type)&&annualRec(type).locked&&!adm())?' disabled':'')+'></div>'+
+        '<button class="btn" id="tyabsave">💾 حفظ</button>'+
+        '<div><label class="lbl">الموزَّع شهريًا</label>'+
+        '<input class="field" value="'+money(months(type).reduce(function(a,b){
+          return a+(b==null?0:Number(b)); },0))+'" disabled></div>'+
+        '<div><label class="lbl">المتبقي للتوزيع</label>'+
+        '<input class="field" value="'+money(r2(annual(type)-months(type).reduce(function(a,b){
+          return a+(b==null?0:Number(b)); },0)))+'" disabled></div>'+
+        '</div><div id="tyabmsg"></div>'+
+        ((annualRec(type)&&annualRec(type).locked&&!adm())
+          ? note('الموازنة السنوية محفوظة — تعديلها للمشرف فقط.') : ''))
+        : note('اختر سنة مالية أولًا لإدخال الموازنة السنوية.'))+
       '<div class="toolbar"><div><label class="lbl">بحث</label>'+
-      '<input id="tysearch" class="field" placeholder="اسم البند أو كوده"></div></div>'+
+      '<input id="tysearch" class="field" name="itemsearch" autocomplete="off" '+
+      'data-lpignore="true" placeholder="اسم البند أو كوده"></div></div>'+
       '<div class="table"><table><thead><tr><th>كود البند</th><th>اسم البند</th>'+
       '<th>الأسماء السابقة</th><th>إجراء</th></tr></thead><tbody id="tyrows">'+
       typeRows('')+'</tbody></table></div></div>':'')+
@@ -397,9 +447,15 @@ function prices(){
         var p=priceOf(i.id)||{},l=limitOf(i.id)||{};
         return '<tr><td>'+esc(i.n)+'<div class="muted">'+esc(i.id)+'</div></td>'+
           '<td>'+unitSelect(i.id,p.unit||'')+'</td>'+
-          '<td><input class="field" data-p="'+esc(i.id)+'" type="number" step=".01" value="'+(p.price==null?'':p.price)+'"></td>'+
-          '<td><input class="field" data-m="'+esc(i.id)+'" type="number" value="'+(l.monthlyMax==null?'':l.monthlyMax)+'"></td>'+
-          '<td><input class="field" data-a="'+esc(i.id)+'" type="number" value="'+(l.annualMax==null?'':l.annualMax)+'"></td>'+
+          '<td><input class="field" data-p="'+esc(i.id)+'" type="number" inputmode="decimal" '+
+            'step=".01" name="price_'+esc(i.id)+'" autocomplete="off" data-lpignore="true" '+
+            'data-form-type="other" value="'+(p.price==null?'':p.price)+'"></td>'+
+          '<td><input class="field" data-m="'+esc(i.id)+'" type="number" inputmode="numeric" '+
+            'name="mmax_'+esc(i.id)+'" autocomplete="off" data-lpignore="true" '+
+            'data-form-type="other" value="'+(l.monthlyMax==null?'':l.monthlyMax)+'"></td>'+
+          '<td><input class="field" data-a="'+esc(i.id)+'" type="number" inputmode="numeric" '+
+            'name="amax_'+esc(i.id)+'" autocomplete="off" data-lpignore="true" '+
+            'data-form-type="other" value="'+(l.annualMax==null?'':l.annualMax)+'"></td>'+
           '<td class="muted">'+executedQty(i.id)+'</td>'+
           '<td><button class="btn" data-sp="'+esc(i.id)+'">حفظ</button></td></tr>';
       }).join('')+'</tbody></table></div></div>':'')+
@@ -419,15 +475,21 @@ function budgets(){
       var total=mm.reduce(function(a,b){ return a+(b==null?0:Number(b)); },0);
       var rec=annualRec(t.id);
       var ro=(rec&&rec.locked&&locked)?' disabled':'';
+      /* The annual budget is not re-typed here. It is shown as it was entered
+         on the expense type, so one figure cannot drift into two. */
       return '<tr><td><b>'+icon(t.id)+' '+esc(t.n)+'</b></td>'+
-        '<td><input class="field" data-ab="'+esc(t.id)+'" type="number" step=".01" value="'+
-        (rec?rec.amount:'')+'"'+ro+'></td>'+
+        '<td><input class="field" type="text" value="'+(rec?money(rec.amount):'—')+'" '+
+        'name="annualview_'+esc(t.id)+'" autocomplete="off" data-lpignore="true" '+
+        'data-form-type="other" disabled title="يُدخَل من «أنواع المصروفات»"></td>'+
         mm.map(function(v,m){
-          return '<td><input class="field" data-b="'+esc(t.id)+'|'+m+'" type="number" step=".01" value="'+
+          return '<td><input class="field" data-b="'+esc(t.id)+'|'+m+'" type="number" '+
+            'inputmode="decimal" step=".01" name="m'+m+'_'+esc(t.id)+'" autocomplete="off" '+
+            'data-lpignore="true" data-form-type="other" value="'+
             (v==null?'':v)+'"></td>'; }).join('')+
         '<td>'+money(total)+'</td><td>'+money(r2(annual(t.id)-total))+'</td></tr>';
     }).join('')+'</tbody></table></div>'+
-    (locked?note('الموازنة السنوية المحفوظة لا يعدّلها إلا المشرف. التوزيع الشهري متاح لك.'):'')+
+    note('عمود «الموازنة السنوية» يُملأ تلقائيًا مما سُجِّل في «أنواع المصروفات» — لا يُكتب هنا. '+
+      'أدخل التوزيع الشهري فقط، ومجموعه لا يتجاوز الموازنة السنوية.')+
     '<div class="actions no-print" style="margin-top:10px">'+
     '<button class="btn" id="saveb">💾 حفظ</button>'+
     '<button class="btn secondary" id="printb">🖨️ طباعة</button>'+
@@ -450,7 +512,7 @@ function distribution(){
     (type?'<div class="sub"><div class="title"><h2>'+icon(type)+' '+esc(typeBy(type).n)+'</h2>'+
       '<span>موازنة الشهر: '+money(mb(type,month))+' · المنفَّذ: '+money(executedAmount(type,month))+'</span></div>'+
       '<div class="toolbar"><div><label class="lbl">عدد الفواتير</label>'+
-      '<input id="ic" class="field" type="number" min="1" value="1"></div>'+
+      '<input id="ic" class="field" type="number" inputmode="numeric" min="1" name="invcount" autocomplete="off" data-lpignore="true" data-form-type="other" value="1"></div>'+
       '<button class="btn" id="start">▶ بدء التوزيع</button>'+
       (runResult?'<button class="btn" id="approve">✔ اعتماد</button>':'')+
       '</div><div id="dr">'+(runResult?reviewHtml():'')+'</div></div>':'')+
@@ -509,7 +571,9 @@ function invoiceHtml(v){
     var before=r2(g/(1+S.vat));
     return '<tr><td>'+esc(l.itemName)+'</td><td>'+esc(l.unit)+'</td>'+
       '<td>'+money(l.price)+'</td>'+
-      '<td>'+(adm()?('<input class="field" data-iq="'+esc(l.itemId)+'" type="number" value="'+l.quantity+'" style="max-width:90px">'):l.quantity)+'</td>'+
+      '<td>'+(adm()?('<input class="field" data-iq="'+esc(l.itemId)+'" type="number" inputmode="numeric" '+
+      'name="qty_'+esc(l.itemId)+'" autocomplete="off" data-lpignore="true" '+
+      'data-form-type="other" value="'+l.quantity+'" style="max-width:90px">'):l.quantity)+'</td>'+
       '<td>'+money(g)+'</td><td>'+money(r2(g-before))+'</td>'+
       '<td>'+money(share)+'</td><td>'+money(r2(g-share))+'</td></tr>';
   }).join('');
@@ -686,6 +750,7 @@ function wire(){
     var tb=el('tyrows'); if(tb) tb.innerHTML=typeRows(e.target.value);
     each('[data-ei]',function(b){ b.onclick=function(){ editItem(b.getAttribute('data-ei')); }; });
   });
+  on('tyabsave','onclick',saveTypeAnnual);
   on('addfy','onclick',addFy); on('delfy','onclick',delFy);
   on('addtype','onclick',addType); on('additem','onclick',addItem);
   on('edittype','onclick',function(){ editType(type); });
@@ -842,19 +907,51 @@ function savePrice(id){
       render(); msg('prmsg','تم الحفظ الدائم — '+id);
     }).catch(function(){ msg('prmsg',offline()+' لم يُحفظ.',1); });
 }
+/* Saves the annual budget for one expense type, keeping whatever monthly
+   distribution already exists. The server refuses a figure below what has been
+   distributed, so the two can never disagree. */
+function saveTypeAnnual(){
+  if(!fy()||!type) return;
+  var v=num(el('tyab').value);
+  if(v===null||v<0){ msg('tyabmsg','أدخل مبلغًا صالحًا',1); return; }
+  var mm=months(type);
+  var sum=mm.reduce(function(a,b){ return a+(b==null?0:Number(b)); },0);
+  if(sum-v>0.005){
+    msg('tyabmsg','الموزَّع شهريًا '+money(sum)+' يتجاوز هذه الموازنة — عدّل التوزيع أولًا.',1);
+    return;
+  }
+  el('tyabsave').disabled=true;
+  api('upsertBudget',{source:'LIVE',budget:{fyId:'FY'+fy(),typeId:type,
+      annual:v,months:mm}})
+    .then(function(r){
+      el('tyabsave').disabled=false;
+      if(!r||r.ok!==true){ msg('tyabmsg',emsg(r),1); return; }
+      return reload().then(function(){
+        render();
+        msg('tyabmsg','حُفظت الموازنة السنوية لـ«'+typeBy(type).n+'» — '+money(v)+
+          '  ·  المتبقي للتوزيع '+money(r2(v-sum)));
+      });
+    })
+    .catch(function(){ el('tyabsave').disabled=false;
+      msg('tyabmsg',offline()+' لم يُحفظ.',1); });
+}
 function saveBudgets(){
   var jobs=[];
   S.types.forEach(function(t){
-    var ab=document.querySelector('[data-ab="'+t.id+'"]');
-    var annualV=ab?num(ab.value):null;
+    /* the annual figure comes from what is stored, never from this table */
+    var rec=annualRec(t.id);
+    var annualV=rec?rec.amount:null;
     var mm=[];
     for(var m=0;m<12;m++){
       var n=document.querySelector('[data-b="'+t.id+'|'+m+'"]');
       mm.push(n?num(n.value):null);
     }
     var sum=mm.reduce(function(a,b){ return a+(b==null?0:b); },0);
-    var had=annualRec(t.id);
-    if(annualV===null&&!mm.some(function(x){ return x!=null; })&&!had) return;
+    if(annualV===null&&!mm.some(function(x){ return x!=null; })) return;
+    if(annualV===null&&mm.some(function(x){ return x!=null; })){
+      jobs.push({fail:'«'+t.n+'»: أدخل الموازنة السنوية من «أنواع المصروفات» قبل التوزيع.'});
+      return;
+    }
     if(annualV!==null&&sum-annualV>0.005){
       jobs.push({fail:'«'+t.n+'»: مجموع الشهور '+money(sum)+' يتجاوز الموازنة السنوية '+money(annualV)});
       return;
@@ -953,9 +1050,11 @@ function saveInvoiceEdits(){
 }
 function addUser(){
   modal('إنشاء مستخدم',
-    '<div class="formrow"><label class="lbl">اسم المستخدم</label><input id="nu" class="field"></div>'+
+    '<div class="formrow"><label class="lbl">اسم المستخدم</label>'+
+    '<input id="nu" class="field" name="newusername" autocomplete="off"></div>'+
     '<div class="formrow"><label class="lbl">كلمة المرور — 8 أحرف على الأقل</label>'+
-    '<input id="np" class="field" type="password"></div>'+
+    '<input id="np" class="field" type="password" name="newuserpassword" '+
+    'autocomplete="new-password"></div>'+
     '<div class="formrow"><label class="lbl">الدور</label><select id="nr" class="field">'+
     '<option value="USER">User</option><option value="ADMIN">Admin</option></select></div>'+
     '<div class="notice">كلمة المرور تُرسل إلى الخادم وتُخزَّن مجزَّأة بملح. لا تُحفظ في المتصفح.</div>'+
