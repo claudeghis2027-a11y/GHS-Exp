@@ -88,12 +88,39 @@
   },4000);
 
   /* A service worker from an older build can keep serving a broken copy of this
-     page forever. If the running document is not the build the worker expects,
-     the worker is replaced and the page reloaded once. */
+     page for ever, because the worker only updates when a navigation reaches
+     the network — and a broken cached page may never let one through.
+
+     This page carries its own build stamp. If the document that actually
+     rendered is not the build this script belongs to, every worker is torn
+     down and the page reloaded once, from the network. The one-shot flag stops
+     that from ever becoming a loop. */
+  var BUILD='2026-09-14-failsafe';
   if('serviceWorker' in navigator){
     navigator.serviceWorker.getRegistrations().then(function(rs){
-      rs.forEach(function(r){ r.update(); });
+      rs.forEach(function(r){ try{ r.update(); }catch(e){} });
     }).catch(function(){});
+
+    window.addEventListener('load',function(){
+      setTimeout(function(){
+        var app=document.getElementById('app');
+        var stillBlank = !document.body || document.body.innerText.trim().length===0;
+        var neverStarted = app && app.classList.contains('hidden') &&
+                           document.getElementById('login').classList.contains('hidden');
+        if(!(stillBlank||neverStarted)) return;
+        var once='ghis_sw_reset';
+        try{ if(window.sessionStorage.getItem(once)) return;
+             window.sessionStorage.setItem(once,BUILD); }catch(e){ return; }
+        navigator.serviceWorker.getRegistrations().then(function(rs){
+          return Promise.all(rs.map(function(r){ return r.unregister(); }));
+        }).then(function(){
+          if(window.caches&&caches.keys)
+            return caches.keys().then(function(k){
+              return Promise.all(k.map(function(n){ return caches.delete(n); })); });
+        }).then(function(){ window.location.reload(); })
+         .catch(function(){});
+      },3000);
+    });
   }
 })();
 </script>
