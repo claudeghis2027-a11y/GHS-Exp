@@ -42,7 +42,9 @@
   .pdf-edits b{color:#123166}
   thead{display:table-header-group}         /* repeat the header on page 2+ */
   tr{page-break-inside:avoid}
-}<link rel="manifest" href="manifest.json">
+}
+</style>
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#123166">
 </head><body><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><form id="loginForm" autocomplete="on" onsubmit="return false"><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" name="username" class="field" type="text" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" name="password" class="field" type="password" value="" autocomplete="current-password"></div></form><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button><button data-p="settings">⚙️ إعدادات النظام</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><div id="printRoot"></div><script src="data.js"></script>
 <script>
