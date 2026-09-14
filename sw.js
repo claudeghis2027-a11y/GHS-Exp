@@ -16,7 +16,11 @@
    Other shell assets stay cache-first for speed; the versioned cache name is
    what retires them.
    ========================================================================== */
-var CACHE_VERSION = 'ghis-exp-v3';
+/* A stale worker from an older build is the one thing that can keep serving a
+   broken copy of index.html to a visitor for ever, because the worker itself
+   only updates when a navigation reaches the network. Raising this version
+   retires every previous cache the moment the new worker activates. */
+var CACHE_VERSION = 'ghis-exp-v4';
 var CACHE_NAME = CACHE_VERSION;
 var CACHE_PREFIX = 'ghis-exp-';
 
@@ -59,6 +63,18 @@ self.addEventListener('install', function (event) {
       .then(function () { return self.skipWaiting(); })
       .catch(function () { /* a failed pre-cache must never block installation */ })
   );
+});
+
+/* A worker that cannot serve a working page must not keep control of it.
+   Any client still holding an old build is reloaded once onto the new one. */
+self.addEventListener('message', function (event) {
+  if (event.data === 'GHIS_UNREGISTER') {
+    self.registration.unregister().then(function () {
+      return self.clients.matchAll({ type: 'window' });
+    }).then(function (cs) {
+      cs.forEach(function (c) { c.navigate(c.url); });
+    }).catch(function () {});
+  }
 });
 
 self.addEventListener('activate', function (event) {
