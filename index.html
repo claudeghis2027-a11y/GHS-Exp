@@ -145,6 +145,11 @@
 
 var API_URL='https://script.google.com/macros/s/AKfycbyrazoTuTjKkezqOdXFJP7Op-ihRyV_y7nxptD1PZa8Y_rPWG9EvqZixbQSMeDp46CE/exec';
 var TOKEN_KEY='ghis_exp_token';
+/* Which fiscal year the user had open. This is a screen preference, not data:
+   the figures still come from the sheet on every load, and the year is
+   discarded unless the server confirms it exists. Keeping it lets the very
+   first request name a year, which turns three round trips into one. */
+var FY_KEY='ghis_exp_fy';
 
 var TOKEN=null, USER=null;
 var page='home', type=null, month=0, report=null;
@@ -213,7 +218,18 @@ function readToken(){
 }
 function clearSession(){
   TOKEN=null; USER=null;
+  /* the token goes; the remembered year stays. It is a screen preference, not
+     a credential and not data — and keeping it means the next sign-in can name
+     a year on its first request instead of asking twice. It is discarded the
+     moment the server says that year no longer exists. */
   try{ window.localStorage.removeItem(TOKEN_KEY); }catch(e){}
+}
+function rememberYear(y){
+  try{ if(y) window.localStorage.setItem(FY_KEY,String(y));
+       else window.localStorage.removeItem(FY_KEY); }catch(e){}
+}
+function recallYear(){
+  try{ var v=Number(window.localStorage.getItem(FY_KEY)); return v||null; }catch(e){ return null; }
 }
 
 /* ---------- helpers, identical in behaviour to the prototype's ---------- */
@@ -423,7 +439,7 @@ function applyBoot(r){
     }
   }
   S.fy=(r.fiscalYears||[]).map(function(f){ return f.startYear; }).sort(function(a,b){ return a-b; });
-  if(S.currentFy&&S.fy.indexOf(S.currentFy)<0) S.currentFy=null;
+  if(S.currentFy&&S.fy.indexOf(S.currentFy)<0){ S.currentFy=null; rememberYear(null); }
   if(!S.currentFy&&S.fy.length) S.currentFy=S.fy[0];
   (r.types||[]).forEach(function(t){
     if(!S.types.some(function(x){ return x.id===t.id; }))
@@ -454,17 +470,22 @@ function applyBoot(r){
             status:v.status,edits:v.edits||[]}; });
 }
 function reload(){
-  /* On a refresh S.currentFy starts empty, so the first call cannot name a
-     year and the server rightly returns none of the year-scoped data. Asking
-     once more, now that the year list has arrived, is what makes a reload show
-     the same figures the sheet holds. */
-  return api('bootstrap',{fyId:S.currentFy?('FY'+S.currentFy):''})
+  /* The year is named on the first request whenever it is known — from the
+     current screen, or from the year the user last had open. A second request
+     is only needed the very first time a browser sees this system, when there
+     is genuinely no way to know which year to ask for. */
+  if(!S.currentFy){ var y=recallYear(); if(y) S.currentFy=y; }
+  var asked=S.currentFy;
+  return api('bootstrap',{fyId:asked?('FY'+asked):''})
     .then(function(r){
       if(!r||r.ok!==true) return r;
       applyBoot(r);
+      rememberYear(S.currentFy);
+      /* the remembered year was stale, or none was known: ask once for the
+         year the server actually settled on */
       if(S.currentFy && r.fyId!==('FY'+S.currentFy))
         return api('bootstrap',{fyId:'FY'+S.currentFy}).then(function(r2){
-          if(r2&&r2.ok===true) applyBoot(r2);
+          if(r2&&r2.ok===true){ applyBoot(r2); rememberYear(S.currentFy); }
           return r2||r;
         });
       return r;
@@ -936,8 +957,16 @@ function reportHtml(){
     '<button class="btn secondary" id="rxl">📊 Excel</button></div></div>';
 }
 
+var usersLoaded=false;
 function users(){
   if(!adm()) return '<div class="panel">'+note('هذه الشاشة للمشرف فقط.')+'</div>';
+  /* the user list costs a request, so it is fetched when this screen is first
+     opened rather than being paid for on every sign-in */
+  if(!usersLoaded){
+    usersLoaded=true;
+    loadUsers().then(function(){ if(page==='users') render(); })
+      .catch(function(){ usersLoaded=false; });
+  }
   return '<div class="panel"><div class="title"><h2>المستخدمين</h2>'+
     '<button class="btn" id="au">➕ إنشاء مستخدم</button></div><div id="usmsg"></div>'+
     '<div class="table"><table><thead><tr><th>اسم المستخدم</th><th>الدور</th>'+
@@ -1003,6 +1032,7 @@ function wire(){
   on('rt','onchange',function(e){ type=e.target.value; render(); });
   on('fysel','onchange',function(e){
     S.currentFy=Number(e.target.value)||null;
+    rememberYear(S.currentFy);
     reload().then(render).catch(function(){ msg('fymsg',offline(),1); });
   });
   on('tysearch','oninput',function(e){
@@ -1437,15 +1467,17 @@ function startSession(){
     showApp();
     page='home'; type=null;
     render();
-    if(adm()) loadUsers().then(function(){ if(page==='users') render(); });
   });
 }
 function boot(){
   var saved=readToken();
   if(!saved){ showLogin(); return Promise.resolve(); }
-  /* a stored token is a claim, not a credential: the server confirms it */
+  /* A stored token is a claim, not a credential — but bootstrap already
+     refuses an invalid one and returns the confirmed user with it, so asking
+     the server twice only doubled the wait. One request now does both. */
   TOKEN=saved;
-  return api('session',{token:saved})
+  if(!S.currentFy){ var y=recallYear(); if(y) S.currentFy=y; }
+  return api('bootstrap',{fyId:S.currentFy?('FY'+S.currentFy):''})
     .then(function(r){
       if(!r||r.ok!==true||!r.user){
         clearSession();
@@ -1453,7 +1485,16 @@ function boot(){
         return;
       }
       USER={username:r.user.username,role:r.user.role,id:r.user.userId};
-      return startSession();
+      applyBoot(r);
+      rememberYear(S.currentFy);
+      showApp();
+      page='home'; type=null;
+      render();                       /* the screen is up now, not after more waiting */
+      if(S.currentFy && r.fyId!==('FY'+S.currentFy))
+        api('bootstrap',{fyId:'FY'+S.currentFy}).then(function(r2){
+          if(r2&&r2.ok===true){ applyBoot(r2); rememberYear(S.currentFy); render(); }
+        }).catch(function(){});
+      return r;
     })
     .catch(function(){
       /* the network failed — the token is kept, but nothing is shown as
@@ -1466,9 +1507,13 @@ function doLogin(){
   var b=el('loginBtn');
   b.disabled=true;
   el('le').textContent='جارٍ التحقق…';
+  var slow=setTimeout(function(){
+    el('le').textContent='الخادم يستغرق وقتًا… أول طلب بعد فترة خمول يكون أبطأ.';
+  },3500);
+  var clearSlow=function(){ clearTimeout(slow); };
   api('login',{username:el('lu').value,password:el('lp').value})
     .then(function(r){
-      b.disabled=false;
+      clearSlow(); b.disabled=false;
       if(!r||r.ok!==true){ el('le').textContent=emsg(r); return; }
       storeToken(r.token);                 /* the token, and nothing else */
       USER={username:r.user.username,role:r.user.role,id:r.user.userId};
@@ -1476,10 +1521,11 @@ function doLogin(){
       el('le').textContent='';
       return startSession();
     })
-    .catch(function(){ b.disabled=false; el('le').textContent=offline(); });
+    .catch(function(){ clearSlow(); b.disabled=false; el('le').textContent=offline(); });
 }
 function doLogout(){
   var t=TOKEN;
+  usersLoaded=false;
   clearSession();
   S.currentFy=null; S.prices={}; S.limits={}; S.annual={}; S.monthly={};
   S.invoices=[]; S.executions=[]; S.users=[];
