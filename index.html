@@ -1,6 +1,6 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GHIS EXP</title><style>*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial;background:#f4f7fa;color:#17212b;direction:rtl}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center}.loginbox,.panel{background:#fff;border:1px solid #d9e1e8;border-radius:14px;box-shadow:0 5px 18px #12316612;padding:20px}.loginbox{width:380px}.logo{width:48px;height:48px;background:#123166;color:#fff;border-radius:12px;display:grid;place-items:center;font-weight:bold;margin:auto auto 10px}.loginbox{text-align:center}.field{border:1px solid #d9e1e8;border-radius:8px;padding:9px;width:100%;background:#fff}.formrow{text-align:right;margin:12px 0}.lbl{font-size:12px;font-weight:bold;color:#667788;display:block;margin-bottom:5px}.btn{border:0;border-radius:8px;padding:9px 12px;background:#123166;color:#fff;cursor:pointer;font-weight:bold}.btn.secondary{background:#fff;color:#123166;border:1px solid #d9e1e8}.btn.danger{background:#b42318}.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.sidebar{background:#fff;border-left:1px solid #d9e1e8;padding:16px;position:sticky;top:0;height:100vh}.brand{display:flex;gap:9px;align-items:center;border-bottom:1px solid #d9e1e8;padding-bottom:15px;margin-bottom:12px}.brand .logo{margin:0;width:40px;height:40px}.brand b{color:#123166}.brand small{display:block;color:#667788}.nav{display:grid;gap:4px}.nav button{border:0;background:none;text-align:right;padding:10px;border-radius:8px;cursor:pointer;color:#405a73;font-weight:bold}.nav button.active,.nav button:hover{background:#edf3f8;color:#123166}.main{min-width:0}.top{height:76px;background:#fff;border-bottom:1px solid #d9e1e8;padding:0 22px;display:flex;align-items:center}.top h1{margin:0;color:#123166}.content{padding:20px;max-width:1600px;margin:auto}.title{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px}.type{background:#fff;border:1px solid #d9e1e8;border-radius:12px;padding:15px;text-align:center;cursor:pointer}.type:hover{border-color:#7890a8}.icon{font-size:32px}.type h3{font-size:13px;margin:7px 0}.muted{font-size:11px;color:#667788}.table{overflow:auto;border:1px solid #d9e1e8;border-radius:9px}table{width:100%;border-collapse:collapse;min-width:700px}th,td{padding:8px;border-bottom:1px solid #d9e1e8;font-size:12px;text-align:right}th{background:#f7f9fb}.actions{display:flex;gap:6px;flex-wrap:wrap}.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{background:#fff;border:1px solid #d9e1e8;border-radius:10px;padding:13px}.stat small{color:#667788}.stat b{display:block;color:#123166;font-size:18px;margin-top:5px;direction:ltr}.toolbar{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.toolbar>div{min-width:160px;flex:1}.notice{padding:10px;background:#eff6ff;border-right:4px solid #123166;border-radius:7px;font-size:12px;margin:10px 0}.modalback{position:fixed;inset:0;background:#10203366;display:grid;place-items:center;padding:20px;z-index:20}.modal{background:#fff;border-radius:13px;padding:18px;width:min(850px,95vw);max-height:90vh;overflow:auto}.modalhead{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#eee;padding:7px;border-radius:7px}.sub{margin-top:15px;border-top:1px solid #d9e1e8;padding-top:15px}@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.statgrid{grid-template-columns:1fr 1fr}}@media print{.sidebar,.top,.no-print{display:none!important}.content{padding:0}.panel{box-shadow:none;border:0}}</style><link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#123166">
-</head><body><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><form id="loginForm" autocomplete="on" onsubmit="return false"><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" name="username" class="field" type="text" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" name="password" class="field" type="password" value="" autocomplete="current-password"></div></form><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="settings">⚙️ إعدادات النظام</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><script src="data.js"></script>
+</head><body><div id="login" class="login hidden"><div class="loginbox"><div class="logo">GE</div><h2>GHIS EXP</h2><p>نظام المصروفات</p><form id="loginForm" autocomplete="on" onsubmit="return false"><div class="formrow"><label class="lbl">اسم المستخدم</label><input id="lu" name="username" class="field" type="text" value="" autocomplete="username"></div><div class="formrow"><label class="lbl">كلمة المرور</label><input id="lp" name="password" class="field" type="password" value="" autocomplete="current-password"></div></form><div id="le" style="color:#b42318;font-size:12px;min-height:18px"></div><button id="loginBtn" class="btn" style="width:100%">دخول</button></div></div><div id="app" class="shell hidden"><aside class="sidebar"><div class="brand"><div class="logo">GE</div><div><b>GHIS EXP</b><small>نظام المصروفات</small></div></div><nav class="nav"><button data-p="home">🏠 الرئيسية</button><button data-p="types">📂 أنواع المصروفات</button><button data-p="prices">💰 الأسعار والكميات</button><button data-p="budgets">📊 توزيع الميزانيات شهريًا</button><button data-p="distribution">📦 توزيع الكميات</button><button data-p="invoices">🧾 طباعة الفواتير</button><button data-p="reports">📈 التقارير</button><button data-p="users">👥 المستخدمين</button><button data-p="settings">⚙️ إعدادات النظام</button></nav><div style="position:absolute;bottom:15px;display:flex;gap:8px;align-items:center">المستخدم: <b id="who"></b><button class="btn secondary" id="logout">خروج</button></div></aside><main class="main"><header class="top"><h1 id="title">الرئيسية</h1></header><div id="content" class="content"></div></main></div><div id="modalback" class="modalback hidden"><div id="modal"></div></div><script src="data.js"></script>
 <script>
 /* ============================================================================
    GHIS EXP — production frontend.
@@ -168,6 +168,53 @@ function eligible(t,m){
   });
   return {eligible:out,skipped:skipped};
 }
+/* Shares the priced lines across `want` invoices, aiming at an equal value per
+   invoice. Quantities are only ever moved as whole units, so an item priced at
+   250 contributes 250 at a time; an invoice is filled until adding another unit
+   would take it past its target, then the next one starts. Any remainder lands
+   on the last invoice, so the totals always add back up to the run. */
+function splitIntoInvoices(lines,want){
+  var n=Math.max(1,Math.floor(Number(want)||1));
+  var totalUnits=lines.reduce(function(a,l){ return a+l.quantity; },0);
+  if(n>totalUnits) n=totalUnits;            /* cannot split a unit in half */
+  if(n<=1) return [{seq:1,lines:lines.map(function(l){
+    return {id:l.id,name:l.name,unit:l.unit,price:l.price,quantity:l.quantity}; })}];
+
+  var grand=lines.reduce(function(a,l){ return a+l.price*l.quantity; },0);
+  var target=grand/n;
+
+  /* one entry per unit, cheapest item first so the fill is smooth */
+  var queue=[];
+  lines.slice().sort(function(a,b){ return a.price-b.price; })
+    .forEach(function(l){
+      for(var q=0;q<l.quantity;q++)
+        queue.push({id:l.id,name:l.name,unit:l.unit,price:l.price});
+    });
+
+  var invs=[],cur=null,curVal=0,made=0;
+  function open(){ cur={seq:made+1,lines:[],_ix:{}}; invs.push(cur); made++; curVal=0; }
+  open();
+  for(var i=0;i<queue.length;i++){
+    var u=queue[i];
+    var unitsLeft=queue.length-i;
+    var invoicesLeft=n-made;
+    /* move on when this invoice has had its share, but never leave a later
+       invoice with nothing to put in it */
+    if(invoicesLeft>0 && curVal>0 && curVal+u.price>target+0.004 &&
+       unitsLeft>invoicesLeft) open();
+    else if(invoicesLeft>0 && unitsLeft===invoicesLeft && curVal>0) open();
+    if(cur._ix[u.id]==null){
+      cur._ix[u.id]=cur.lines.length;
+      cur.lines.push({id:u.id,name:u.name,unit:u.unit,price:u.price,quantity:0});
+    }
+    cur.lines[cur._ix[u.id]].quantity++;
+    curVal=r2(curVal+u.price);
+  }
+  invs.forEach(function(x){ delete x._ix; });
+  invs=invs.filter(function(x){ return x.lines.length; });
+  invs.forEach(function(x,i){ x.seq=i+1; });
+  return invs;
+}
 function distribute(t,m,invoiceCount){
   var budget=mb(t,m);
   if(!(budget>0)) return {ok:false,reason:'NO_MONTHLY_BUDGET'};
@@ -221,11 +268,15 @@ function distribute(t,m,invoiceCount){
   var gross=r2(lines.reduce(function(a,l){ return a+l.price*l.quantity; },0));
   var net=r2(gross-discount);
   var before=r2(net/(1+S.vat)), tax=r2(net-before);
-  var invs=[];
-  for(var v=0;v<n;v++) invs.push({seq:v+1,lines:[]});
-  lines.forEach(function(l,i){ invs[i%n].lines.push(l); });
-  invs=invs.filter(function(x){ return x.lines.length; });
+  /* Split across the requested number of invoices by VALUE, not by item.
+     Handing each distinct item to a different invoice caps the count at the
+     number of items, so asking for five invoices of two items produced two.
+     Here every invoice gets a share of the total, and a single item's quantity
+     is broken across invoices when that is what it takes to fill them. Units
+     stay whole, and no invoice is created empty or duplicated. */
+  var invs=splitIntoInvoices(lines,n);
   return {ok:true,typeId:t,month:m,budget:r2(budget),lines:lines,invoices:invs,
+    requestedInvoices:Number(invoiceCount)||1,
     gross:gross,discount:discount,net:net,tax:tax,before:before,
     difference:r2(net-budget),filler:filler,skipped:pool.skipped,
     itemCount:lines.length,unitCount:lines.reduce(function(a,l){ return a+l.quantity; },0)};
@@ -987,7 +1038,14 @@ function startRun(){
     return;
   }
   runResult=r; render();
-  msg('dmsg',r.itemCount+' صنف · '+r.unitCount+' وحدة · '+r.invoices.length+' فاتورة — راجع ثم اعتمد.');
+  var short = r.invoices.length < r.requestedInvoices;
+  msg('dmsg',
+    r.itemCount+' صنف · '+r.unitCount+' وحدة · '+r.invoices.length+' فاتورة — راجع ثم اعتمد.'+
+    /* when the data cannot be cut that finely, say so rather than quietly
+       producing fewer invoices than were asked for */
+    (short?('  ⚠️ طُلب '+r.requestedInvoices+' فاتورة، والكميات المتاحة ('+
+      r.unitCount+' وحدة) لا تسمح بأكثر من '+r.invoices.length+'.'):''),
+    short?1:0);
 }
 function approveRun(){
   if(!runResult) return;
