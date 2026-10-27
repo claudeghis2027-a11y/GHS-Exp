@@ -16,6 +16,8 @@
    are pinned instead of scrolling away: the expense type on the right, and the
    total and remainder on the left, where a right-to-left table puts its end. */
 .field.money{min-width:104px;text-align:left;direction:ltr}
+/* grouped figures read left to right even inside a right-to-left table */
+td.num{direction:ltr;text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums}
 .budget-table{position:relative}
 .budget-table table{border-collapse:separate;border-spacing:0}
 .budget-table th,.budget-table td{background:#fff}
@@ -323,6 +325,14 @@ function fyLabel(){ return S.currentFy?(S.currentFy+'/'+(S.currentFy+1)):'—'; 
 function money(n){
   n=Number(n)||0;
   return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+/* Quantities and ceilings are whole units, so they get the thousands grouping
+   but no decimals: 29,473 rather than 29,473.00. Amounts keep money(). */
+function qty(n){
+  if(n===null||n===undefined||n==='') return '';
+  var v=Number(n);
+  if(isNaN(v)) return String(n);
+  return v.toLocaleString('en-US',{maximumFractionDigits:0});
 }
 function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -736,7 +746,7 @@ function prices(){
           '<td><input class="field" data-a="'+esc(i.id)+'" type="number" inputmode="numeric" '+
             'name="amax_'+esc(i.id)+'" autocomplete="off" data-lpignore="true" '+
             'data-form-type="other" value="'+(l.annualMax==null?'':l.annualMax)+'"></td>'+
-          '<td class="muted">'+executedQty(i.id)+'</td>'+
+          '<td class="muted">'+qty(executedQty(i.id))+'</td>'+
           '<td class="muted" data-st="'+esc(i.id)+'">—</td></tr>';
       }).join('')+'</tbody></table></div>'+
       '<div class="toolbar no-print" style="margin-top:10px">'+
@@ -823,7 +833,8 @@ function reviewHtml(){
       return '<div class="title" style="margin-top:10px"><h2>فاتورة '+(k+1)+'</h2>'+
         '<span class="muted">'+money(g)+'</span></div>'+
         tbl(['البند','الوحدة','سعر الوحدة','الكمية','إجمالي المبلغ'],
-          v.lines.map(function(l){ return [l.name,l.unit,l.price,l.quantity,r2(l.price*l.quantity)]; }));
+          v.lines.map(function(l){ return [l.name,l.unit,money(l.price),qty(l.quantity),
+            money(r2(l.price*l.quantity))]; }));
     }).join('')+
     (Math.abs(r.difference)>0.005?note('الفرق '+money(r.difference)+' — راجع الحدود قبل الاعتماد.')
       :note('الصافي يطابق موازنة الشهر بالضبط. لا يُسجَّل شيء قبل الاعتماد.'));
@@ -867,7 +878,7 @@ function invoiceHtml(v){
       '<td>'+money(l.price)+'</td>'+
       '<td>'+(adm()?('<input class="field" data-iq="'+esc(l.itemId)+'" type="number" inputmode="numeric" '+
       'name="qty_'+esc(l.itemId)+'" autocomplete="off" data-lpignore="true" '+
-      'data-form-type="other" value="'+l.quantity+'" style="max-width:90px">'):l.quantity)+'</td>'+
+      'data-form-type="other" value="'+l.quantity+'" style="max-width:90px">'):qty(l.quantity))+'</td>'+
       '<td>'+money(g)+'</td><td>'+money(r2(g-before))+'</td>'+
       '<td>'+money(share)+'</td><td>'+money(r2(g-share))+'</td></tr>';
   }).join('');
@@ -892,7 +903,7 @@ function invoiceHtml(v){
     ((v.edits&&v.edits.length)?'<div class="sub"><div class="muted">'+
       v.edits.map(function(e){
         return esc(String(e.at||'').slice(0,16).replace('T',' ')+' · '+e.by+' · '+
-          e.itemId+': '+e.oldValue+' → '+e.newValue+' · '+e.reason); }).join('<br>')+'</div></div>':'')+
+          e.itemId+': '+qty(e.oldValue)+' → '+qty(e.newValue)+' · '+e.reason); }).join('<br>')+'</div></div>':'')+
     '<div class="actions no-print" style="margin-top:12px">'+
     '<button class="btn secondary" id="iprint">🖨️ طباعة</button>'+
     '<button class="btn secondary" data-pdf="'+esc(v.id)+'">📄 تحميل PDF</button>'+
@@ -922,7 +933,7 @@ function pdfHtml(v){
     return '<tr><td>'+esc(l.itemName)+'</td>'+
       '<td>'+esc(l.unit||'—')+'</td>'+
       '<td class="num">'+money(l.price)+'</td>'+
-      '<td class="num">'+l.quantity+'</td>'+
+      '<td class="num">'+qty(l.quantity)+'</td>'+
       '<td class="num">'+money(g)+'</td>'+
       '<td class="num">'+money(r2(g-before))+'</td>'+
       '<td class="num">'+money(share)+'</td>'+
@@ -954,7 +965,7 @@ function pdfHtml(v){
   ((v.edits&&v.edits.length)?('<div class="pdf-edits"><b>تعديلات مسجَّلة:</b><br>'+
     v.edits.map(function(e){
       return esc(String(e.at||'').slice(0,16).replace('T',' ')+' · '+e.by+' · '+
-        e.itemId+': '+e.oldValue+' → '+e.newValue+' · '+e.reason); }).join('<br>')+
+        e.itemId+': '+qty(e.oldValue)+' → '+qty(e.newValue)+' · '+e.reason); }).join('<br>')+
     '</div>'):'')+
   '<div class="pdf-foot">'+
     '<span>'+(v.approvedBy?('اعتمدها: '+esc(v.approvedBy)+(approved?('  ·  '+esc(approved)):'')):'—')+'</span>'+
@@ -1025,10 +1036,10 @@ function reportData(kind){
       body:items(t0).map(function(i){
         var p=priceOf(i.id)||{},l=limitOf(i.id)||{};
         var ex=executedQty(i.id,month);
-        return [i.n,p.unit||'—',p.price==null?'—':p.price,
-          l.monthlyMax==null?'—':String(l.monthlyMax),
-          l.annualMax==null?'—':String(l.annualMax),
-          String(ex), l.annualMax==null?'—':String(l.annualMax-ex)];
+        return [i.n,p.unit||'—',p.price==null?'—':money(p.price),
+          l.monthlyMax==null?'—':qty(l.monthlyMax),
+          l.annualMax==null?'—':qty(l.annualMax),
+          qty(ex), l.annualMax==null?'—':qty(l.annualMax-ex)];
       })};
   }
   return {title:'تنفيذ المبالغ',
@@ -1342,7 +1353,7 @@ function rowError(r){
     return 'الحد الشهري أكبر من السنوي';
   var done=executedQty(r.id);
   if(r.annualMax!==null&&done>r.annualMax)
-    return 'الحد السنوي ('+r.annualMax+') أقل من المنفَّذ ('+done+')';
+    return 'الحد السنوي ('+qty(r.annualMax)+') أقل من المنفَّذ ('+qty(done)+')';
   return null;
 }
 function setRowState(id,text,bad){
@@ -1600,11 +1611,11 @@ function startRun(){
   runResult=r; render();
   var short = r.invoices.length < r.requestedInvoices;
   msg('dmsg',
-    r.itemCount+' صنف · '+r.unitCount+' وحدة · '+r.invoices.length+' فاتورة — راجع ثم اعتمد.'+
+    qty(r.itemCount)+' صنف · '+qty(r.unitCount)+' وحدة · '+r.invoices.length+' فاتورة — راجع ثم اعتمد.'+
     /* when the data cannot be cut that finely, say so rather than quietly
        producing fewer invoices than were asked for */
     (short?('  ⚠️ طُلب '+r.requestedInvoices+' فاتورة، والكميات المتاحة ('+
-      r.unitCount+' وحدة) لا تسمح بأكثر من '+r.invoices.length+'.'):''),
+      qty(r.unitCount)+' وحدة) لا تسمح بأكثر من '+r.invoices.length+'.'):''),
     short?1:0);
 }
 function approveRun(){
