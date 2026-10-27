@@ -10,11 +10,37 @@
    from leaking into another invoice's file.
    ========================================================================== */
 #printRoot{display:none}
-/* Money columns need room for a figure like 1,200,000.00 — the approved
-   .field is sized for short inputs, so only the width changes here. */
-.field.money{min-width:112px;text-align:left;direction:ltr}
+/* A year is sixteen columns wide: the name, the annual figure, twelve months
+   and the two that matter most — the total and what is left. No screen fits
+   that, so the table scrolls sideways. The three columns you need while typing
+   are pinned instead of scrolling away: the expense type on the right, and the
+   total and remainder on the left, where a right-to-left table puts its end. */
+.field.money{min-width:104px;text-align:left;direction:ltr}
+.budget-table{position:relative}
+.budget-table table{border-collapse:separate;border-spacing:0}
+.budget-table th,.budget-table td{background:#fff}
+.budget-table thead th{background:#f7f9fb}
+/* the expense type, pinned to the start of the row */
+.budget-table th.pin-name,.budget-table td.pin-name{
+  position:sticky;right:0;z-index:3;min-width:160px;
+  box-shadow:-1px 0 0 #d9e1e8}
+.budget-table thead th.pin-name{z-index:5}
+/* the total and the remainder, pinned to the end */
+.budget-table th.pin-left,.budget-table td.pin-left{
+  position:sticky;z-index:3;white-space:nowrap;text-align:left;direction:ltr;
+  font-variant-numeric:tabular-nums}
+.budget-table th.pin-sum,.budget-table td.pin-sum{left:118px;
+  box-shadow:1px 0 0 #d9e1e8}
+.budget-table th.pin-left2,.budget-table td.pin-left2{left:0}
+.budget-table thead th.pin-left{z-index:5}
+.budget-table td.pin-left{font-weight:600;color:#123166}
+.budget-table td.pin-left.over{color:#b42318}
 td.total{white-space:nowrap;text-align:left;direction:ltr;font-variant-numeric:tabular-nums}
 td.total.over{color:#b42318;font-weight:bold}
+@media (max-width:700px){
+  .budget-table th.pin-name,.budget-table td.pin-name{min-width:120px}
+  .budget-table th.pin-sum,.budget-table td.pin-sum{left:104px}
+}
 
 /* ---------------------------------------------------------------------------
    LOADING — shown from the first painted frame until the application or the
@@ -726,9 +752,11 @@ function budgets(){
   var locked=!adm();
   return '<div class="panel"><div class="title"><h2>توزيع الميزانيات شهريًا</h2>'+
     '<span class="muted">'+esc(fyLabel())+'</span></div><div id="bumsg"></div>'+
-    '<div class="table"><table><thead><tr><th>نوع المصروف</th><th>الموازنة السنوية</th>'+
+    '<div class="table budget-table"><table><thead><tr>'+
+    '<th class="pin-name">نوع المصروف</th><th>الموازنة السنوية</th>'+
     M.map(function(x){ return '<th>'+esc(x)+'</th>'; }).join('')+
-    '<th>الإجمالي</th><th>المتبقي</th></tr></thead><tbody>'+
+    '<th class="pin-left pin-sum">الإجمالي</th>'+
+    '<th class="pin-left pin-left2">المتبقي</th></tr></thead><tbody>'+
     S.types.map(function(t){
       var mm=months(t.id);
       var total=mm.reduce(function(a,b){ return a+(b==null?0:Number(b)); },0);
@@ -736,7 +764,7 @@ function budgets(){
       var ro=(rec&&rec.locked&&locked)?' disabled':'';
       /* The annual budget is not re-typed here. It is shown as it was entered
          on the expense type, so one figure cannot drift into two. */
-      return '<tr><td><b>'+icon(t.id)+' '+esc(t.n)+'</b></td>'+
+      return '<tr><td class="pin-name"><b>'+icon(t.id)+' '+esc(t.n)+'</b></td>'+
         '<td><input class="field money" type="text" value="'+(rec?money(rec.amount):'—')+'" '+
         'name="annualview_'+esc(t.id)+'" autocomplete="off" data-lpignore="true" '+
         'data-form-type="other" disabled title="يُدخَل من «أنواع المصروفات»"></td>'+
@@ -747,8 +775,9 @@ function budgets(){
             (v==null?'':v)+'"></td>'; }).join('')+
         /* these two follow every keystroke, so the figures are true before the
            save is pressed rather than after it */
-        '<td class="total" data-sum="'+esc(t.id)+'">'+money(total)+'</td>'+
-        '<td class="total" data-left="'+esc(t.id)+'">'+money(r2(annual(t.id)-total))+'</td></tr>';
+        '<td class="pin-left pin-sum" data-sum="'+esc(t.id)+'">'+money(total)+'</td>'+
+        '<td class="pin-left pin-left2" data-left="'+esc(t.id)+'">'+
+          money(r2(annual(t.id)-total))+'</td></tr>';
     }).join('')+'</tbody></table></div>'+
     note('عمود «الموازنة السنوية» يُملأ تلقائيًا مما سُجِّل في «أنواع المصروفات» — لا يُكتب هنا. '+
       'أدخل التوزيع الشهري فقط، ومجموعه لا يتجاوز الموازنة السنوية.')+
@@ -1474,8 +1503,10 @@ function paintRowTotal(typeId){
   if(lc){
     lc.textContent=money(left);
     /* a negative remainder is the one thing that will be refused, so it is
-       marked here rather than waiting for the server to say so */
-    lc.className = left < -0.005 ? 'total over' : 'total';
+       marked here rather than waiting for the server to say so. The pinning
+       classes have to survive the repaint, so only 'over' is toggled. */
+    if(left < -0.005) lc.classList.add('over');
+    else lc.classList.remove('over');
   }
   return {sum:r2(sum),left:left,changed:monthsChanged(typeId,mm)};
 }
