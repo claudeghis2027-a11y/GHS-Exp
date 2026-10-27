@@ -1875,7 +1875,7 @@ el('modalback').onclick=function(e){ if(e.target===el('modalback')) closeM(); };
 boot();
 
 /* the app is exposed for testing only; nothing here grants any authority */
-window.GHIS={ go:go, render:render, state:S,
+window.GHIS={ go:go, render:render, state:S, reload:reload,
   user:function(){ return USER; }, isAdmin:adm,
   token:function(){ return TOKEN; },
   login:doLogin, logout:doLogout, boot:boot,
