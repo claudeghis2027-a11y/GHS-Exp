@@ -10,6 +10,11 @@
    from leaking into another invoice's file.
    ========================================================================== */
 #printRoot{display:none}
+/* Money columns need room for a figure like 1,200,000.00 — the approved
+   .field is sized for short inputs, so only the width changes here. */
+.field.money{min-width:112px;text-align:left;direction:ltr}
+td.total{white-space:nowrap;text-align:left;direction:ltr;font-variant-numeric:tabular-nums}
+td.total.over{color:#b42318;font-weight:bold}
 
 /* ---------------------------------------------------------------------------
    LOADING — shown from the first painted frame until the application or the
@@ -691,7 +696,7 @@ function prices(){
     }).join('')+'</div>'+
     (type?'<div class="sub"><div class="table"><table><thead><tr><th>البند</th><th>الوحدة</th>'+
       '<th>سعر الوحدة</th><th>الحد الأقصى الشهري</th><th>الحد الأقصى السنوي</th>'+
-      '<th>المنفَّذ</th><th>حفظ</th></tr></thead><tbody>'+
+      '<th>المنفَّذ</th><th>الحالة</th></tr></thead><tbody>'+
       items(type).map(function(i){
         var p=priceOf(i.id)||{},l=limitOf(i.id)||{};
         return '<tr><td>'+esc(i.n)+'<div class="muted">'+esc(i.id)+'</div></td>'+
@@ -706,8 +711,13 @@ function prices(){
             'name="amax_'+esc(i.id)+'" autocomplete="off" data-lpignore="true" '+
             'data-form-type="other" value="'+(l.annualMax==null?'':l.annualMax)+'"></td>'+
           '<td class="muted">'+executedQty(i.id)+'</td>'+
-          '<td><button class="btn" data-sp="'+esc(i.id)+'">حفظ</button></td></tr>';
-      }).join('')+'</tbody></table></div></div>':'')+
+          '<td class="muted" data-st="'+esc(i.id)+'">—</td></tr>';
+      }).join('')+'</tbody></table></div>'+
+      '<div class="toolbar no-print" style="margin-top:10px">'+
+      '<button class="btn" id="prSaveAll">💾 حفظ كل التعديلات</button>'+
+      '<button class="btn secondary" id="prReset">↩ تراجع عن التعديلات</button>'+
+      '<span class="muted" id="prCount">عدّل ما تشاء ثم احفظ مرة واحدة.</span>'+
+      '</div></div>':'')+
     '</div>';
 }
 
@@ -727,20 +737,25 @@ function budgets(){
       /* The annual budget is not re-typed here. It is shown as it was entered
          on the expense type, so one figure cannot drift into two. */
       return '<tr><td><b>'+icon(t.id)+' '+esc(t.n)+'</b></td>'+
-        '<td><input class="field" type="text" value="'+(rec?money(rec.amount):'—')+'" '+
+        '<td><input class="field money" type="text" value="'+(rec?money(rec.amount):'—')+'" '+
         'name="annualview_'+esc(t.id)+'" autocomplete="off" data-lpignore="true" '+
         'data-form-type="other" disabled title="يُدخَل من «أنواع المصروفات»"></td>'+
         mm.map(function(v,m){
-          return '<td><input class="field" data-b="'+esc(t.id)+'|'+m+'" type="number" '+
+          return '<td><input class="field money" data-b="'+esc(t.id)+'|'+m+'" type="number" '+
             'inputmode="decimal" step=".01" name="m'+m+'_'+esc(t.id)+'" autocomplete="off" '+
             'data-lpignore="true" data-form-type="other" value="'+
             (v==null?'':v)+'"></td>'; }).join('')+
-        '<td>'+money(total)+'</td><td>'+money(r2(annual(t.id)-total))+'</td></tr>';
+        /* these two follow every keystroke, so the figures are true before the
+           save is pressed rather than after it */
+        '<td class="total" data-sum="'+esc(t.id)+'">'+money(total)+'</td>'+
+        '<td class="total" data-left="'+esc(t.id)+'">'+money(r2(annual(t.id)-total))+'</td></tr>';
     }).join('')+'</tbody></table></div>'+
     note('عمود «الموازنة السنوية» يُملأ تلقائيًا مما سُجِّل في «أنواع المصروفات» — لا يُكتب هنا. '+
       'أدخل التوزيع الشهري فقط، ومجموعه لا يتجاوز الموازنة السنوية.')+
-    '<div class="actions no-print" style="margin-top:10px">'+
-    '<button class="btn" id="saveb">💾 حفظ</button>'+
+    '<div class="toolbar no-print" style="margin-top:10px">'+
+    '<button class="btn" id="saveb">💾 حفظ كل التعديلات</button>'+
+    '<button class="btn secondary" id="buReset">↩ تراجع عن التعديلات</button>'+
+    '<span class="muted" id="buCount">عدّل ما تشاء ثم احفظ مرة واحدة.</span>'+
     '<button class="btn secondary" id="printb">🖨️ طباعة</button>'+
     '<button class="btn secondary" id="xlb">📊 Excel</button></div></div>';
 }
@@ -1075,10 +1090,17 @@ function on(id,ev,fn){ var n=el(id); if(n) n[ev]=fn; }
 function wire(){
   each('[data-t]',function(b){ b.onclick=function(){ type=b.getAttribute('data-t'); runResult=null; render(); }; });
   each('[data-ei]',function(b){ b.onclick=function(){ editItem(b.getAttribute('data-ei')); }; });
-  each('[data-sp]',function(b){ b.onclick=function(){ savePrice(b.getAttribute('data-sp')); }; });
+  on('prSaveAll','onclick',saveAllPrices);
+  on('prReset','onclick',function(){ render(); msg('prmsg','رُجِعت القيم إلى المحفوظ على الخادم.'); });
+  /* keep a live count of what is pending, so the save button is never a guess */
+  ['data-p','data-m','data-a'].forEach(function(at){
+    each('['+at+']',function(i){ i.oninput=countChanges; });
+  });
+  each('[data-ux]',function(i){ i.oninput=countChanges; });
   each('[data-u]',function(s){ s.onchange=function(){
     var x=document.querySelector('[data-ux="'+s.getAttribute('data-u')+'"]');
-    if(x) x.style.display = s.value==='__OTHER__' ? '' : 'none'; }; });
+    if(x) x.style.display = s.value==='__OTHER__' ? '' : 'none';
+    countChanges(); }; });
   each('[data-oi]',function(b){ b.onclick=function(){ openInvoice(b.getAttribute('data-oi')); }; });
   each('[data-pdf]',function(b){ b.onclick=function(){ downloadPdf(b.getAttribute('data-pdf')); }; });
   each('[data-r]',function(b){ b.onclick=function(){ report=b.getAttribute('data-r'); render(); }; });
@@ -1104,6 +1126,16 @@ function wire(){
   on('addtype','onclick',addType); on('additem','onclick',addItem);
   on('edittype','onclick',function(){ editType(type); });
   on('saveb','onclick',saveBudgets);
+  on('buReset','onclick',function(){ render(); msg('bumsg','رُجِعت القيم إلى المحفوظ على الخادم.'); });
+  /* every keystroke in a month cell repaints that row's total and remainder */
+  each('[data-b]',function(i){
+    i.oninput=function(){
+      var id=String(i.getAttribute('data-b')).split('|')[0];
+      paintRowTotal(id);
+      paintAllTotals();
+    };
+  });
+  if(page==='budgets') paintAllTotals();
   on('printb','onclick',function(){ window.print(); });
   on('xlb','onclick',exportBudgets);
   on('start','onclick',startRun); on('approve','onclick',approveRun);
@@ -1241,6 +1273,124 @@ function editItem(id){
     }).catch(function(){ closeM(); msg('tymsg',offline(),1); });
   });
 }
+/* ============================================================================
+   BULK PRICE SAVE
+
+   The whole table is edited freely and saved once. Two things make that safe
+   and quick: every row is checked before anything is sent, so a single bad
+   figure never leaves half the table saved; and only the rows that actually
+   changed are sent, because the backend serialises every request behind one
+   lock and sending unchanged rows would simply cost time.
+   ========================================================================== */
+function readRow(id){
+  function g(a){ return document.querySelector('['+a+'="'+id+'"]'); }
+  var uSel=g('data-u'), uCustom=g('data-ux');
+  if(!uSel) return null;
+  var unit = uSel.value==='__OTHER__' ? String((uCustom||{}).value||'').trim() : uSel.value;
+  return { id:id, unit:unit,
+           price:num((g('data-p')||{}).value),
+           monthlyMax:num((g('data-m')||{}).value),
+           annualMax:num((g('data-a')||{}).value) };
+}
+function rowChanged(r){
+  var p=priceOf(r.id)||{}, l=limitOf(r.id)||{};
+  var was={unit:p.unit||'',price:p.price==null?null:Number(p.price),
+           monthlyMax:l.monthlyMax==null?null:Number(l.monthlyMax),
+           annualMax:l.annualMax==null?null:Number(l.annualMax)};
+  return was.unit!==(r.unit||'') || was.price!==r.price ||
+         was.monthlyMax!==r.monthlyMax || was.annualMax!==r.annualMax;
+}
+function rowError(r){
+  /* a row left completely empty is simply untouched, not an error */
+  if(!r.unit && r.price===null && r.monthlyMax===null && r.annualMax===null) return null;
+  if(!r.unit) return 'الوحدة مطلوبة';
+  if(r.price===null||r.price<0) return 'سعر غير صالح';
+  if(r.monthlyMax!==null&&(r.monthlyMax<0||r.monthlyMax!==Math.floor(r.monthlyMax)))
+    return 'حد شهري غير صالح';
+  if(r.annualMax!==null&&(r.annualMax<0||r.annualMax!==Math.floor(r.annualMax)))
+    return 'حد سنوي غير صالح';
+  if(r.monthlyMax!==null&&r.annualMax!==null&&r.monthlyMax>r.annualMax)
+    return 'الحد الشهري أكبر من السنوي';
+  var done=executedQty(r.id);
+  if(r.annualMax!==null&&done>r.annualMax)
+    return 'الحد السنوي ('+r.annualMax+') أقل من المنفَّذ ('+done+')';
+  return null;
+}
+function setRowState(id,text,bad){
+  var c=document.querySelector('[data-st="'+id+'"]');
+  if(!c) return;
+  c.textContent=text;
+  c.className = bad ? 'mi-warn' : 'muted';
+}
+function countChanges(){
+  if(!type) return;
+  var n=0;
+  items(type).forEach(function(i){
+    var r=readRow(i.id);
+    if(r&&rowChanged(r)) n++;
+  });
+  var c=el('prCount');
+  if(c) c.textContent = n ? (n+' صنف معدَّل — اضغط حفظ.') : 'عدّل ما تشاء ثم احفظ مرة واحدة.';
+}
+function saveAllPrices(){
+  if(!fy()||!type) return;
+  var rows=[],bad=[];
+  items(type).forEach(function(i){
+    var r=readRow(i.id);
+    if(!r) return;
+    var e=rowError(r);
+    if(e){ bad.push({id:i.id,name:i.n,why:e}); setRowState(i.id,e,1); return; }
+    if(rowChanged(r)){ rows.push(r); setRowState(i.id,'بانتظار الحفظ'); }
+    else setRowState(i.id,'—');
+  });
+  /* nothing is sent while any row is wrong, so the table cannot end up half saved */
+  if(bad.length){
+    msg('prmsg','صحّح '+bad.length+' صنفًا أولًا: '+
+      bad.slice(0,3).map(function(b){ return '«'+b.name+'» '+b.why; }).join('  ·  ')+
+      (bad.length>3?('  … و'+(bad.length-3)+' غيرها'):''),1);
+    return;
+  }
+  if(!rows.length){ msg('prmsg','لا يوجد تعديل للحفظ.'); return; }
+
+  var btn=el('prSaveAll'); if(btn) btn.disabled=true;
+  var reset=el('prReset'); if(reset) reset.disabled=true;
+  var done=0,failed=null;
+  /* sequential on purpose: the server takes one lock per request, so parallel
+     calls would queue anyway and only make the failure point harder to read */
+  var chain=Promise.resolve();
+  rows.forEach(function(r){
+    chain=chain.then(function(){
+      if(failed) return;
+      msg('prmsg','جارٍ الحفظ… '+(done+1)+' من '+rows.length);
+      setRowState(r.id,'جارٍ الحفظ…');
+      return api('savePrice',{fyId:'FY'+fy(),price:{itemId:r.id,unit:r.unit,
+          price:r.price,monthlyMax:r.monthlyMax,annualMax:r.annualMax}})
+        .then(function(res){
+          if(!res||res.ok!==true){ failed={row:r,res:res}; setRowState(r.id,emsg(res),1); return; }
+          /* the screen follows the server, one confirmed row at a time */
+          S.prices[r.id]={unit:r.unit,price:r.price};
+          S.limits[r.id]={monthlyMax:r.monthlyMax,annualMax:r.annualMax};
+          done++; setRowState(r.id,'محفوظ');
+        });
+    });
+  });
+  chain.then(function(){
+    if(btn) btn.disabled=false;
+    if(reset) reset.disabled=false;
+    if(failed){
+      var nm=(items(type).filter(function(i){ return i.id===failed.row.id; })[0]||{}).n||failed.row.id;
+      msg('prmsg','حُفظ '+done+' من '+rows.length+'، ثم توقّف عند «'+nm+'»: '+emsg(failed.res)+
+        '  ·  ما حُفظ بالفعل باقٍ على الخادم.',1);
+      return;
+    }
+    msg('prmsg','تم حفظ '+done+' صنف على الخادم.');
+    countChanges();
+  }).catch(function(){
+    if(btn) btn.disabled=false;
+    if(reset) reset.disabled=false;
+    msg('prmsg',offline()+' حُفظ '+done+' من '+rows.length+' قبل انقطاع الاتصال.',1);
+  });
+}
 function savePrice(id){
   function g(a){ return document.querySelector('['+a+'="'+id+'"]'); }
   var uSel=g('data-u'), uCustom=g('data-ux');
@@ -1287,45 +1437,122 @@ function saveTypeAnnual(){
     .catch(function(){ el('tyabsave').disabled=false;
       msg('tyabmsg',offline()+' لم يُحفظ.',1); });
 }
+/* ============================================================================
+   MONTHLY BUDGET TABLE
+
+   The total and the remainder are recomputed on every keystroke, so the row
+   tells the truth before the save is pressed, not after. And the save sends
+   only the expense types whose months actually changed — sending the rest cost
+   a round trip each for nothing, because the backend serialises every request.
+   ========================================================================== */
+function readMonths(typeId){
+  var mm=[];
+  for(var m=0;m<12;m++){
+    var n=document.querySelector('[data-b="'+typeId+'|'+m+'"]');
+    mm.push(n?num(n.value):null);
+  }
+  return mm;
+}
+function monthsChanged(typeId,mm){
+  var was=months(typeId);
+  for(var m=0;m<12;m++){
+    var a=(was&&was[m]!=null)?Number(was[m]):null;
+    var b=mm[m];
+    if(a!==b) return true;
+  }
+  return false;
+}
+/* Repaints one row's total and remainder. Called on every keystroke. */
+function paintRowTotal(typeId){
+  var mm=readMonths(typeId);
+  var sum=mm.reduce(function(a,b){ return a+(b==null?0:b); },0);
+  var ann=annual(typeId);
+  var left=r2(ann-sum);
+  var sc=document.querySelector('[data-sum="'+typeId+'"]');
+  var lc=document.querySelector('[data-left="'+typeId+'"]');
+  if(sc) sc.textContent=money(r2(sum));
+  if(lc){
+    lc.textContent=money(left);
+    /* a negative remainder is the one thing that will be refused, so it is
+       marked here rather than waiting for the server to say so */
+    lc.className = left < -0.005 ? 'total over' : 'total';
+  }
+  return {sum:r2(sum),left:left,changed:monthsChanged(typeId,mm)};
+}
+function paintAllTotals(){
+  var pending=0,over=0;
+  S.types.forEach(function(t){
+    var r=paintRowTotal(t.id);
+    if(r.changed) pending++;
+    if(r.left < -0.005) over++;
+  });
+  var c=el('buCount');
+  if(c) c.textContent = over
+    ? (over+' نوع مصروف يتجاوز موازنته السنوية — صحّحه قبل الحفظ.')
+    : (pending ? (pending+' نوع مصروف معدَّل — اضغط حفظ.')
+               : 'عدّل ما تشاء ثم احفظ مرة واحدة.');
+}
 function saveBudgets(){
-  var jobs=[];
+  var jobs=[],bad=[];
   S.types.forEach(function(t){
     /* the annual figure comes from what is stored, never from this table */
     var rec=annualRec(t.id);
     var annualV=rec?rec.amount:null;
-    var mm=[];
-    for(var m=0;m<12;m++){
-      var n=document.querySelector('[data-b="'+t.id+'|'+m+'"]');
-      mm.push(n?num(n.value):null);
-    }
+    var mm=readMonths(t.id);
     var sum=mm.reduce(function(a,b){ return a+(b==null?0:b); },0);
-    if(annualV===null&&!mm.some(function(x){ return x!=null; })) return;
-    if(annualV===null&&mm.some(function(x){ return x!=null; })){
-      jobs.push({fail:'«'+t.n+'»: أدخل الموازنة السنوية من «أنواع المصروفات» قبل التوزيع.'});
+    var touched=monthsChanged(t.id,mm);
+    if(!touched) return;                 /* untouched rows cost nothing */
+    if(annualV===null){
+      bad.push('«'+t.n+'»: أدخل الموازنة السنوية من «أنواع المصروفات» قبل التوزيع.');
       return;
     }
-    if(annualV!==null&&sum-annualV>0.005){
-      jobs.push({fail:'«'+t.n+'»: مجموع الشهور '+money(sum)+' يتجاوز الموازنة السنوية '+money(annualV)});
+    if(sum-annualV>0.005){
+      bad.push('«'+t.n+'»: مجموع الشهور '+money(sum)+' يتجاوز الموازنة السنوية '+money(annualV));
       return;
     }
-    jobs.push({typeId:t.id,annual:annualV,months:mm});
+    if(mm.some(function(x){ return x!==null && x<0; })){
+      bad.push('«'+t.n+'»: قيمة شهر سالبة');
+      return;
+    }
+    jobs.push({typeId:t.id,name:t.n,annual:annualV,months:mm});
   });
-  var bad=jobs.filter(function(j){ return j.fail; });
-  if(bad.length){ msg('bumsg',bad[0].fail,1); return; }
-  busy('bumsg','جارٍ حفظ التوزيع الشهري…');
+  /* nothing is sent while any row is wrong, so the table cannot end up half saved */
+  if(bad.length){
+    msg('bumsg','صحّح أولًا: '+bad.slice(0,2).join('  ·  ')+
+      (bad.length>2?('  … و'+(bad.length-2)+' غيرها'):''),1);
+    return;
+  }
+  if(!jobs.length){ msg('bumsg','لا يوجد تعديل للحفظ.'); return; }
+  var btn=el('saveb'); if(btn) btn.disabled=true;
   var chain=Promise.resolve(), failed=null, done=0;
   jobs.forEach(function(j){
     chain=chain.then(function(){
       if(failed) return;
+      msg('bumsg','جارٍ الحفظ… '+(done+1)+' من '+jobs.length+'  ·  «'+j.name+'»');
       return api('upsertBudget',{source:'LIVE',budget:{fyId:'FY'+fy(),typeId:j.typeId,
         annual:j.annual,months:j.months}})
-        .then(function(r){ if(!r||r.ok!==true) failed=r; else done++; });
+        .then(function(r){
+          if(!r||r.ok!==true){ failed={job:j,res:r}; return; }
+          /* the screen follows the server, one confirmed row at a time */
+          S.monthly[j.typeId]=j.months.slice();
+          done++;
+        });
     });
   });
   chain.then(function(){
-    if(failed){ msg('bumsg',emsg(failed),1); return; }
-    return reload().then(function(){ render(); msg('bumsg','حُفظ '+done+' نوع مصروف.'); });
-  }).catch(function(){ msg('bumsg',offline()+' لم يُحفظ.',1); });
+    if(btn) btn.disabled=false;
+    if(failed){
+      msg('bumsg','حُفظ '+done+' من '+jobs.length+'، ثم توقّف عند «'+failed.job.name+'»: '+
+        emsg(failed.res)+'  ·  ما حُفظ بالفعل باقٍ على الخادم.',1);
+      paintAllTotals();
+      return;
+    }
+    msg('bumsg','تم حفظ '+done+(done===1?' نوع مصروف.':' أنواع مصروفات.'));
+    paintAllTotals();
+  }).catch(function(){
+    if(btn) btn.disabled=false;
+    msg('bumsg',offline()+'  حُفظ '+done+' من '+jobs.length+' قبل انقطاع الاتصال.',1);
+  });
 }
 function startRun(){
   var n=Number(el('ic').value)||1;
@@ -1510,7 +1737,14 @@ function exportInvoice(){
    sees the sign-in box flash before the dashboard appears.
    ========================================================================== */
 function hideBooting(){
+  bootHint('');
   var b=el('booting'); if(b) b.classList.add('hidden');
+}
+function showBooting(){
+  var d=el('booting'); if(d) d.classList.remove('hidden');
+}
+function bootHint(t){
+  var h=el('bootHint'); if(h) h.textContent=t||'';
 }
 function bootMsg(t){
   var m=el('bootMsg'); if(m) m.textContent=t;
@@ -1580,15 +1814,20 @@ function boot(){
 function doLogin(){
   var b=el('loginBtn');
   b.disabled=true;
-  el('le').textContent='جارٍ التحقق…';
+  /* The sign-in request can take seconds on a cold Apps Script. Showing the
+     loading card straight away means the wait is visible from the first click,
+     instead of a disabled button on a screen that looks frozen. */
+  el('login').classList.add('hidden');
+  bootMsg('جارٍ التحقق من بياناتك…');
+  showBooting();
   var slow=setTimeout(function(){
-    el('le').textContent='الخادم يستغرق وقتًا… أول طلب بعد فترة خمول يكون أبطأ.';
+    bootHint('الخادم يستغرق وقتًا… أول طلب بعد فترة خمول يكون أبطأ.');
   },3500);
   var clearSlow=function(){ clearTimeout(slow); };
   api('login',{username:el('lu').value,password:el('lp').value})
     .then(function(r){
       clearSlow(); b.disabled=false;
-      if(!r||r.ok!==true){ el('le').textContent=emsg(r); return; }
+      if(!r||r.ok!==true){ showLogin(); el('le').textContent=emsg(r); return; }
       storeToken(r.token);                 /* the token, and nothing else */
       USER={username:r.user.username,role:r.user.role,id:r.user.userId};
       el('lp').value='';                   /* the password is dropped at once */
@@ -1600,7 +1839,7 @@ function doLogin(){
       bootMsg('جارٍ تحميل بيانات السنة المالية…');
       return startSession();
     })
-    .catch(function(){ clearSlow(); b.disabled=false; el('le').textContent=offline(); });
+    .catch(function(){ clearSlow(); b.disabled=false; showLogin(); el('le').textContent=offline(); });
 }
 function doLogout(){
   var t=TOKEN;
